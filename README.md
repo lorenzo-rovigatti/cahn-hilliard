@@ -1,16 +1,20 @@
 # Cahn-Hilliard
 
-A simple code to simulate spinodal decomposition through the Cahn-Hilliard equation. The code uses the clasic Landau-Ginzberg mean-field expression for the bulk free energy density:
+A simple code to simulate spinodal decomposition through the Cahn-Hilliard equation. The code uses the classic Ginzburg–Landau mean-field expression for the bulk free energy density:
 
 $$
-f(\psi) = -\frac{1}{2}\epsilon \psi^2 + \frac{1}{4} \psi^4
+f_{\rm bulk}(\psi) = -\frac{1}{2}\epsilon \psi^2 + \frac{1}{4} \psi^4
 $$
 
-where $\epsilon = (T_c - T) / T_c$ and $\psi$ is the order parameter of the phase transition.
+where $\epsilon = (T_c - T) / T_c$ and $\psi$ is the order parameter of the phase transition. The total free-energy density used in the code is thus
+
+$$
+f(\psi) = -\frac{1}{2}\epsilon \psi^2 + \frac{1}{4} \psi^4 + \frac{1}{2} |\nabla \psi|^2
+$$
 
 ## Compilation and usage
 
-Use `compile.sh` to compile the code, and run it with
+Use `compile.sh`, which assumes that g++ is installed and in the PATH, to compile the code, and run it with
 
 ```
 $ ./ch <N> <epsilon> <psi_average> <steps>
