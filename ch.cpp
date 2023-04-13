@@ -54,7 +54,7 @@ struct CahnHilliard {
 
 	void evolve();
 
-	void print_state(std::string filename);
+	void print_state(std::ofstream &output);
 };
 
 template<int dims>
@@ -117,23 +117,20 @@ void CahnHilliard<dims>::evolve() {
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_state(std::string filename) {
-	std::ofstream out(filename.c_str());
-
+void CahnHilliard<dims>::print_state(std::ofstream &output) {
 	for(int idx = 0; idx < size; idx++) {
 		if(idx > 0) {
 			int modulo = N;
 			for(int d = 1; d < dims; d++) {
 				if(idx % modulo == 0) {
-					out << std::endl;
+					output << std::endl;
 				}
 				modulo <<= N;
 			}
 		}
-		out << psi[idx] << " ";
+		output << psi[idx] << " ";
 	}
-
-	out.close();
+	output << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -169,14 +166,25 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	long long int steps = result["steps"].as<long long int>();
+	long long int print_every = result["print-every"].as<long long int>();
 
 	CahnHilliard<2> system(N, dt, epsilon, psi_average, k);
 
+	std::ofstream trajectory;
+	if(print_every > 0) {
+		trajectory.open("trajectory.dat");
+	}
 	for(int t = 0; t < steps; t++) {
+		if(print_every > 0 && t % print_every == 0) {
+			system.print_state(trajectory);
+		}
 		system.evolve();
 	}
+	trajectory.close();
 
-	system.print_state("last.dat");
+	std::ofstream output("last.dat");
+	system.print_state(output);
+	output.close();
 
 	return 0;
 }
