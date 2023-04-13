@@ -6,9 +6,10 @@
 #include <algorithm>
 #include <string>
 
+#include <cxxopts/cxxopts.hpp>
+
 #define D 1.0
 #define H 1
-#define DT 0.01
 
 template<int dims>
 struct CahnHilliard {
@@ -16,12 +17,14 @@ struct CahnHilliard {
 	int N_minus_one;
 	int bits;
 	int size;
+	double dt;
 	double epsilon, k_laplacian;
 
 	std::vector<double> psi;
 
-	CahnHilliard(int mN, double eps, double psi_average, double k) :
+	CahnHilliard(int mN, double mdt, double eps, double psi_average, double k) :
 					N(mN),
+					dt(mdt),
 					epsilon(eps),
 					k_laplacian(k) {
 		double log2N = std::log2(N);
@@ -109,7 +112,7 @@ void CahnHilliard<dims>::evolve() {
 	}
 
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-		psi[idx] += -D * cell_laplacian(free_energy_der, idx) * DT;
+		psi[idx] += -D * cell_laplacian(free_energy_der, idx) * dt;
 	}
 }
 
@@ -136,22 +139,38 @@ void CahnHilliard<dims>::print_state(std::string filename) {
 int main(int argc, char *argv[]) {
 	srand48(51328);
 
-	if(argc < 5) {
-		fprintf(stderr, "Usage is %s N epsilon psi_average steps [k=1]\n", argv[0]);
+	cxxopts::Options options("chan-hilliard", "A simple code to simulate spinodal decomposition through the Cahn-Hilliard equation");
+	options.add_options()
+			("N", "The size of the square grid", cxxopts::value<int>()->default_value("64"))
+			("e,epsilon", "The distance from the critical point", cxxopts::value<double>()->default_value("0.9"))
+			("dt", "The integration time step", cxxopts::value<double>()->default_value("0.01"))
+			("a,average-psi", "Average value of the order parameter", cxxopts::value<double>()->default_value("0"))
+			("s,steps", "Number of iterations", cxxopts::value<long long int>())
+			("p,print-every", "Number of iterations every which the state of the system will be appended to the trajectory.dat file (0 means never)", cxxopts::value<long long int>()->default_value("0"))
+			("k", "Strength of the interfacial term of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
+			("h,help", "Print usage")
+			;
+
+	auto result = options.parse(argc, argv);
+
+	int N = result["N"].as<int>();
+	double epsilon = result["epsilon"].as<double>();
+	double psi_average = result["average-psi"].as<double>();
+	double k = result["k"].as<double>();
+	double dt = result["dt"].as<double>();
+
+	if(argc == 1 || result.count("help")) {
+		fprintf(stderr, "%s", options.help().c_str());
+		exit(0);
+	}
+
+	if(result["steps"].count() == 0) {
+		fprintf(stderr, "ERROR: The -s/--steps argument in mandatory\n");
 		exit(1);
 	}
+	long long int steps = result["steps"].as<long long int>();
 
-	int N = std::atoi(argv[1]);
-	double epsilon = std::atof(argv[2]);
-	double psi_average = std::atof(argv[3]);
-	long long int steps = std::atol(argv[4]);
-
-	double k = 1.0;
-	if(argc > 5) {
-		k = std::atof(argv[5]);
-	}
-
-	CahnHilliard<2> system(N, epsilon, psi_average, k);
+	CahnHilliard<2> system(N, dt, epsilon, psi_average, k);
 
 	for(int t = 0; t < steps; t++) {
 		system.evolve();

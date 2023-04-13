@@ -21,4 +21,5 @@ if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
 	add_definitions(-ffast-math)
 endif()
 
+include_directories(extern)
 add_executable(ch ch.cpp)
