@@ -28,15 +28,14 @@ At the end of the process an output executable, `ch`, will be placed in the `bui
 ## Usage
 
 ```
-$ ./ch N epsilon psi_average steps [k=1.0]
+chan-hilliard [OPTION...]
+
+-N arg                 The size of the square grid (default: 64)
+-e, --epsilon arg      The distance from the critical point (default: 0.9)
+    --dt arg           The integration time step (default: 0.01)
+-a, --average-psi arg  Average value of the order parameter (default: 0)
+-s, --steps arg        Number of iterations
+-p, --print-every arg  Number of iterations every which the state of the system will be appended to the trajectory.dat file  (0 means never) (default: 0)
+-k arg                 Strength of the interfacial term of the  Cahn-Hilliard equation (default: 1.0)
+-h, --help             Print usage
 ```
-
-where
-
-* `N` is the size of the square grid that will be used to discretise the problem. This value should be a power of two.
-* `epsilon` is the parameter controlling the distance from the critical point (see above). Phase separation requires $\epsilon > 0$. The larger the number, the farther from the critical point.
-* `psi_average` controls the initial conditions of the grid. Each cell of the grid will be assigned a random value that is `psi_average` $\pm 0.5$.
-* `steps` is the number of iterations that the simulation will run for.
-* `k`, which defaults to 1, controls the width of the interfaces between the domains.
-
-At the end of the simulation the final grid will be printed to the file `last.dat`.
