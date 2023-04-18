@@ -8,25 +8,22 @@
 
 #include <cxxopts/cxxopts.hpp>
 
-#define D 1.0
-#define H 1
-
 template<int dims>
 struct CahnHilliard {
-	int N = 64;
+	int N;
 	int N_minus_one;
 	int bits;
 	int size;
-	double dt;
-	double epsilon, k_laplacian;
+	double dt = 0.01;
+	double epsilon = 0.9;
+	double k_laplacian = 1.0;
+	double D = 1.0;
+	double H = 1.0;
 
 	std::vector<double> psi;
 
-	CahnHilliard(int mN, double mdt, double eps, double psi_average, double k) :
-					N(mN),
-					dt(mdt),
-					epsilon(eps),
-					k_laplacian(k) {
+	CahnHilliard(int mN, double psi_average) :
+					N(mN) {
 		double log2N = std::log2(N);
 		if(ceil(log2N) != floor(log2N)) {
 			fprintf(stderr, "N should be a power of 2\n");
@@ -51,6 +48,7 @@ struct CahnHilliard {
 	int cell_idx(int coords[dims]);
 
 	double cell_laplacian(std::vector<double> &field, int idx);
+	double bulk_free_energy(double op);
 
 	void evolve();
 
@@ -105,10 +103,15 @@ double CahnHilliard<2>::cell_laplacian(std::vector<double> &field, int idx) {
 }
 
 template<int dims>
+double CahnHilliard<dims>::bulk_free_energy(double op) {
+	return epsilon * op - op * op * op;
+}
+
+template<int dims>
 void CahnHilliard<dims>::evolve() {
 	static std::vector<double> free_energy_der(psi.size());
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-		free_energy_der[idx] = k_laplacian * cell_laplacian(psi, idx) + epsilon * psi[idx] - psi[idx] * psi[idx] * psi[idx];
+		free_energy_der[idx] = k_laplacian * cell_laplacian(psi, idx) + bulk_free_energy(psi[idx]);
 	}
 
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
@@ -136,11 +139,13 @@ void CahnHilliard<dims>::print_state(std::ofstream &output) {
 int main(int argc, char *argv[]) {
 	srand48(51328);
 
-	cxxopts::Options options("chan-hilliard", "A simple code to simulate spinodal decomposition through the Cahn-Hilliard equation");
+	cxxopts::Options options("cahn-hilliard", "A simple code to simulate spinodal decomposition through the Cahn-Hilliard equation");
 	options.add_options()
 			("N", "The size of the square grid", cxxopts::value<int>()->default_value("64"))
 			("e,epsilon", "The distance from the critical point", cxxopts::value<double>()->default_value("0.9"))
 			("dt", "The integration time step", cxxopts::value<double>()->default_value("0.01"))
+			("D", "The transport coefficient D of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
+			("H", "The size of the mesh cells", cxxopts::value<double>()->default_value("1.0"))
 			("a,average-psi", "Average value of the order parameter", cxxopts::value<double>()->default_value("0"))
 			("s,steps", "Number of iterations", cxxopts::value<long long int>())
 			("p,print-every", "Number of iterations every which the state of the system will be appended to the trajectory.dat file (0 means never)", cxxopts::value<long long int>()->default_value("0"))
@@ -150,16 +155,18 @@ int main(int argc, char *argv[]) {
 
 	auto result = options.parse(argc, argv);
 
-	int N = result["N"].as<int>();
-	double epsilon = result["epsilon"].as<double>();
-	double psi_average = result["average-psi"].as<double>();
-	double k = result["k"].as<double>();
-	double dt = result["dt"].as<double>();
-
 	if(argc == 1 || result.count("help")) {
 		fprintf(stderr, "%s", options.help().c_str());
 		exit(0);
 	}
+
+	CahnHilliard<2> system(result["N"].as<int>(), result["average-psi"].as<double>());
+	system.k_laplacian = result["k"].as<double>();
+	system.dt = result["dt"].as<double>();
+	system.D = result["D"].as<double>();
+	system.H = result["H"].as<double>();
+
+	system.epsilon = result["epsilon"].as<double>();
 
 	if(result["steps"].count() == 0) {
 		fprintf(stderr, "ERROR: The -s/--steps argument in mandatory\n");
@@ -167,8 +174,6 @@ int main(int argc, char *argv[]) {
 	}
 	long long int steps = result["steps"].as<long long int>();
 	long long int print_every = result["print-every"].as<long long int>();
-
-	CahnHilliard<2> system(N, dt, epsilon, psi_average, k);
 
 	std::ofstream trajectory;
 	if(print_every > 0) {
