@@ -9,7 +9,7 @@ $$
 where $\epsilon = (T_c - T) / T_c$ and $\psi$ is the order parameter of the phase transition. The total free-energy density used in the code is
 
 $$
-f(\psi) = -\frac{1}{2}\epsilon \psi^2 + \frac{1}{4} \psi^4 + \frac{1}{2} \kappa |\nabla \psi|^2
+f(\psi) = -\frac{1}{2}\epsilon \psi^2 + \frac{1}{4} \psi^4 + \kappa |\nabla \psi|^2
 $$
 
 where $\kappa$ defaults to one.
