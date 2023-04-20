@@ -31,10 +31,10 @@ cbar = fig.colorbar(image, label="$\psi$")
 
 def update_figure(j):
     image.set_data(frames[j])
-    fig.canvas.flush_events()
     
     return [image]
 
 anim = animation.FuncAnimation(fig, update_figure, frames=len(frames), interval=100, blit=True, repeat=False)
 anim.save(file + ".mp4") # requires ffmpg
+anim.save(file + ".gif")
 plt.show()
