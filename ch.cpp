@@ -50,11 +50,11 @@ struct LandauModel: public FreeEnergyModel {
 	}
 
 	double der_bulk_free_energy(double op) override {
-		return epsilon * op - op * op * op;
+		return -epsilon * op + op * op * op;
 	}
 
 	double bulk_free_energy(double op) override {
-		return 0.5 * epsilon * SQR(op) - 0.25 * SQR(SQR(op));
+		return -0.5 * epsilon * SQR(op) + 0.25 * SQR(SQR(op));
 	}
 };
 
@@ -98,14 +98,14 @@ struct WertheimModel: public FreeEnergyModel {
 		double f_ref = rho * std::log(rho) - rho + B_2 * SQR(rho);
 		double f_bond = valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
 
-		return k_B * T * (f_ref + f_bond);
+		return (f_ref + f_bond);
 	}
 
 	double der_bulk_free_energy(double rho) override {
 		double der_f_ref = std::log(rho) + 2 * B_2 * rho;
 		double der_f_bond = valence * (std::log(_X(rho)) - 0.5 + 1.0 / (2.0 - _X(rho)) - 0.5 / std::sqrt(1.0 + 2.0 * two_M_delta * rho));
 
-		return k_B * T * (der_f_ref + der_f_bond);
+		return (der_f_ref + der_f_bond);
 	}
 };
 
@@ -117,7 +117,7 @@ struct CahnHilliard {
 	int size;
 	double dt = 0.01;
 	double k_laplacian = 1.0;
-	double D = 1.0;
+	double M = 1.0;
 	double H = 1.0;
 	FreeEnergyModel *model;
 
@@ -128,7 +128,7 @@ struct CahnHilliard {
 		N = options["N"].as<int>();
 		k_laplacian = options["k"].as<double>();
 		dt = options["dt"].as<double>();
-		D = options["D"].as<double>();
+		M = options["M"].as<double>();
 		H = options["H"].as<double>();
 
 		double log2N = std::log2(N);
@@ -149,7 +149,7 @@ struct CahnHilliard {
 		double psi_average = options["average-psi"].as<double>();
 		double psi_noise = options["psi-noise"].as<double>();
 		std::generate(psi.begin(), psi.end(), [psi_average, psi_noise]() {
-			double noise = 2. * (drand48() - 0.5) * psi_average * psi_noise;
+			double noise = 2. * (drand48() - 0.5) * psi_noise;
 			return psi_average + noise;
 		});
 	}
@@ -216,11 +216,11 @@ template<int dims>
 void CahnHilliard<dims>::evolve() {
 	static std::vector<double> free_energy_der(psi.size());
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-		free_energy_der[idx] = model->der_bulk_free_energy(psi[idx]) + 2 * k_laplacian * cell_laplacian(psi, idx);
+		free_energy_der[idx] = model->der_bulk_free_energy(psi[idx]) - 2 * k_laplacian * cell_laplacian(psi, idx);
 	}
 
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-		psi[idx] += -D * cell_laplacian(free_energy_der, idx) * dt;
+		psi[idx] += M * cell_laplacian(free_energy_der, idx) * dt;
 	}
 }
 
@@ -257,10 +257,10 @@ int main(int argc, char *argv[]) {
 	("e,epsilon", "The distance from the critical point in the 'landau' free energy", cxxopts::value<double>()->default_value("0.9"))
 	("T,temperature", "Temperature (in Kelvin), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("300"))
 	("dt", "The integration time step", cxxopts::value<double>()->default_value("0.01"))
-	("D", "The transport coefficient D of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
+	("M", "The transport coefficient M of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
 	("H", "The size of the mesh cells", cxxopts::value<double>()->default_value("1.0"))
 	("a,average-psi", "Average value of the order parameter", cxxopts::value<double>()->default_value("0"))
-	("psi-noise", "Random noise for the initial psi (relative to the average psi value)", cxxopts::value<double>()->default_value("0.1"))
+	("psi-noise", "Random noise for the initial psi", cxxopts::value<double>()->default_value("0.1"))
 	("p,print-every", "Number of iterations every which the state of the system will be appended to the trajectory.dat file (0 means never)", cxxopts::value<long long int>()->default_value("0"))
 	("k", "Strength of the interfacial term of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
 	("h,help", "Print usage");
