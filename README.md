@@ -20,13 +20,13 @@ where $\kappa$ defaults to one.
 
 ## Wertheim free energy
 
-By using the `--free-energy wertheim` switch (see [#usage](Usage)) it is possible to use the free energy of a system made of tetrafunctional DNA arms (with parameters taken from [here](https://doi.org/10.1021/acsnano.6b08287)) modelled as tetrafunctional patchy particles through Wertheim's theory. Here we use the following free energy density:
+By using the `--free-energy wertheim` switch (see [usage](#usage)) it is possible to use the free energy of a system made of tetrafunctional DNA arms (with parameters taken from [here](https://doi.org/10.1021/acsnano.6b08287)) modelled as tetrafunctional patchy particles through Wertheim's theory. Here we use the following free energy density:
 
 $$
 \beta f_{\rm bulk} = \beta f_{\rm ref} + \beta f_{\rm bond}
 $$
 
-where $\beta f_{\rm ref} = \rho \ln(\rho) - \rho + B_2 \rho^2$  with $B_2 = 2100$ nm$^{3}$ second virial coefficient, is the free energy of the reference system (*i.e.* the system where no bonding is possible) and 
+where $\beta f_{\rm ref} = \rho \ln(\rho) - \rho + B_2 \rho^2$  with $B_2 = 2100$ nm $^{3}$ second virial coefficient, is the free energy of the reference system (*i.e.* the system where no bonding is possible) and 
 
 $$
 \beta f_{\rm bond} = M \rho \left(\ln(X) + \frac{1}{2} (1 - X) \right)
@@ -38,7 +38,7 @@ $$
 X(\rho) = \frac{-1 + \sqrt{1 + 4 M \Delta \rho}}{2 M \Delta \rho}
 $$
 
-where $\Delta = v_b e^{-\Delta G / R T}$, $v_b = 1.6606$ nm$^3$ and $\Delta G$ is the DNA hybridisation free energy, here estimated through Santa Lucia's nearest-neighbour model.
+where $\Delta = v_b e^{-\Delta G / R T}$, $v_b = 1.6606$ nm $^3$ and $\Delta G$ is the DNA hybridisation free energy, here estimated through Santa Lucia's nearest-neighbour model.
 
 ## Compilation
 
