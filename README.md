@@ -27,13 +27,17 @@ $$
 $$
 
 where $\beta f_{\rm ref} = \rho \ln(\rho) - \rho + B_2 \rho^2$  with $B_2 = 2100$ nm$^{3}$ second virial coefficient, is the free energy of the reference system (*i.e.* the system where no bonding is possible) and 
+
 $$
 \beta f_{\rm bond} = M \rho \left(\ln(X) + \frac{1}{2} (1 - X) \right)
 $$
+
 is the free energy that takes into account bonding. Here $M = 4$ is the valence of each particle and $X$ is the probability that a patch is unbound. The latter can be estimated through a law of mass-action and is equal to
+
 $$
 X(\rho) = \frac{-1 + \sqrt{1 + 4 M \Delta \rho}}{2 M \Delta \rho}
 $$
+
 where $\Delta = v_b e^{-\Delta G / R T}$, $v_b = 1.6606$ nm$^3$ and $\Delta G$ is the DNA hybridisation free energy, here estimated through Santa Lucia's nearest-neighbour model.
 
 ## Compilation
