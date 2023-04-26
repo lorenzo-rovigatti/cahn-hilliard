@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
 	options.add_options()
 	("s,steps", "Number of iterations", cxxopts::value<long long int>())
 	("N", "The size of the square grid", cxxopts::value<int>()->default_value("64"))
-	("f,free-energy", "The bulk free energy expression to be used (supported values are 'landau' and 'wertheim'", cxxopts::value<std::string>()->default_value("landau"))
+	("f,free-energy", "The bulk free energy expression to be used (supported values are 'landau' and 'wertheim')", cxxopts::value<std::string>()->default_value("landau"))
 	("e,epsilon", "The distance from the critical point in the 'landau' free energy", cxxopts::value<double>()->default_value("0.9"))
 	("T,temperature", "Temperature (in Kelvin), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("300"))
 	("dt", "The integration time step", cxxopts::value<double>()->default_value("0.01"))
