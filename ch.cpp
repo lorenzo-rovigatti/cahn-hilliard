@@ -214,13 +214,13 @@ double CahnHilliard<2>::cell_laplacian(std::vector<double> &field, int idx) {
 
 template<int dims>
 void CahnHilliard<dims>::evolve() {
-	static std::vector<double> free_energy_der(psi.size());
+	static std::vector<double> psi_der(psi.size());
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-		free_energy_der[idx] = model->der_bulk_free_energy(psi[idx]) - 2 * k_laplacian * cell_laplacian(psi, idx);
+		psi_der[idx] = model->der_bulk_free_energy(psi[idx]) - 2 * k_laplacian * cell_laplacian(psi, idx);
 	}
 
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-		psi[idx] += M * cell_laplacian(free_energy_der, idx) * dt;
+		psi[idx] += M * cell_laplacian(psi_der, idx) * dt;
 	}
 }
 
