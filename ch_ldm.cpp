@@ -49,7 +49,7 @@ struct FreeEnergyModel {
 		out.close();
 	}
 
-	double der_bulk_free_energy(int species, std::array<double, SPECIES> &partial_rho) {
+	double full_numerical_derivative(int species, std::array<double, SPECIES> &partial_rho) {
 		double rho_i = partial_rho[species];
 		double delta_rho_i = rho_i * 1e-5;
 
@@ -61,21 +61,26 @@ struct FreeEnergyModel {
 		return (fe_rdr - fe_r) / delta_rho_i;
 	}
 
-	double bulk_free_energy(std::array<double, SPECIES> &partial_rho) {
-		double rho = std::accumulate(partial_rho.begin(), partial_rho.end(), 0.);
-
-		double mixing_S = 0., B2_contrib = 0.;
-		for(unsigned int i = 0; i < SPECIES; i++) {
-			double x_i = partial_rho[i] / rho;
-			mixing_S += x_i * std::log(x_i);
-
-			for(unsigned int j = i; j < SPECIES; j++) {
-				B2_contrib += B_2 * x_i * partial_rho[j];
-			}
+	double der_bulk_free_energy(int species, std::array<double, SPECIES> &partial_rho) {
+		// the ideal + B2 part is computed analytically
+		double der_f_ref = std::log(partial_rho[species]) + B_2 * partial_rho[species];
+		for(int i = 0; i < SPECIES; i++) {
+			der_f_ref += B_2 * partial_rho[i];
 		}
 
-		double f_ref = rho * (std::log(rho) - 1.0 + mixing_S + B2_contrib);
+		// the bonding part is computed numerically
+		double rho_i = partial_rho[species];
+		double delta_rho_i = rho_i * 1e-5;
 
+		double fe_r = bonding_free_energy(partial_rho);
+		partial_rho[species] += delta_rho_i;
+		double fe_rdr = bonding_free_energy(partial_rho);
+		partial_rho[species] = rho_i;
+
+		return der_f_ref + (fe_rdr - fe_r) / delta_rho_i;
+	}
+
+	double bonding_free_energy(std::array<double, SPECIES> &partial_rho) {
 		double rho_factor = 1.0 + (2 * partial_rho[2] + partial_rho[4] - 4 * partial_rho[0]) * delta;
 		double X_1A = (-rho_factor + std::sqrt(SQR(rho_factor) + 16.0 * partial_rho[0] * delta)) / (8.0 * partial_rho[0] * delta);
 
@@ -102,7 +107,25 @@ struct FreeEnergyModel {
 				partial_rho[3] * f_bond_4 +
 				partial_rho[4] * f_bond_5;
 
-		return f_ref + f_bond;
+		return f_bond;
+	}
+
+	double bulk_free_energy(std::array<double, SPECIES> &partial_rho) {
+		double rho = std::accumulate(partial_rho.begin(), partial_rho.end(), 0.);
+
+		double mixing_S = 0., B2_contrib = 0.;
+		for(int i = 0; i < SPECIES; i++) {
+			double x_i = partial_rho[i] / rho;
+			mixing_S += x_i * std::log(x_i);
+
+			for(int j = i; j < SPECIES; j++) {
+				B2_contrib += B_2 * x_i * partial_rho[j];
+			}
+		}
+
+		double f_ref = rho * (std::log(rho) - 1.0 + mixing_S + B2_contrib);
+
+		return f_ref + bonding_free_energy(partial_rho);
 	}
 };
 
@@ -148,8 +171,8 @@ struct CahnHilliard {
 			std::ifstream load_from(options["load-from"].as<std::string>().c_str());
 			for(int s = 0; s < SPECIES; s++) {
 				int coords[2];
-				for(coords[0] = 0; coords[0] < N; coords[0]++) {
-					for(coords[1] = 0; coords[1] < N; coords[1]++) {
+				for(coords[1] = 0; coords[1] < N; coords[1]++) {
+					for(coords[0] = 0; coords[0] < N; coords[0]++) {
 						int idx = cell_idx(coords);
 						load_from >> rho[idx][s];
 					}
@@ -164,12 +187,12 @@ struct CahnHilliard {
 			double linker_rho = 2 * tetramer_rho / (1.0 + R);
 			std::for_each(rho.begin(), rho.end(), [this, tetramer_rho, linker_rho, noise, R](std::array<double, SPECIES> &species_rho) {
 				species_rho[0] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
-				species_rho[1] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
+				species_rho[1] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise) * 1e-2;
 
 				species_rho[2] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
-				species_rho[3] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
+				species_rho[3] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise) * 1e-2;
 
-				species_rho[4] = 2 * R * linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
+				species_rho[4] = 2 * R * linker_rho * (1 + 2. * (drand48() - 0.5) * noise) * 1e-2;
 			});
 		}
 	}
@@ -183,6 +206,7 @@ struct CahnHilliard {
 	double total_mass();
 
 	void print_state(int species, std::ofstream &output);
+	void print_density(std::string filename);
 };
 
 template<int dims>
@@ -283,6 +307,27 @@ void CahnHilliard<dims>::print_state(int species, std::ofstream &output) {
 	output << std::endl;
 }
 
+template<int dims>
+void CahnHilliard<dims>::print_density(std::string filename) {
+	std::ofstream output(filename.c_str());
+
+	for(int idx = 0; idx < size; idx++) {
+		if(idx > 0) {
+			int modulo = N;
+			for(int d = 1; d < dims; d++) {
+				if(idx % modulo == 0) {
+					output << std::endl;
+				}
+				modulo <<= bits;
+			}
+		}
+		output << std::accumulate(rho[idx].begin(), rho[idx].end(), 0.) << " ";
+	}
+	output << std::endl;
+
+	output.close();
+}
+
 int main(int argc, char *argv[]) {
 	srand48(51328);
 
@@ -335,6 +380,7 @@ int main(int argc, char *argv[]) {
 		system.print_state(i, output);
 		output.close();
 	}
+	system.print_density("initial_density.dat");
 
 	for(int t = 0; t < steps; t++) {
 		if(print_every > 0 && t % print_every == 0) {
@@ -360,6 +406,7 @@ int main(int argc, char *argv[]) {
 		system.print_state(i, output);
 		output.close();
 	}
+	system.print_density("final_density.dat");
 
 	return 0;
 }
