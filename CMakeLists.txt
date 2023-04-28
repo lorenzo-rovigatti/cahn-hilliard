@@ -24,3 +24,5 @@ endif()
 include_directories(extern)
 add_executable(ch ch.cpp)
 add_executable(ch_ldm ch_ldm.cpp)
+
+target_compile_options(ch_ldm PRIVATE -Wall -Wextra)
