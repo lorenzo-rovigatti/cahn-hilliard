@@ -13,10 +13,47 @@
 
 #define SQR(X) ((X) * (X))
 
+// taken from https://gist.github.com/LingDong-/7e4c4cae5cbbc44400a05fba65f06f23
+float ln(float x) {
+  unsigned int bx = * (unsigned int *) (&x);
+  unsigned int ex = bx >> 23;
+  signed int t = (signed int)ex-(signed int)127;
+  unsigned int s = (t < 0) ? (-t) : t;
+  bx = 1065353216 | (bx & 8388607);
+  x = * (float *) (&bx);
+  return -1.7417939+(2.8212026+(-1.4699568+(0.44717955-0.056570851*x)*x)*x)*x + 0.6931471806*t;
+}
+
+// taken from https://github.com/romeric/fastapprox/blob/master/fastapprox/src/fastlog.h
+static inline float fastlog2(float x) {
+	union {
+		float f;
+		uint32_t i;
+	} vx = { x };
+
+	union {
+		uint32_t i;
+		float f;
+	} mx = { (vx.i & 0x007FFFFF) | 0x3f000000 };
+
+	float y = vx.i;
+	y *= 1.1920928955078125e-7f;
+
+	return y - 124.22551499f
+			- 1.498030302f * mx.f
+			- 1.72587999f / (0.3520887068f + mx.f);
+}
+
+static inline float fastlog(float x) {
+	return 0.69314718f * fastlog2(x);
+}
+
+#define LR_LOG(x) (std::log((x)))
+
 struct FreeEnergyModel {
 	double B_2 = 2100;
 	double T;
-	double delta;
+	double delta_AA, delta_BB;
 
 	const double k_B = 1.9872036;
 
@@ -31,7 +68,8 @@ struct FreeEnergyModel {
 		double delta_S_salt = 0.368 * (L_DNA - 1.0) * std::log(salt);
 		double delta_G = delta_H - T * (delta_S_nosalt + delta_S_salt);
 
-		delta = 1.6606 * std::exp(-delta_G / (k_B * T));
+		delta_AA = 1.6606 * std::exp(-delta_G / (k_B * T));
+		delta_BB = delta_AA;
 	}
 
 	virtual ~FreeEnergyModel() {
@@ -63,7 +101,7 @@ struct FreeEnergyModel {
 
 	double der_bulk_free_energy(int species, std::array<double, SPECIES> &partial_rho) {
 		// the ideal + B2 part is computed analytically
-		double der_f_ref = std::log(partial_rho[species]) + B_2 * partial_rho[species];
+		double der_f_ref = LR_LOG(partial_rho[species]) + B_2 * partial_rho[species];
 		for(int i = 0; i < SPECIES; i++) {
 			der_f_ref += B_2 * partial_rho[i];
 		}
@@ -81,19 +119,19 @@ struct FreeEnergyModel {
 	}
 
 	double bonding_free_energy(std::array<double, SPECIES> &partial_rho) {
-		double rho_factor = 1.0 + (2 * partial_rho[2] + partial_rho[4] - 4 * partial_rho[0]) * delta;
-		double X_1A = (-rho_factor + std::sqrt(SQR(rho_factor) + 16.0 * partial_rho[0] * delta)) / (8.0 * partial_rho[0] * delta);
+		double rho_factor = 1.0 + (2 * partial_rho[2] + partial_rho[4] - 4 * partial_rho[0]) * delta_AA;
+		double X_1A = (-rho_factor + std::sqrt(SQR(rho_factor) + 16.0 * partial_rho[0] * delta_AA)) / (8.0 * partial_rho[0] * delta_AA);
 
-		rho_factor = 1.0 + (2 * partial_rho[3] + partial_rho[4] - 4 * partial_rho[1]) * delta;
-		double X_2B = (-rho_factor + std::sqrt(SQR(rho_factor) + 16.0 * partial_rho[1] * delta)) / (8.0 * partial_rho[1] * delta);
+		rho_factor = 1.0 + (2 * partial_rho[3] + partial_rho[4] - 4 * partial_rho[1]) * delta_BB;
+		double X_2B = (-rho_factor + std::sqrt(SQR(rho_factor) + 16.0 * partial_rho[1] * delta_BB)) / (8.0 * partial_rho[1] * delta_BB);
 
-		double X_3A = 1.0 / (1.0 + 4.0 * partial_rho[0] * X_1A * delta);
-		double X_4B = 1.0 / (1.0 + 4.0 * partial_rho[1] * X_2B * delta);
+		double X_3A = 1.0 / (1.0 + 4.0 * partial_rho[0] * X_1A * delta_AA);
+		double X_4B = 1.0 / (1.0 + 4.0 * partial_rho[1] * X_2B * delta_BB);
 
-		double f_bond_1 = 4.0 * (std::log(X_1A) + 0.5 * (1. - X_1A));
-		double f_bond_2 = 4.0 * (std::log(X_2B) + 0.5 * (1. - X_2B));
-		double f_bond_3 = 2.0 * (std::log(X_3A) + 0.5 * (1. - X_3A));
-		double f_bond_4 = 2.0 * (std::log(X_4B) + 0.5 * (1. - X_4B));
+		double f_bond_1 = 4.0 * (LR_LOG(X_1A) + 0.5 * (1. - X_1A));
+		double f_bond_2 = 4.0 * (LR_LOG(X_2B) + 0.5 * (1. - X_2B));
+		double f_bond_3 = 2.0 * (LR_LOG(X_3A) + 0.5 * (1. - X_3A));
+		double f_bond_4 = 2.0 * (LR_LOG(X_4B) + 0.5 * (1. - X_4B));
 		double f_bond_5 = 0.5 * (f_bond_3 + f_bond_4);
 
 //		double X_5A = X_3A;
@@ -116,14 +154,14 @@ struct FreeEnergyModel {
 		double mixing_S = 0., B2_contrib = 0.;
 		for(int i = 0; i < SPECIES; i++) {
 			double x_i = partial_rho[i] / rho;
-			mixing_S += x_i * std::log(x_i);
+			mixing_S += x_i * LR_LOG(x_i);
 
 			for(int j = i; j < SPECIES; j++) {
 				B2_contrib += B_2 * x_i * partial_rho[j];
 			}
 		}
 
-		double f_ref = rho * (std::log(rho) - 1.0 + mixing_S + B2_contrib);
+		double f_ref = rho * (LR_LOG(rho) - 1.0 + mixing_S + B2_contrib);
 
 		return f_ref + bonding_free_energy(partial_rho);
 	}
@@ -135,10 +173,10 @@ struct CahnHilliard {
 	int N_minus_one;
 	int bits;
 	int size;
-	double dt = 0.01;
-	double k_laplacian = 1.0;
-	double M = 1.0;
-	double H = 1.0;
+	double dt;
+	double k_laplacian;
+	double M;
+	double H;
 	FreeEnergyModel *model;
 
 	std::vector<std::array<double, SPECIES>> rho;
@@ -187,12 +225,12 @@ struct CahnHilliard {
 			double linker_rho = 2 * tetramer_rho / (1.0 + R);
 			std::for_each(rho.begin(), rho.end(), [this, tetramer_rho, linker_rho, noise, R](std::array<double, SPECIES> &species_rho) {
 				species_rho[0] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
-				species_rho[1] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise) * 1e-2;
+				species_rho[1] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
 
 				species_rho[2] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
-				species_rho[3] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise) * 1e-2;
+				species_rho[3] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
 
-				species_rho[4] = 2 * R * linker_rho * (1 + 2. * (drand48() - 0.5) * noise) * 1e-2;
+				species_rho[4] = 2 * R * linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
 			});
 		}
 	}
