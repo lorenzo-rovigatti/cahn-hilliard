@@ -9,45 +9,9 @@
 
 #include <cxxopts/cxxopts.hpp>
 
-#define SPECIES 5
+#define SPECIES 2
 
 #define SQR(X) ((X) * (X))
-
-// taken from https://gist.github.com/LingDong-/7e4c4cae5cbbc44400a05fba65f06f23
-float ln(float x) {
-  unsigned int bx = * (unsigned int *) (&x);
-  unsigned int ex = bx >> 23;
-  signed int t = (signed int)ex-(signed int)127;
-  unsigned int s = (t < 0) ? (-t) : t;
-  bx = 1065353216 | (bx & 8388607);
-  x = * (float *) (&bx);
-  return -1.7417939+(2.8212026+(-1.4699568+(0.44717955-0.056570851*x)*x)*x)*x + 0.6931471806*t;
-}
-
-// taken from https://github.com/romeric/fastapprox/blob/master/fastapprox/src/fastlog.h
-static inline float fastlog2(float x) {
-	union {
-		float f;
-		uint32_t i;
-	} vx = { x };
-
-	union {
-		uint32_t i;
-		float f;
-	} mx = { (vx.i & 0x007FFFFF) | 0x3f000000 };
-
-	float y = vx.i;
-	y *= 1.1920928955078125e-7f;
-
-	return y - 124.22551499f
-			- 1.498030302f * mx.f
-			- 1.72587999f / (0.3520887068f + mx.f);
-}
-
-static inline float fastlog(float x) {
-	return 0.69314718f * fastlog2(x);
-}
-
 #define LR_LOG(x) (std::log((x)))
 
 struct FreeEnergyModel {
@@ -121,34 +85,19 @@ struct FreeEnergyModel {
 	}
 
 	double bonding_free_energy(std::array<double, SPECIES> &partial_rho) {
-		double AA = 1.0 + 4.0 * partial_rho[0] * delta_AA;
-		double BB = 1.0 + (2 * partial_rho[2] + partial_rho[4] - 4.0 * partial_rho[0]) * delta_AA;
+		double AA = 4.0 * partial_rho[0] * delta_AA;
+		double BB = 1.0 + (2 * partial_rho[1] - 4.0 * partial_rho[0]) * delta_AA;
 		double CC = -1.0;
 		double X_1A = (-BB + std::sqrt(SQR(BB) - 4.0 * AA * CC)) / (2.0 * AA);
 
-		AA = 1.0 + 4.0 * partial_rho[1] * delta_BB;
-		BB = 1.0 + (2 * partial_rho[3] + partial_rho[4] - 4.0 * partial_rho[1]) * delta_BB;
-		double X_2B = (-BB + std::sqrt(SQR(BB) - 4.0 * AA * CC)) / (2.0 * AA);
-
 		double X_3A = 1.0 / (1.0 + 4.0 * partial_rho[0] * X_1A * delta_AA);
-		double X_4B = 1.0 / (1.0 + 4.0 * partial_rho[1] * X_2B * delta_BB);
 
 		double f_bond_1 = 4.0 * (LR_LOG(X_1A) + 0.5 * (1. - X_1A));
-		double f_bond_2 = 4.0 * (LR_LOG(X_2B) + 0.5 * (1. - X_2B));
-		double f_bond_3 = 2.0 * (LR_LOG(X_3A) + 0.5 * (1. - X_3A));
-		double f_bond_4 = 2.0 * (LR_LOG(X_4B) + 0.5 * (1. - X_4B));
-		double f_bond_5 = 0.5 * (f_bond_3 + f_bond_4);
-
-//		double X_5A = X_3A;
-//		double X_5B = X_4B;
-//		double f_bond_5 = (std::log(X_5A) - 0.5 * X_5A + std::log(X_5B) - 0.5 * X_5B + 1.0);
+		double f_bond_2 = 2.0 * (LR_LOG(X_3A) + 0.5 * (1. - X_3A));
 
 		double f_bond =
 				partial_rho[0] * f_bond_1 +
-				partial_rho[1] * f_bond_2 +
-				partial_rho[2] * f_bond_3 +
-				partial_rho[3] * f_bond_4 +
-				partial_rho[4] * f_bond_5;
+				partial_rho[1] * f_bond_2;
 
 		return f_bond;
 	}
@@ -212,34 +161,39 @@ struct CahnHilliard {
 
 		if(options["load-from"].count() != 0) {
 			std::ifstream load_from(options["load-from"].as<std::string>().c_str());
+
 			for(int s = 0; s < SPECIES; s++) {
-				int coords[2];
-				for(coords[1] = 0; coords[1] < N; coords[1]++) {
-					for(coords[0] = 0; coords[0] < N; coords[0]++) {
-						int idx = cell_idx(coords);
+				switch(dims) {
+				case 1:
+					for(int idx = 0; idx < N; idx++) {
 						load_from >> rho[idx][s];
 					}
+					break;
+				case 2:
+					int coords[2];
+					for(coords[1] = 0; coords[1] < N; coords[1]++) {
+						for(coords[0] = 0; coords[0] < N; coords[0]++) {
+							int idx = cell_idx(coords);
+							load_from >> rho[idx][s];
+						}
+					}
+
+					break;
+				default:
+					fprintf(stderr, "Unsupported number of dimensions %d\n", dims);
+					exit(1);
 				}
 			}
+
 			load_from.close();
 		}
 		else {
 			double tetramer_rho = options["tetramer-density"].as<double>();
 			double noise = options["noise"].as<double>();
-			double R = options["R"].as<double>();
-			double linker_rho = 2 * tetramer_rho / (1.0 + R);
-			std::for_each(rho.begin(), rho.end(), [this, tetramer_rho, linker_rho, noise, R](std::array<double, SPECIES> &species_rho) {
+			double linker_rho = 2 * tetramer_rho;
+			std::for_each(rho.begin(), rho.end(), [this, tetramer_rho, linker_rho, noise](std::array<double, SPECIES> &species_rho) {
 				species_rho[0] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
-				species_rho[1] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
-
-				species_rho[2] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
-				species_rho[3] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
-
-				species_rho[4] = 2 * R * linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
-
-				species_rho[1] = 1e-10;
-				species_rho[3] = 1e-10;
-				species_rho[4] = 1e-10;
+				species_rho[1] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
 			});
 		}
 	}
@@ -273,6 +227,14 @@ int CahnHilliard<dims>::cell_idx(int coords[dims]) {
 		multiply_by <<= bits; // multiply by N
 	}
 	return idx;
+}
+
+template<>
+double CahnHilliard<1>::cell_laplacian(std::vector<std::array<double, SPECIES>> &field, int species, int idx) {
+	int idx_m = (idx - 1 + N) & N_minus_one;
+	int idx_p = (idx + 1) & N_minus_one;
+
+	return (field[idx_m][species] + field[idx_p][species] - 2.0 * field[idx][species]) / SQR(H);
 }
 
 template<>
@@ -315,19 +277,13 @@ void CahnHilliard<dims>::evolve() {
 	// we first evaluate the time derivatives for all the fields
 	for(unsigned int idx = 0; idx < rho.size(); idx++) {
 		rho_der[idx][0] = model->der_bulk_free_energy(0, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, 0, idx);
-		rho_der[idx][2] = model->der_bulk_free_energy(2, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, 2, idx);
-		/*for(int species = 0; species < SPECIES; species++) {
-			rho_der[idx][species] = model->der_bulk_free_energy(species, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
-		}*/
+		rho_der[idx][1] = model->der_bulk_free_energy(1, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, 1, idx);
 	}
 
 	// and then we integrate them
 	for(unsigned int idx = 0; idx < rho.size(); idx++) {
 		rho[idx][0] += M * cell_laplacian(rho_der, 0, idx) * dt;
-		rho[idx][2] += M * cell_laplacian(rho_der, 2, idx) * dt;
-		/*for(int species = 0; species < SPECIES; species++) {
-			rho[idx][species] += M * cell_laplacian(rho_der, species, idx) * dt;
-		}*/
+		rho[idx][1] += M * cell_laplacian(rho_der, 1, idx) * dt;
 	}
 }
 
@@ -339,6 +295,14 @@ double CahnHilliard<dims>::total_mass() {
 	}
 
 	return mass;
+}
+
+template<>
+void CahnHilliard<1>::print_state(int species, std::ofstream &output) {
+	for(int idx = 0; idx < size; idx++) {
+		output << rho[idx][species] << " " << std::endl;
+	}
+	output << std::endl;
 }
 
 template<int dims>
@@ -393,7 +357,6 @@ int main(int argc, char *argv[]) {
 	("H", "The size of the mesh cells", cxxopts::value<double>()->default_value("20.0"))
 	("t,tetramer-density", "Average value of the initial density of tetramers", cxxopts::value<double>()->default_value("5e-5"))
 	("noise", "Random noise for the initial psi", cxxopts::value<double>()->default_value("0.01"))
-	("R", "Fraction of inter-species linkers", cxxopts::value<double>()->default_value("0.1"))
 	("p,print-every", "Number of iterations every which the state of the system will be appended to the trajectory.dat file (0 means never)", cxxopts::value<long long int>()->default_value("0"))
 	("k", "Strength of the interfacial term of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1e7"))
 	("h,help", "Print usage");
@@ -406,7 +369,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	FreeEnergyModel *model = new FreeEnergyModel(result);
-	CahnHilliard<2> system(model, result);
+	CahnHilliard<1> system(model, result);
 
 	if(result["steps"].count() == 0) {
 		fprintf(stderr, "ERROR: The -s/--steps argument in mandatory\n");
@@ -437,6 +400,12 @@ int main(int argc, char *argv[]) {
 		if(print_every > 0 && t % print_every == 0) {
 			for(int i = 0; i < SPECIES; i++) {
 				system.print_state(i, trajectory[i]);
+
+				char filename[256];
+				sprintf(filename, "last_%d.dat", i);
+				std::ofstream output(filename);
+				system.print_state(i, output);
+				output.close();
 			}
 
 			fprintf(stdout, "%d %lf %lf\n", t, t * system.dt, system.total_mass());

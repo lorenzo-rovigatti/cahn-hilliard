@@ -207,15 +207,30 @@ struct CahnHilliard {
 
 		if(options["load-from"].count() != 0) {
 			std::ifstream load_from(options["load-from"].as<std::string>().c_str());
+
 			for(int s = 0; s < SPECIES; s++) {
-				int coords[2];
-				for(coords[1] = 0; coords[1] < N; coords[1]++) {
-					for(coords[0] = 0; coords[0] < N; coords[0]++) {
-						int idx = cell_idx(coords);
+				switch(dims) {
+				case 1:
+					for(int idx = 0; idx < N; idx++) {
 						load_from >> rho[idx][s];
 					}
+					break;
+				case 2:
+					int coords[2];
+					for(coords[1] = 0; coords[1] < N; coords[1]++) {
+						for(coords[0] = 0; coords[0] < N; coords[0]++) {
+							int idx = cell_idx(coords);
+							load_from >> rho[idx][s];
+						}
+					}
+
+					break;
+				default:
+					fprintf(stderr, "Unsupported number of dimensions %d\n", dims);
+					exit(1);
 				}
 			}
+
 			load_from.close();
 		}
 		else {
@@ -264,6 +279,14 @@ int CahnHilliard<dims>::cell_idx(int coords[dims]) {
 		multiply_by <<= bits; // multiply by N
 	}
 	return idx;
+}
+
+template<>
+double CahnHilliard<1>::cell_laplacian(std::vector<std::array<double, SPECIES>> &field, int species, int idx) {
+	int idx_m = (idx - 1 + N) & N_minus_one;
+	int idx_p = (idx + 1) & N_minus_one;
+
+	return (field[idx_m][species] + field[idx_p][species] - 2.0 * field[idx][species]) / SQR(H);
 }
 
 template<>
@@ -326,6 +349,14 @@ double CahnHilliard<dims>::total_mass() {
 	}
 
 	return mass;
+}
+
+template<>
+void CahnHilliard<1>::print_state(int species, std::ofstream &output) {
+	for(int idx = 0; idx < size; idx++) {
+		output << rho[idx][species] << " " << std::endl;
+	}
+	output << std::endl;
 }
 
 template<int dims>
@@ -424,6 +455,12 @@ int main(int argc, char *argv[]) {
 		if(print_every > 0 && t % print_every == 0) {
 			for(int i = 0; i < SPECIES; i++) {
 				system.print_state(i, trajectory[i]);
+
+				char filename[256];
+				sprintf(filename, "last_%d.dat", i);
+				std::ofstream output(filename);
+				system.print_state(i, output);
+				output.close();
 			}
 
 			fprintf(stdout, "%d %lf %lf\n", t, t * system.dt, system.total_mass());
