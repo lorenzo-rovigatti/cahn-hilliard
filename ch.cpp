@@ -297,11 +297,11 @@ int main(int argc, char *argv[]) {
 	if(print_every > 0) {
 		trajectory.open("trajectory.dat");
 	}
-	for(int t = 0; t < steps; t++) {
+	for(long long int t = 0; t < steps; t++) {
 		if(print_every > 0 && t % print_every == 0) {
 			system.print_state(trajectory);
 
-			fprintf(stdout, "%d %lf %lf\n", t, t * system.dt, system.total_mass());
+			fprintf(stdout, "%lld %lf %lf\n", t, t * system.dt, system.total_mass());
 		}
 		system.evolve();
 	}

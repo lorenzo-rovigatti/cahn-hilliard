@@ -451,7 +451,7 @@ int main(int argc, char *argv[]) {
 	}
 	system.print_density("initial_density.dat");
 
-	for(int t = 0; t < steps; t++) {
+	for(long long int t = 0; t < steps; t++) {
 		if(print_every > 0 && t % print_every == 0) {
 			for(int i = 0; i < SPECIES; i++) {
 				system.print_state(i, trajectory[i]);
@@ -463,7 +463,7 @@ int main(int argc, char *argv[]) {
 				output.close();
 			}
 
-			fprintf(stdout, "%d %lf %lf\n", t, t * system.dt, system.total_mass());
+			fprintf(stdout, "%lld %lf %lf\n", t, t * system.dt, system.total_mass());
 		}
 		system.evolve();
 	}

@@ -234,6 +234,17 @@ double CahnHilliard<1>::cell_laplacian(std::vector<std::array<double, SPECIES>> 
 	int idx_m = (idx - 1 + N) & N_minus_one;
 	int idx_p = (idx + 1) & N_minus_one;
 
+//	int idx_2m = (idx - 2 + N) & N_minus_one;
+//	int idx_2p = (idx + 2) & N_minus_one;
+//
+//	return (
+//		-field[idx_2p][species] +
+//		16 * field[idx_p][species] +
+//		-30 * field[idx][species] +
+//		16 * field[idx_m][species] -
+//		field[idx_2m][species]
+//	) / (12 * SQR(H));
+
 	return (field[idx_m][species] + field[idx_p][species] - 2.0 * field[idx][species]) / SQR(H);
 }
 
@@ -276,14 +287,31 @@ void CahnHilliard<dims>::evolve() {
 	static std::vector<std::array<double, SPECIES>> rho_der(rho.size());
 	// we first evaluate the time derivatives for all the fields
 	for(unsigned int idx = 0; idx < rho.size(); idx++) {
-		rho_der[idx][0] = model->der_bulk_free_energy(0, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, 0, idx);
-		rho_der[idx][1] = model->der_bulk_free_energy(1, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, 1, idx);
+		for(int species = 0; species < SPECIES; species++) {
+			rho_der[idx][species] = model->der_bulk_free_energy(species, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
+		}
 	}
 
 	// and then we integrate them
 	for(unsigned int idx = 0; idx < rho.size(); idx++) {
-		rho[idx][0] += M * cell_laplacian(rho_der, 0, idx) * dt;
-		rho[idx][1] += M * cell_laplacian(rho_der, 1, idx) * dt;
+//		fprintf(stderr, "%d ", idx);
+		for(int species = 0; species < SPECIES; species++) {
+			double derivative = M * cell_laplacian(rho_der, species, idx);
+//			fprintf(stderr, "%e ", derivative);
+			rho[idx][species] += derivative * dt;
+			if(rho[idx][species] <= 0.) {
+				fprintf(stderr, "Negative rho detected: rho[%d][%d] = %e\n", idx, species, rho[idx][species]);
+				rho[idx][species] -= derivative * dt;
+
+				double dt_new = dt / 100;
+				for(int steps = 0; steps < 100; steps++) {
+					rho[idx][species] += derivative * dt_new;
+					rho_der[idx][species] = model->der_bulk_free_energy(species, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
+					derivative = M * cell_laplacian(rho_der, species, idx);
+				}
+			}
+		}
+//		fprintf(stderr, "\n");
 	}
 }
 
@@ -396,7 +424,7 @@ int main(int argc, char *argv[]) {
 	}
 	system.print_density("initial_density.dat");
 
-	for(int t = 0; t < steps; t++) {
+	for(long long int t = 0; t < steps; t++) {
 		if(print_every > 0 && t % print_every == 0) {
 			for(int i = 0; i < SPECIES; i++) {
 				system.print_state(i, trajectory[i]);
@@ -408,7 +436,7 @@ int main(int argc, char *argv[]) {
 				output.close();
 			}
 
-			fprintf(stdout, "%d %lf %lf\n", t, t * system.dt, system.total_mass());
+			fprintf(stdout, "%lld %lf %lf\n", t, t * system.dt, system.total_mass());
 		}
 		system.evolve();
 	}
