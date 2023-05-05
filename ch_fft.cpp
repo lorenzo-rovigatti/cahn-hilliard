@@ -155,6 +155,7 @@ struct CahnHilliard {
 		psi.resize(size);
 		psi_hat.resize(size / 2 + 1);
 		sqr_wave_vectors.resize(size / 2 + 1);
+		dealiaser.resize(size / 2 + 1);
 
 		double psi_average = options["average-psi"].as<double>();
 		double psi_noise = options["psi-noise"].as<double>();
@@ -163,12 +164,14 @@ struct CahnHilliard {
 			return psi_average + noise;
 		});
 
-		psi_plan = fftw_plan_dft_r2c_1d(size, psi.data(), reinterpret_cast<fftw_complex*>(psi_hat.data()), FFTW_ESTIMATE);
-		psi_inverse_plan = fftw_plan_dft_c2r_1d(size, reinterpret_cast<fftw_complex*>(psi_hat.data()), psi.data(), FFTW_ESTIMATE);
+		psi_plan = fftw_plan_dft_r2c_1d(size, psi.data(), reinterpret_cast<fftw_complex *>(psi_hat.data()), FFTW_ESTIMATE);
+		// c2r transforms overwrite the input if FFTW_PRESERVE_INPUT is not specified
+		psi_inverse_plan = fftw_plan_dft_c2r_1d(size, reinterpret_cast<fftw_complex *>(psi_hat.data()), psi.data(), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
 
-		double nyquist_mode = size * M_PI / H;
+		double nyquist_mode = size * M_PI / (N * H) * 2.0 / 3.0;
 		for(unsigned int i = 0; i < sqr_wave_vectors.size(); i++) {
-			double k = 2.0 * M_PI * i / H;
+			double k = 2.0 * M_PI * i / (N * H);
+			dealiaser[i] = (k < nyquist_mode) ? 1.0 : 0.0;
 			sqr_wave_vectors[i] = SQR(k);
 		}
 
@@ -255,32 +258,29 @@ template<int dims>
 void CahnHilliard<dims>::evolve() {
 	static std::vector<double> f_der(size);
 	static std::vector<std::complex<double>> f_der_hat(size / 2 + 1);
-	static fftw_plan f_plan = fftw_plan_dft_r2c_1d(size, f_der.data(), reinterpret_cast<fftw_complex*>(f_der_hat.data()), FFTW_ESTIMATE);
+	static fftw_plan f_plan = fftw_plan_dft_r2c_1d(size, f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
 
 	for(unsigned int idx = 0; idx < psi.size(); idx++) {
 		f_der[idx] = model->der_bulk_free_energy(psi[idx]);
 	}
 
-	fftw_execute(f_plan);
+	fftw_execute(f_plan); // transform f_der into f_der_hat
+	for(unsigned int idx = 0; idx < f_der_hat.size(); idx++) {
+		f_der_hat[idx] *= dealiaser[idx];
+	}
 
 	for(unsigned int k_idx = 0; k_idx < psi_hat.size(); k_idx++) {
+//		printf("%lf ", std::abs(psi_hat[k_idx]));
 		psi_hat[k_idx] = (psi_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+//		printf("%lf (%lf %lf)\n", std::abs(psi_hat[k_idx]), sqr_wave_vectors[k_idx], std::abs(f_der_hat[k_idx]));
 	}
+//	exit(0);
 
 	fftw_execute(psi_inverse_plan);
 
 	for(auto &v : psi) {
 		v /= size;
 	}
-
-//	static std::vector<double> psi_der(psi.size());
-//	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-//		psi_der[idx] = model->der_bulk_free_energy(psi[idx]) - 2 * k_laplacian * cell_laplacian(psi, idx);
-//	}
-//
-//	for(unsigned int idx = 0; idx < psi.size(); idx++) {
-//		psi[idx] += M * cell_laplacian(psi_der, idx) * dt;
-//	}
 }
 
 template<int dims>
@@ -360,6 +360,10 @@ int main(int argc, char *argv[]) {
 	long long int steps = result["steps"].as<long long int>();
 	long long int print_every = result["print-every"].as<long long int>();
 
+	std::ofstream output("init.dat");
+	system.print_state(output);
+	output.close();
+
 	std::ofstream trajectory;
 	if(print_every > 0) {
 		trajectory.open("trajectory.dat");
@@ -378,7 +382,7 @@ int main(int argc, char *argv[]) {
 	}
 	trajectory.close();
 
-	std::ofstream output("last.dat");
+	output.open("last.dat");
 	system.print_state(output);
 	output.close();
 

@@ -309,6 +309,10 @@ int main(int argc, char *argv[]) {
 	long long int steps = result["steps"].as<long long int>();
 	long long int print_every = result["print-every"].as<long long int>();
 
+	std::ofstream output("init.dat");
+	system.print_state(output);
+	output.close();
+
 	std::ofstream trajectory;
 	if(print_every > 0) {
 		trajectory.open("trajectory.dat");
@@ -323,7 +327,7 @@ int main(int argc, char *argv[]) {
 	}
 	trajectory.close();
 
-	std::ofstream output("last.dat");
+	output.open("last.dat");
 	system.print_state(output);
 	output.close();
 
