@@ -266,15 +266,12 @@ void CahnHilliard<dims>::evolve() {
 
 	fftw_execute(f_plan); // transform f_der into f_der_hat
 	for(unsigned int idx = 0; idx < f_der_hat.size(); idx++) {
-		f_der_hat[idx] *= dealiaser[idx];
+//		f_der_hat[idx] *= dealiaser[idx];
 	}
 
 	for(unsigned int k_idx = 0; k_idx < psi_hat.size(); k_idx++) {
-//		printf("%lf ", std::abs(psi_hat[k_idx]));
 		psi_hat[k_idx] = (psi_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
-//		printf("%lf (%lf %lf)\n", std::abs(psi_hat[k_idx]), sqr_wave_vectors[k_idx], std::abs(f_der_hat[k_idx]));
 	}
-//	exit(0);
 
 	fftw_execute(psi_inverse_plan);
 
