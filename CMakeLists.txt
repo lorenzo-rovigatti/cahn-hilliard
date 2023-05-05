@@ -23,7 +23,10 @@ endif()
 
 include_directories(extern)
 add_executable(ch ch.cpp)
+add_executable(ch_fft ch_fft.cpp)
 add_executable(ch_ldm ch_ldm.cpp)
 add_executable(ch_binary_ldm ch_ldm_binary.cpp)
 
-target_compile_options(ch_ldm PRIVATE -Wall -Wextra)
+add_compile_options(-Wall -Wextra)
+
+target_link_libraries(ch_fft fftw3)
