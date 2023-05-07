@@ -176,11 +176,6 @@ struct CahnHilliard {
 		}
 
 		fftw_execute(psi_plan);
-
-//		for(int i = 0; i < sqr_wave_vectors.size(); i++) {
-//			printf("%lf %lf\n", sqr_wave_vectors[i], psi_hat[i].real());
-//		}
-//		exit(0);
 	}
 
 	virtual ~CahnHilliard() {
@@ -205,11 +200,9 @@ void CahnHilliard<dims>::evolve() {
 	}
 
 	fftw_execute(f_plan); // transform f_der into f_der_hat
-	for(unsigned int idx = 0; idx < f_der_hat.size(); idx++) {
-//		f_der_hat[idx] *= dealiaser[idx];
-	}
 
 	for(unsigned int k_idx = 0; k_idx < psi_hat.size(); k_idx++) {
+//		f_der_hat[k_idx] *= dealiaser[k_idx];
 		psi_hat[k_idx] = (psi_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
 	}
 

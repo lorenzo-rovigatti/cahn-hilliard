@@ -277,6 +277,7 @@ void CahnHilliard<dims>::evolve() {
 
 	for(int species = 0; species < SPECIES; species++) {
 		for(unsigned int k_idx = 0; k_idx < rho_hat[species].size(); k_idx++) {
+			f_der_hat[species][k_idx] *= dealiaser[k_idx];
 			rho_hat[species][k_idx] = (rho_hat[species][k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[species][k_idx]) / (1.0 + dt * M * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
 		}
 
