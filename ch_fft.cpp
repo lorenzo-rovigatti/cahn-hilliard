@@ -188,71 +188,11 @@ struct CahnHilliard {
 		fftw_destroy_plan(psi_inverse_plan);
 	}
 
-	void fill_coords(int coords[dims], int idx);
-	int cell_idx(int coords[dims]);
-
-	double cell_laplacian(std::vector<double> &field, int idx);
-
 	void evolve();
 	double total_mass();
 
 	void print_state(std::ofstream &output);
 };
-
-template<int dims>
-void CahnHilliard<dims>::fill_coords(int coords[dims], int idx) {
-	for(int d = 0; d < dims; d++) {
-		coords[d] = idx & N_minus_one;
-		idx >>= bits; // divide by N
-	}
-}
-
-template<int dims>
-int CahnHilliard<dims>::cell_idx(int coords[dims]) {
-	int idx = 0;
-	int multiply_by = 1;
-	for(int d = 0; d < dims; d++) {
-		idx += coords[d] * multiply_by;
-		multiply_by <<= bits; // multiply by N
-	}
-	return idx;
-}
-
-template<>
-double CahnHilliard<1>::cell_laplacian(std::vector<double> &field, int idx) {
-	int idx_m = (idx - 1 + N) & N_minus_one;
-	int idx_p = (idx + 1) & N_minus_one;
-
-	return (field[idx_m] + field[idx_p] - 2.0 * field[idx]) / SQR(H);
-}
-
-template<>
-double CahnHilliard<2>::cell_laplacian(std::vector<double> &field, int idx) {
-	int coords_xy[2];
-	fill_coords(coords_xy, idx);
-
-	int coords_xmy[2] = {
-			(coords_xy[0] - 1 + N) & N_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xym[2] = {
-			coords_xy[0],
-			(coords_xy[1] - 1 + N) & N_minus_one
-	};
-
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & N_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & N_minus_one
-	};
-
-	return (field[cell_idx(coords_xmy)] + field[cell_idx(coords_xpy)] + field[cell_idx(coords_xym)] + field[cell_idx(coords_xyp)] - 4 * field[idx]) / SQR(H);
-}
 
 template<int dims>
 void CahnHilliard<dims>::evolve() {
