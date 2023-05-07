@@ -204,7 +204,7 @@ struct CahnHilliard {
 			double noise = options["noise"].as<double>();
 			double linker_rho = 2 * tetramer_rho;
 
-			for(unsigned int idx = 0; idx < size; idx++) {
+			for(int idx = 0; idx < size; idx++) {
 				rho[0][idx] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
 				rho[1][idx] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
 			}
@@ -292,7 +292,7 @@ void CahnHilliard<dims>::evolve() {
 template<int dims>
 double CahnHilliard<dims>::total_mass() {
 	double mass = 0.;
-	for(unsigned int idx = 0; idx < size; idx++) {
+	for(int idx = 0; idx < size; idx++) {
 		mass += rho[0][idx] + rho[1][idx];
 	}
 
@@ -369,6 +369,13 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "%s", options.help().c_str());
 		exit(0);
 	}
+
+	std::ofstream cmd_output("executed_command");
+	for(int i = 0; i < argc; i++) {
+		cmd_output << argv[i] << " ";
+	}
+	cmd_output << std::endl;
+	cmd_output.close();
 
 	FreeEnergyModel *model = new FreeEnergyModel(result);
 	CahnHilliard<1> system(model, result);
