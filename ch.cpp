@@ -95,7 +95,7 @@ struct WertheimModel: public FreeEnergyModel {
 	}
 
 	double bulk_free_energy(double rho) override {
-		double f_ref = rho * std::log(rho) - rho + B_2 * SQR(rho);
+		double f_ref = rho * std::log(rho) + rho + B_2 * SQR(rho);
 		double f_bond = valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
 
 		return (f_ref + f_bond);
@@ -320,6 +320,10 @@ int main(int argc, char *argv[]) {
 	for(long long int t = 0; t < steps; t++) {
 		if(print_every > 0 && t % print_every == 0) {
 			system.print_state(trajectory);
+
+			output.open("last.dat");
+			system.print_state(output);
+			output.close();
 
 			fprintf(stdout, "%lld %lf %lf\n", t, t * system.dt, system.total_mass());
 		}
