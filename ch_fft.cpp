@@ -94,7 +94,8 @@ struct WertheimModel: public FreeEnergyModel {
 	}
 
 	double _X(double rho) {
-		return (-1 + std::sqrt(1 + 2 * two_M_delta * rho)) / (two_M_delta * rho);
+		double sqrt_argument = 2.0 * two_M_delta * rho;
+		return (sqrt_argument < 1e-3) ? 1.0 : (-1 + std::sqrt(1 + 2 * two_M_delta * rho)) / (two_M_delta * rho);
 	}
 
 	double bulk_free_energy(double rho) override {
@@ -106,7 +107,8 @@ struct WertheimModel: public FreeEnergyModel {
 
 	double der_bulk_free_energy(double rho) override {
 		double der_f_ref = std::log(rho) + 2 * B_2 * rho;
-		double der_f_bond = valence * (std::log(_X(rho)) - 0.5 + 1.0 / (2.0 - _X(rho)) - 0.5 / std::sqrt(1.0 + 2.0 * two_M_delta * rho));
+		double X = _X(rho);
+		double der_f_bond = valence * (std::log(X) - 0.5 + 1.0 / (2.0 - X) - 0.5 * X / (2.0 - X));
 
 		return (der_f_ref + der_f_bond);
 	}
@@ -202,8 +204,8 @@ void CahnHilliard<dims>::evolve() {
 	fftw_execute(f_plan); // transform f_der into f_der_hat
 
 	for(unsigned int k_idx = 0; k_idx < psi_hat.size(); k_idx++) {
-//		f_der_hat[k_idx] *= dealiaser[k_idx];
-		psi_hat[k_idx] = (psi_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+		f_der_hat[k_idx] *= dealiaser[k_idx];
+		psi_hat[k_idx] = (psi_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * 2.0 * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
 	}
 
 	fftw_execute(psi_inverse_plan);
@@ -306,7 +308,7 @@ int main(int argc, char *argv[]) {
 			system.print_state(output);
 			output.close();
 
-			fprintf(stdout, "%lld %lf %lf\n", t, t * system.dt, system.total_mass());
+			fprintf(stderr, "%lld %lf %lf\n", t, t * system.dt, system.total_mass());
 		}
 		system.evolve();
 	}

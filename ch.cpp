@@ -91,11 +91,12 @@ struct WertheimModel: public FreeEnergyModel {
 	}
 
 	double _X(double rho) {
-		return (-1 + std::sqrt(1 + 2 * two_M_delta * rho)) / (two_M_delta * rho);
+		double sqrt_argument = 2.0 * two_M_delta * rho;
+		return (sqrt_argument < 1e-3) ? 1.0 : (-1 + std::sqrt(1 + 2 * two_M_delta * rho)) / (two_M_delta * rho);
 	}
 
 	double bulk_free_energy(double rho) override {
-		double f_ref = rho * std::log(rho) + rho + B_2 * SQR(rho);
+		double f_ref = rho * std::log(rho) - rho + B_2 * SQR(rho);
 		double f_bond = valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
 
 		return (f_ref + f_bond);
@@ -103,7 +104,8 @@ struct WertheimModel: public FreeEnergyModel {
 
 	double der_bulk_free_energy(double rho) override {
 		double der_f_ref = std::log(rho) + 2 * B_2 * rho;
-		double der_f_bond = valence * (std::log(_X(rho)) - 0.5 + 1.0 / (2.0 - _X(rho)) - 0.5 / std::sqrt(1.0 + 2.0 * two_M_delta * rho));
+		double X = _X(rho);
+		double der_f_bond = valence * (std::log(X) - 0.5 + 1.0 / (2.0 - X) - 0.5 * X / (2.0 - X));
 
 		return (der_f_ref + der_f_bond);
 	}
@@ -157,6 +159,7 @@ struct CahnHilliard {
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);
 
+	std::array<double, dims> cell_gradient(std::vector<double> &field, int idx);
 	double cell_laplacian(std::vector<double> &field, int idx);
 
 	void evolve();
@@ -182,6 +185,14 @@ int CahnHilliard<dims>::cell_idx(int coords[dims]) {
 		multiply_by <<= bits; // multiply by N
 	}
 	return idx;
+}
+
+template<>
+std::array<double, 1> CahnHilliard<1>::cell_gradient(std::vector<double> &field, int idx) {
+	int idx_m = (idx - 1 + N) & N_minus_one;
+	int idx_p = (idx + 1) & N_minus_one;
+
+	return std::array<double, 1>({(field[idx_p] - field[idx_m]) / (2.0 * H)});
 }
 
 template<>
