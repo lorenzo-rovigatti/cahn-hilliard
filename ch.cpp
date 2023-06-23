@@ -59,7 +59,7 @@ struct LandauModel: public FreeEnergyModel {
 };
 
 struct WertheimModel: public FreeEnergyModel {
-	double B_2 = 2100;
+	double B_2;
 	double valence = 4;
 	double T;
 	double delta;
@@ -69,9 +69,10 @@ struct WertheimModel: public FreeEnergyModel {
 
 	WertheimModel(cxxopts::ParseResult &options) :
 		FreeEnergyModel(options) {
+		B_2 = options["B2"].as<double>();
 		T = options["temperature"].as<double>();
 
-		double salt = 1.0;
+		double salt = options["salt"].as<double>();
 		int L_DNA = 6;
 
 		double delta_H = -42790;
@@ -148,12 +149,24 @@ struct CahnHilliard {
 		}
 
 		psi.resize(size);
-		double psi_average = options["average-psi"].as<double>();
-		double psi_noise = options["psi-noise"].as<double>();
-		std::generate(psi.begin(), psi.end(), [psi_average, psi_noise]() {
-			double noise = 2. * (drand48() - 0.5) * psi_noise;
-			return psi_average + noise;
-		});
+
+		if(options["load-from"].count() != 0) {
+			std::ifstream load_from(options["load-from"].as<std::string>().c_str());
+
+			for(int idx = 0; idx < N; idx++) {
+				load_from >> psi[idx];
+			}
+
+			load_from.close();
+		}
+		else {
+			double psi_average = options["average-psi"].as<double>();
+			double psi_noise = options["psi-noise"].as<double>();
+			std::generate(psi.begin(), psi.end(), [psi_average, psi_noise]() {
+				double noise = 2. * (drand48() - 0.5) * psi_noise;
+				return psi_average + noise;
+			});
+		}
 	}
 
 	void fill_coords(int coords[dims], int idx);
@@ -280,9 +293,12 @@ int main(int argc, char *argv[]) {
 	options.add_options()
 	("s,steps", "Number of iterations", cxxopts::value<long long int>())
 	("N", "The size of the square grid", cxxopts::value<int>()->default_value("64"))
+	("l,load-from", "Load the initial conditions from this file", cxxopts::value<std::string>())
 	("f,free-energy", "The bulk free energy expression to be used (supported values are 'landau' and 'wertheim')", cxxopts::value<std::string>()->default_value("landau"))
 	("e,epsilon", "The distance from the critical point in the 'landau' free energy", cxxopts::value<double>()->default_value("0.9"))
 	("T,temperature", "Temperature (in Kelvin), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("300"))
+	("B2", "Second virial coefficient (in nm^3), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("10600"))
+	("salt", "NaCl concentration (in Molar), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("0.025"))
 	("dt", "The integration time step", cxxopts::value<double>()->default_value("0.01"))
 	("M", "The transport coefficient M of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
 	("H", "The size of the mesh cells", cxxopts::value<double>()->default_value("1.0"))
