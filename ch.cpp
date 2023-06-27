@@ -64,6 +64,7 @@ struct WertheimModel: public FreeEnergyModel {
 	double T;
 	double delta;
 	double two_M_delta;
+	double regularisation_delta, log_delta;
 
 	const double k_B = 1.9872036;
 
@@ -71,6 +72,8 @@ struct WertheimModel: public FreeEnergyModel {
 		FreeEnergyModel(options) {
 		B_2 = options["B2"].as<double>();
 		T = options["temperature"].as<double>();
+		regularisation_delta = options["delta"].as<double>();
+		log_delta = std::log(regularisation_delta);
 
 		double salt = options["salt"].as<double>();
 		int L_DNA = 6;
@@ -103,8 +106,12 @@ struct WertheimModel: public FreeEnergyModel {
 		return (f_ref + f_bond);
 	}
 
+	double regularised_log(double rho) {
+		return (rho < regularisation_delta) ? log_delta + (rho - regularisation_delta) / regularisation_delta : std::log(rho);
+	}
+
 	double der_bulk_free_energy(double rho) override {
-		double der_f_ref = std::log(rho) + 2 * B_2 * rho;
+		double der_f_ref = regularised_log(rho) + 2 * B_2 * rho;
 		double X = _X(rho);
 		double der_f_bond = valence * (std::log(X) - 0.5 + 1.0 / (2.0 - X) - 0.5 * X / (2.0 - X));
 
@@ -299,6 +306,7 @@ int main(int argc, char *argv[]) {
 	("T,temperature", "Temperature (in Kelvin), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("300"))
 	("B2", "Second virial coefficient (in nm^3), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("10600"))
 	("salt", "NaCl concentration (in Molar), used by the 'wertheim' free energy", cxxopts::value<double>()->default_value("0.025"))
+	("delta", "The regularisation constant used in the logarithm term of the 'wertheim' free energy", cxxopts::value<double>()->default_value("0"))
 	("dt", "The integration time step", cxxopts::value<double>()->default_value("0.01"))
 	("M", "The transport coefficient M of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
 	("H", "The size of the mesh cells", cxxopts::value<double>()->default_value("1.0"))
