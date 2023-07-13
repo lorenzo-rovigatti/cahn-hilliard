@@ -390,9 +390,8 @@ void CahnHilliard<dims>::print_density(std::string filename) {
 				modulo <<= bits;
 			}
 		}
-		output << std::accumulate(rho[idx].begin(), rho[idx].end(), 0.) << " ";
+		output << std::accumulate(rho[idx].begin(), rho[idx].end(), 0.) << std::endl;
 	}
-	output << std::endl;
 
 	output.close();
 }
