@@ -96,7 +96,7 @@ struct WertheimModel: public FreeEnergyModel {
 
 	double _X(double rho) {
 		double sqrt_argument = 2.0 * two_M_delta * rho;
-		return (sqrt_argument < 1e-3) ? 1.0 : (-1 + std::sqrt(1 + 2 * two_M_delta * rho)) / (two_M_delta * rho);
+		return (sqrt_argument < 1e-3) ? 1.0 - sqrt_argument / 2.0 : (-1 + std::sqrt(1 + 2 * two_M_delta * rho)) / (two_M_delta * rho);
 	}
 
 	double bulk_free_energy(double rho) override {

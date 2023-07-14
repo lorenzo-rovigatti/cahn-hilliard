@@ -101,9 +101,9 @@ struct FreeEnergyModel {
 
 	double der_bulk_free_energy(int species, std::array<double, SPECIES> &partial_rho) {
 		// the ideal + B2 part is computed analytically
-		double der_f_ref = LR_LOG(partial_rho[species]) + B_2 * partial_rho[species];
+		double der_f_ref = LR_LOG(partial_rho[species]);
 		for(int i = 0; i < SPECIES; i++) {
-			der_f_ref += B_2 * partial_rho[i];
+			der_f_ref += 2.0 * B_2 * partial_rho[i];
 		}
 
 		// the bonding part is computed numerically
@@ -149,6 +149,8 @@ struct FreeEnergyModel {
 	}
 
 	double bulk_free_energy(std::array<double, SPECIES> &partial_rho) {
+		return bonding_free_energy(partial_rho);
+
 		double rho = std::accumulate(partial_rho.begin(), partial_rho.end(), 0.);
 
 		double mixing_S = 0., B2_contrib = 0.;
@@ -156,7 +158,7 @@ struct FreeEnergyModel {
 			double x_i = partial_rho[i] / rho;
 			mixing_S += x_i * LR_LOG(x_i);
 
-			for(int j = i; j < SPECIES; j++) {
+			for(int j = 0; j < SPECIES; j++) {
 				B2_contrib += B_2 * x_i * partial_rho[j];
 			}
 		}
@@ -330,6 +332,19 @@ void CahnHilliard<dims>::evolve() {
 	for(unsigned int idx = 0; idx < rho.size(); idx++) {
 		for(int species = 0; species < SPECIES; species++) {
 			rho_der[idx][species] = model->der_bulk_free_energy(species, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
+
+//			if(idx == 0) {
+//				double rho_i = rho[idx][species];
+//				double delta_rho_i = rho_i * 1e-4;
+//				double fe_r = model->bonding_free_energy(rho[idx]);
+//				rho[idx][species] += delta_rho_i;
+//				double fe_rdr = model->bonding_free_energy(rho[idx]);
+//				rho[idx][species] = rho_i;
+//				double der_bonding = (fe_rdr - fe_r) / delta_rho_i;
+//
+//				printf("DER %d %lf %lf %g %lf\n", species, rho[idx][species], model->der_bulk_free_energy(species, rho[idx]) - der_bonding, der_bonding, model->der_bulk_free_energy(species, rho[idx]));
+//				printf("FE %g\n", model->bulk_free_energy(rho[idx]));
+//			}
 		}
 	}
 
@@ -423,7 +438,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	FreeEnergyModel *model = new FreeEnergyModel(result);
-	CahnHilliard<2> system(model, result);
+	CahnHilliard<1> system(model, result);
 
 	if(result["steps"].count() == 0) {
 		fprintf(stderr, "ERROR: The -s/--steps argument in mandatory\n");
