@@ -18,20 +18,22 @@ namespace ch {
 template<int dims>
 class CahnHilliard {
 public:
-	int N;
-	int N_minus_one;
-	int bits;
-	int size;
-	double dt;
-	double k_laplacian;
-	double M;
-	double H;
-	FreeEnergyModel *model;
+	int N = 0;
+	int N_minus_one = 0;
+	int bits = 0;
+	int size = 0;
+	double dt = 0.0;
+	double k_laplacian = 0.0;
+	double M = 0.0;
+	double H = 0.0;
+	FreeEnergyModel *model = nullptr;
 
 	std::vector<std::vector<double>> rho;
 
-	CahnHilliard(FreeEnergyModel *m, cxxopts::ParseResult &options);
+	CahnHilliard(FreeEnergyModel *m, cxxopts::Options &options);
 	~CahnHilliard();
+
+	void init(cxxopts::ParseResult &result);
 
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);
@@ -43,6 +45,8 @@ public:
 
 	void print_state(int species, std::ofstream &output);
 	void print_density(std::string filename);
+
+private:
 };
 
 } /* namespace ch */

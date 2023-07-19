@@ -14,8 +14,9 @@
 
 namespace ch {
 
-struct FreeEnergyModel {
-	FreeEnergyModel(cxxopts::ParseResult &options) {
+class FreeEnergyModel {
+public:
+	FreeEnergyModel(cxxopts::Options &options) {
 
 	}
 
@@ -23,6 +24,7 @@ struct FreeEnergyModel {
 
 	}
 
+	virtual void init(cxxopts::ParseResult &result) = 0;
 	virtual int N_species() = 0;
 	virtual double der_bulk_free_energy(int species, std::vector<double> &) = 0;
 	virtual double bulk_free_energy(int species, std::vector<double> &) = 0;

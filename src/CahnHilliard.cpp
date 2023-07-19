@@ -15,13 +15,26 @@
 namespace ch {
 
 template<int dims>
-CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, cxxopts::ParseResult &options) :
+CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, cxxopts::Options &options) :
 				model(m) {
-	N = options["N"].as<int>();
-	k_laplacian = options["k"].as<double>();
-	dt = options["dt"].as<double>();
-	M = options["M"].as<double>();
-	H = options["H"].as<double>();
+
+	options.add_options()
+	("N", "The (linear) size of the grid", cxxopts::value<int>()->default_value("64"))
+	("k", "Strength of the interfacial term of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1e7"))
+	("dt", "The integration time step", cxxopts::value<double>()->default_value("0.001"))
+	("M", "The transport coefficient M of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
+	("H", "The size of the mesh cells", cxxopts::value<double>()->default_value("20.0"));
+}
+
+template<int dims>
+void CahnHilliard<dims>::init(cxxopts::ParseResult &result) {
+	model->init(result);
+
+	N = result["N"].as<int>();
+	k_laplacian = result["k"].as<double>();
+	dt = result["dt"].as<double>();
+	M = result["M"].as<double>();
+	H = result["H"].as<double>();
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -37,12 +50,12 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, cxxopts::ParseResult &optio
 		size *= N;
 	}
 
-	rho.resize(size, std::vector<double>(m->N_species(), 0.));
+	rho.resize(size, std::vector<double>(model->N_species(), 0.));
 
-	if(options["load-from"].count() != 0) {
-		std::ifstream load_from(options["load-from"].as<std::string>().c_str());
+	if(result["load-from"].count() != 0) {
+		std::ifstream load_from(result["load-from"].as<std::string>().c_str());
 
-		for(int s = 0; s < m->N_species(); s++) {
+		for(int s = 0; s < model->N_species(); s++) {
 			switch(dims) {
 			case 1:
 				for(int idx = 0; idx < N; idx++) {
@@ -68,9 +81,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, cxxopts::ParseResult &optio
 		load_from.close();
 	}
 	else {
-		double tetramer_rho = options["tetramer-density"].as<double>();
-		double noise = options["noise"].as<double>();
-		double R = options["R"].as<double>();
+		double tetramer_rho = result["tetramer-density"].as<double>();
+		double noise = result["noise"].as<double>();
+		double R = result["R"].as<double>();
 		double linker_rho = 2 * tetramer_rho / (1.0 + R);
 		std::for_each(rho.begin(), rho.end(), [this, tetramer_rho, linker_rho, noise, R](std::vector<double> &species_rho) {
 			species_rho[0] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
@@ -222,5 +235,8 @@ void CahnHilliard<dims>::print_density(std::string filename) {
 
 	output.close();
 }
+
+template class CahnHilliard<1>;
+template class CahnHilliard<2>;
 
 } /* namespace ch */

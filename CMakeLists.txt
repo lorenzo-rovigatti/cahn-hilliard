@@ -21,7 +21,7 @@ if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
 	add_definitions(-ffast-math)
 endif()
 
-include_directories(extern)
-add_executable(ch src/CahnHilliard.cpp)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
-add_compile_options(-Wall -Wextra)
+include_directories(extern)
+add_subdirectory(src)
