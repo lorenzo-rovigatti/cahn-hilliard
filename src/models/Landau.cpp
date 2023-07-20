@@ -9,18 +9,13 @@
 
 namespace ch {
 
-Landau::Landau(cxxopts::Options &options) :
-				FreeEnergyModel(options) {
-	options.add_options()
-	("e,epsilon", "The distance from the critical point in the 'landau' free energy", cxxopts::value<double>()->default_value("0.9"));
+Landau::Landau(toml::table &config) :
+				FreeEnergyModel(config) {
+	_epsilon = config["landau"]["epsilon"].value<double>().value();
 }
 
 Landau::~Landau() {
 
-}
-
-void Landau::init(cxxopts::ParseResult &result) {
-	_epsilon = result["epsilon"].as<double>();
 }
 
 int Landau::N_species() {

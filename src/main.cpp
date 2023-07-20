@@ -1,38 +1,41 @@
 #include "CahnHilliard.h"
 #include "models/Landau.h"
 
+#include <iostream>
 #include <fstream>
+#include <ctime>
 
 int main(int argc, char *argv[]) {
-	srand48(51328);
-
-	cxxopts::Options options("cahn-hilliard", "A simple code to simulate spinodal decomposition through the Cahn-Hilliard equation");
-	options.add_options()
-	("s,steps", "Number of iterations", cxxopts::value<long long int>())
-	("l,load-from", "Load the initial conditions from this file", cxxopts::value<std::string>())
-	("T,temperature", "Temperature (in Kelvin)", cxxopts::value<double>()->default_value("300"))
-	("t,tetramer-density", "Average value of the initial density of tetramers", cxxopts::value<double>()->default_value("5e-5"))
-	("noise", "Random noise for the initial psi", cxxopts::value<double>()->default_value("0.01"))
-	("R", "Fraction of inter-species linkers", cxxopts::value<double>()->default_value("0.1"))
-	("p,print-every", "Number of iterations every which the state of the system will be appended to the trajectory.dat file (0 means never)", cxxopts::value<long long int>()->default_value("0"))
-	("h,help", "Print usage");
-
-	auto result = options.parse(argc, argv);
-
-	ch::FreeEnergyModel *model = new ch::Landau(options);
-	ch::CahnHilliard<DIM> system(model, options);
-
-	if(argc == 1 || result.count("help")) {
-		fprintf(stderr, "%s", options.help().c_str());
+	if(argc < 2) {
+		fprintf(stderr, "Usage is %s configuration_file\n", argv[0]);
 		exit(0);
 	}
 
-	if(result["steps"].count() == 0) {
-		fprintf(stderr, "ERROR: The -s/--steps argument in mandatory\n");
+	toml::parse_result res = toml::parse_file(argv[1]);
+	if (!res) {
+		std::cerr << "Parsing failed with error '" << res.error().description() << "'" << std::endl;
+		return 1;
+	}
+
+	toml::table config = std::move(res).table();
+
+	if(!config["steps"] || config["steps"].value<long long int>().value() < 0) {
+		fprintf(stderr, "steps should be a number larger than 0\n");
 		exit(1);
 	}
-	long long int steps = result["steps"].as<long long int>();
-	long long int print_every = result["print-every"].as<long long int>();
+	long long int steps = config["steps"].value<long long int>().value();
+	long long int print_every = config["print-every"].value_or(0);
+	long long int seed = config["seed"].value_or(0);
+
+	if(config["seed"]) {
+		srand48(config["seed"].value<long long int>().value());
+	}
+	else {
+		srand48(std::time(NULL));
+	}
+
+	ch::FreeEnergyModel *model = new ch::Landau(config);
+	ch::CahnHilliard<DIM> system(model, config);
 
 	std::ofstream trajectory[model->N_species()];
 	if(print_every > 0) {

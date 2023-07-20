@@ -10,13 +10,15 @@
 
 #define SQR(X) ((X) * (X))
 
-#include <cxxopts/cxxopts.hpp>
+#define TOML_EXCEPTIONS 0
+//#define TOML_ENABLE_FORMATTERS 0
+#include <toml++/toml.hpp>
 
 namespace ch {
 
 class FreeEnergyModel {
 public:
-	FreeEnergyModel(cxxopts::Options &options) {
+	FreeEnergyModel(toml::table &config) {
 
 	}
 
@@ -24,7 +26,6 @@ public:
 
 	}
 
-	virtual void init(cxxopts::ParseResult &result) = 0;
 	virtual int N_species() = 0;
 	virtual double der_bulk_free_energy(int species, std::vector<double> &) = 0;
 	virtual double bulk_free_energy(int species, std::vector<double> &) = 0;

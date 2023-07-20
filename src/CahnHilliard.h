@@ -30,10 +30,8 @@ public:
 
 	std::vector<std::vector<double>> rho;
 
-	CahnHilliard(FreeEnergyModel *m, cxxopts::Options &options);
+	CahnHilliard(FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();
-
-	void init(cxxopts::ParseResult &result);
 
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);

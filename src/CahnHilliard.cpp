@@ -10,31 +10,20 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <algorithm>
 #include <numeric>
 
 namespace ch {
 
 template<int dims>
-CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, cxxopts::Options &options) :
+CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 				model(m) {
 
-	options.add_options()
-	("N", "The (linear) size of the grid", cxxopts::value<int>()->default_value("64"))
-	("k", "Strength of the interfacial term of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1e7"))
-	("dt", "The integration time step", cxxopts::value<double>()->default_value("0.001"))
-	("M", "The transport coefficient M of the Cahn-Hilliard equation", cxxopts::value<double>()->default_value("1.0"))
-	("H", "The size of the mesh cells", cxxopts::value<double>()->default_value("20.0"));
-}
-
-template<int dims>
-void CahnHilliard<dims>::init(cxxopts::ParseResult &result) {
-	model->init(result);
-
-	N = result["N"].as<int>();
-	k_laplacian = result["k"].as<double>();
-	dt = result["dt"].as<double>();
-	M = result["M"].as<double>();
-	H = result["H"].as<double>();
+	N = config["N"].value_or(64);
+	k_laplacian = config["k"].value_or(1.0);
+	dt = config["dt"].value_or(0.001);
+	M = config["M"].value_or(1.0);
+	H = config["H"].value_or(1.0);
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -52,8 +41,13 @@ void CahnHilliard<dims>::init(cxxopts::ParseResult &result) {
 
 	rho.resize(size, std::vector<double>(model->N_species(), 0.));
 
-	if(result["load-from"].count() != 0) {
-		std::ifstream load_from(result["load-from"].as<std::string>().c_str());
+	if(!config["initial-density"] && !config["load-from"]) {
+		fprintf(stderr, "Either 'initial-density' or 'load-from' should be specified\n");
+		exit(1);
+	}
+
+	if(config["load-from"]) {
+		std::ifstream load_from(config["load-from"].value<std::string>().value().c_str());
 
 		for(int s = 0; s < model->N_species(); s++) {
 			switch(dims) {
@@ -80,20 +74,29 @@ void CahnHilliard<dims>::init(cxxopts::ParseResult &result) {
 
 		load_from.close();
 	}
-	else {
-		double tetramer_rho = result["tetramer-density"].as<double>();
-		double noise = result["noise"].as<double>();
-		double R = result["R"].as<double>();
-		double linker_rho = 2 * tetramer_rho / (1.0 + R);
-		std::for_each(rho.begin(), rho.end(), [this, tetramer_rho, linker_rho, noise, R](std::vector<double> &species_rho) {
-			species_rho[0] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
-			species_rho[1] = tetramer_rho * (1 + 2. * (drand48() - 0.5) * noise);
+	else { // initial-density
+		auto densities = config["initial-density"];
+		if(model->N_species() > 1) {
+			if(!densities.is_array() || densities.as_array()->size()) {
+				fprintf(stderr, "initial-density should contain as many elements as the number of species\n");
+				exit(1);
+			}
 
-			species_rho[2] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
-			species_rho[3] = linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
+			toml::array& rho_array = *densities.as_array();
 
-			species_rho[4] = 2 * R * linker_rho * (1 + 2. * (drand48() - 0.5) * noise);
-		});
+			std::for_each(rho.begin(), rho.end(), [this, rho_array](std::vector<double> &species_rho) {
+				for(int i = 0; i < species_rho.size(); i++) {
+					double average_rho = *rho_array.get_as<double>(i);
+					species_rho[i] = average_rho * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2);
+				}
+			});
+		}
+		else { // single species
+			double average_rho = *densities.as_floating_point();
+			std::for_each(rho.begin(), rho.end(), [this, average_rho](std::vector<double> &species_rho) {
+				species_rho[0] = average_rho * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2);
+			});
+		}
 	}
 }
 
