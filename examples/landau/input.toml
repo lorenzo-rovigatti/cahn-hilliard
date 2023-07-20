@@ -1,6 +1,6 @@
 steps = 1000000
 print-every = 1000
-N = 64
+N = 63
 initial-density = 0.01
 
 [landau]

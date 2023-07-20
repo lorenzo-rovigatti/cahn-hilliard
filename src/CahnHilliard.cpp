@@ -27,8 +27,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
-		fprintf(stderr, "N should be a power of 2\n");
-		exit(1);
+		critical("N should be a power of 2");
 	}
 
 	N_minus_one = N - 1;
@@ -42,8 +41,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	rho.resize(size, std::vector<double>(model->N_species(), 0.));
 
 	if(!config["initial-density"] && !config["load-from"]) {
-		fprintf(stderr, "Either 'initial-density' or 'load-from' should be specified\n");
-		exit(1);
+		critical("Either 'initial-density' or 'load-from' should be specified");
 	}
 
 	if(config["load-from"]) {
@@ -67,8 +65,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 				break;
 			default:
-				fprintf(stderr, "Unsupported number of dimensions %d\n", dims);
-				exit(1);
+				critical("Unsupported number of dimensions {}", dims);
 			}
 		}
 
@@ -78,8 +75,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		auto densities = config["initial-density"];
 		if(model->N_species() > 1) {
 			if(!densities.is_array() || densities.as_array()->size()) {
-				fprintf(stderr, "initial-density should contain as many elements as the number of species\n");
-				exit(1);
+				critical("initial-density should contain as many elements as the number of species ({})", model->N_species());
 			}
 
 			toml::array& rho_array = *densities.as_array();

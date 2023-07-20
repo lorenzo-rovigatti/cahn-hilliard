@@ -16,7 +16,7 @@
 namespace ch {
 
 template<int dims>
-class CahnHilliard {
+class CahnHilliard : public Object {
 public:
 	int N = 0;
 	int N_minus_one = 0;
@@ -43,6 +43,8 @@ public:
 
 	void print_state(int species, std::ofstream &output);
 	void print_density(std::string filename);
+
+	GET_NAME(CahnHilliard)
 
 private:
 };

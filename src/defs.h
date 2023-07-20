@@ -10,13 +10,15 @@
 
 #define SQR(X) ((X) * (X))
 
+#include "Object.h"
+
 #define TOML_EXCEPTIONS 0
 //#define TOML_ENABLE_FORMATTERS 0
 #include <toml++/toml.hpp>
 
 namespace ch {
 
-class FreeEnergyModel {
+class FreeEnergyModel : public Object {
 public:
 	FreeEnergyModel(toml::table &config) {
 

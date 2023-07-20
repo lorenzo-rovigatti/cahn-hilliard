@@ -23,6 +23,8 @@ public:
 	double der_bulk_free_energy(int species, std::vector<double> &) override;
 	double bulk_free_energy(int species, std::vector<double> &) override;
 
+	GET_NAME(Landau)
+
 private:
 	double _epsilon = 0.0;
 };

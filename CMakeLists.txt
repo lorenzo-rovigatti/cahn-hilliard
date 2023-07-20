@@ -23,5 +23,9 @@ endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
-include_directories(extern)
+# build spdlog as a shared lib
+add_subdirectory(extern/spdlog)
+set_target_properties(spdlog PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+include_directories(extern extern/spdlog/include)
 add_subdirectory(src)
