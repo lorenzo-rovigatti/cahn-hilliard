@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <memory>
 
 namespace ch {
 
@@ -15,7 +16,8 @@ public:
 		}
 
 		_steps = config["steps"].value<long long int>().value();
-		_print_every = config["print-every"].value<long long int>().value_or(0);
+		_print_mass_every = config["print-every"].value<long long int>().value_or(0);
+		_print_trajectory_every = config["print-trajectory-every"].value<long long int>().value_or(0);
 
 		if(config["seed"]) {
 			srand48(config["seed"].value<long long int>().value());
@@ -24,15 +26,13 @@ public:
 			srand48(std::time(NULL));
 		}
 
-		_model = new ch::Landau(config);
-		_system = new ch::CahnHilliard<DIM>(_model, config);
+		_model = std::make_unique<ch::Landau>(config);
+		_system = std::make_unique<ch::CahnHilliard<DIM>>(_model.get(), config);
 
 		_trajectories.resize(_model->N_species());
-		if(_print_every > 0) {
+		if(_print_trajectory_every > 0) {
 			for(int i = 0; i < _model->N_species(); i++) {
-				char filename[256];
-				sprintf(filename, "trajectory_%d.dat", i);
-				_trajectories[i].open(filename);
+				_trajectories[i].open(fmt::format("trajectory_{}.dat", i));
 			}
 		}
 	}
@@ -43,30 +43,29 @@ public:
 				traj.close();
 			}
 		}
-
-		delete _system;
-		delete _model;
 	}
 
 	void run() {
 		_print_current_state("init_");
 
+		std::ofstream mass_output("mass.dat");
+
 		for(long long int t = 0; t < _steps; t++) {
-			if(_print_every > 0 && t % _print_every == 0) {
+			if(_print_trajectory_every > 0 && t % _print_trajectory_every == 0) {
 				for(int i = 0; i < _model->N_species(); i++) {
-					_system->print_state(i, _trajectories[i]);
-
-					char filename[256];
-					sprintf(filename, "last_%d.dat", i);
-					std::ofstream output(filename);
-					_system->print_state(i, output);
-					output.close();
+					_system->print_species_density(i, _trajectories[i]);
+					_system->print_species_density(i, fmt::format("last_{}.dat", i));
 				}
-
-				fprintf(stdout, "%lld %lf %lf\n", t, t * _system->dt, _system->total_mass());
+			}
+			if(_print_mass_every > 0 && t % _print_mass_every == 0) {
+				std::string mass_line = fmt::format("{} {} {}", t * _system->dt, _system->total_mass(), t);
+				mass_output << mass_line << std::endl;
+				std::cout << mass_line << std::endl;
 			}
 			_system->evolve();
 		}
+
+		mass_output.close();
 
 		_print_current_state("last_");
 	}
@@ -76,31 +75,29 @@ public:
 private:
 	void _print_current_state(std::string_view prefix) {
 		for(int i = 0; i < _model->N_species(); i++) {
-			std::ofstream output(fmt::format("{}{}.dat", prefix, i));
-			_system->print_state(i, output);
-			output.close();
+			_system->print_species_density(i, fmt::format("{}{}.dat", prefix, i));
 		}
-		_system->print_density(fmt::format("{}density.dat", prefix));
+		_system->print_total_density(fmt::format("{}density.dat", prefix));
 	}
 
-	long long int _steps, _print_every;
+	long long int _steps, _print_mass_every, _print_trajectory_every;
 
 	std::vector<std::ofstream> _trajectories;
-	ch::FreeEnergyModel *_model;
-	ch::CahnHilliard<DIM> *_system;
+	std::unique_ptr<ch::FreeEnergyModel> _model;
+	std::unique_ptr<ch::CahnHilliard<DIM>> _system;
 };
 
 }
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		fprintf(stderr, "Usage is %s configuration_file\n", argv[0]);
-		exit(0);
+		std::cerr << fmt::format("Usage is {} configuration_file", argv[0]) << std::endl;
+		return 0;
 	}
 
 	toml::parse_result res = toml::parse_file(argv[1]);
 	if(!res) {
-		std::cerr << "Parsing failed with error '" << res.error().description() << "'" << std::endl;
+		std::cerr << fmt::format("Parsing failed with error '{}'", res.error().description()) << std::endl;
 		return 1;
 	}
 

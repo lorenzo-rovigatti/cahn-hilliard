@@ -42,8 +42,9 @@ public:
 	void evolve();
 	double total_mass();
 
-	void print_state(int species, std::ofstream &output);
-	void print_density(std::string filename);
+	void print_species_density(int species, const std::string &filename);
+	void print_species_density(int species, std::ofstream &output);
+	void print_total_density(const std::string &filename);
 
 	GET_NAME(Simulation manager)
 

@@ -190,8 +190,15 @@ double CahnHilliard<dims>::total_mass() {
 	return mass;
 }
 
+template<int dims>
+void CahnHilliard<dims>::print_species_density(int species, const std::string &filename) {
+	std::ofstream output(filename);
+	print_species_density(species, output);
+	output.close();
+}
+
 template<>
-void CahnHilliard<1>::print_state(int species, std::ofstream &output) {
+void CahnHilliard<1>::print_species_density(int species, std::ofstream &output) {
 	for(int idx = 0; idx < size; idx++) {
 		output << rho[idx][species] << " " << std::endl;
 	}
@@ -199,7 +206,7 @@ void CahnHilliard<1>::print_state(int species, std::ofstream &output) {
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_state(int species, std::ofstream &output) {
+void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output) {
 	for(int idx = 0; idx < size; idx++) {
 		if(idx > 0) {
 			int modulo = N;
@@ -216,7 +223,7 @@ void CahnHilliard<dims>::print_state(int species, std::ofstream &output) {
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_density(std::string filename) {
+void CahnHilliard<dims>::print_total_density(const std::string &filename) {
 	std::ofstream output(filename.c_str());
 
 	for(int idx = 0; idx < size; idx++) {
