@@ -9,6 +9,7 @@
 #define SRC_MODELS_LANDAU_H_
 
 #include "../defs.h"
+#include "FreeEnergyModel.h"
 
 namespace ch {
 
@@ -23,7 +24,7 @@ public:
 	double der_bulk_free_energy(int species, std::vector<double> &) override;
 	double bulk_free_energy(int species, std::vector<double> &) override;
 
-	GET_NAME(Landau)
+	GET_NAME(Landau free energy model)
 
 private:
 	double _epsilon = 0.0;

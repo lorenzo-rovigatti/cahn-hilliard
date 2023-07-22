@@ -11,10 +11,11 @@
 #define GET_NAME(NAME) \
   std::string_view name() const override { return #NAME; }
 
+#include "defs.h"
+
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_sinks.h>
 #include <spdlog/fmt/fmt.h>
-#include <string>
 
 namespace ch {
 
@@ -25,9 +26,26 @@ public:
 	Object(const Object &other) = default;
 	Object(Object &&other) = default;
 
+	template<typename T>
+	T _config_value(toml::table &tbl, const std::string &path) const {
+		toml::path t_path(path);
+		auto nv = tbl[t_path];
+		if(!nv) {
+			critical("Mandatory option '{}' not found", path);
+		}
+
+		return nv.value<T>().value();
+	}
+
+	template<typename T>
+	T _config_optional_value(toml::table &tbl, const std::string &path, T default_value) const {
+		toml::path t_path(path);
+		return tbl[t_path].value<T>().value_or(default_value);
+	}
+
 	template<typename FormatString, typename... Args>
-	void critical(const FormatString &fmt, Args&&...args) {
-		auto format_final = fmt::format("{} ({{}})", fmt);
+	void critical(const FormatString &fmt, Args&&...args) const {
+		auto format_final = fmt::format("{} (error source: {{}})", fmt);
 		spdlog::critical(format_final, std::forward<Args>(args)..., name());
 		exit(1);
 	}

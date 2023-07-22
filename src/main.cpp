@@ -15,8 +15,7 @@ public:
 		}
 
 		_steps = config["steps"].value<long long int>().value();
-		_print_every = config["print-every"].value_or(0);
-		long long int seed = config["seed"].value_or(0);
+		_print_every = config["print-every"].value<long long int>().value_or(0);
 
 		if(config["seed"]) {
 			srand48(config["seed"].value<long long int>().value());

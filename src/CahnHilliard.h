@@ -9,6 +9,7 @@
 #define SRC_CAHNHILLIARD_H_
 
 #include "defs.h"
+#include "models/FreeEnergyModel.h"
 
 #include <vector>
 #include <string>
@@ -44,7 +45,7 @@ public:
 	void print_state(int species, std::ofstream &output);
 	void print_density(std::string filename);
 
-	GET_NAME(CahnHilliard)
+	GET_NAME(Simulation manager)
 
 private:
 };

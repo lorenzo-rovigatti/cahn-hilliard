@@ -10,29 +10,8 @@
 
 #define SQR(X) ((X) * (X))
 
-#include "Object.h"
-
 #define TOML_EXCEPTIONS 0
 //#define TOML_ENABLE_FORMATTERS 0
 #include <toml++/toml.hpp>
-
-namespace ch {
-
-class FreeEnergyModel : public Object {
-public:
-	FreeEnergyModel(toml::table &config) {
-
-	}
-
-	virtual ~FreeEnergyModel() {
-
-	}
-
-	virtual int N_species() = 0;
-	virtual double der_bulk_free_energy(int species, std::vector<double> &) = 0;
-	virtual double bulk_free_energy(int species, std::vector<double> &) = 0;
-};
-
-}
 
 #endif /* SRC_DEFS_H_ */

@@ -19,11 +19,11 @@ template<int dims>
 CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 				model(m) {
 
-	N = config["N"].value_or(64);
-	k_laplacian = config["k"].value_or(1.0);
-	dt = config["dt"].value_or(0.001);
-	M = config["M"].value_or(1.0);
-	H = config["H"].value_or(1.0);
+	N = _config_value<int>(config, "N");
+	k_laplacian = _config_optional_value<double>(config, "k", 1.0);
+	dt = _config_value<double>(config, "dt");
+	M = _config_optional_value<double>(config, "M", 1.0);
+	H = _config_optional_value<double>(config, "H", 1.0);
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -45,7 +45,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	}
 
 	if(config["load-from"]) {
-		std::ifstream load_from(config["load-from"].value<std::string>().value().c_str());
+		std::ifstream load_from(_config_value<std::string>(config, "load-from").c_str());
 
 		for(int s = 0; s < model->N_species(); s++) {
 			switch(dims) {
