@@ -40,12 +40,12 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 	rho.resize(size, std::vector<double>(model->N_species(), 0.));
 
-	if(!config["initial-density"] && !config["load-from"]) {
-		critical("Either 'initial-density' or 'load-from' should be specified");
+	if(!config["initial_density"] && !config["load_from"]) {
+		critical("Either 'initial_density' or 'load_from' should be specified");
 	}
 
-	if(config["load-from"]) {
-		std::ifstream load_from(_config_value<std::string>(config, "load-from").c_str());
+	if(config["load_from"]) {
+		std::ifstream load_from(_config_value<std::string>(config, "load_from").c_str());
 
 		for(int s = 0; s < model->N_species(); s++) {
 			switch(dims) {
@@ -72,10 +72,10 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		load_from.close();
 	}
 	else { // initial-density
-		auto densities = config["initial-density"];
+		auto densities = config["initial_density"];
 		if(model->N_species() > 1) {
 			if(!densities.is_array() || densities.as_array()->size()) {
-				critical("initial-density should contain as many elements as the number of species ({})", model->N_species());
+				critical("initial_density should contain as many elements as the number of species ({})", model->N_species());
 			}
 
 			toml::array& rho_array = *densities.as_array();

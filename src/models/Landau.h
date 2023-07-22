@@ -13,7 +13,7 @@
 
 namespace ch {
 
-class Landau: public FreeEnergyModel {
+class Landau final: public FreeEnergyModel {
 public:
 	Landau(toml::table &config);
 	virtual ~Landau();

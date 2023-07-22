@@ -2,6 +2,7 @@ set(common_files
 	CahnHilliard.cpp
 	Object.cpp
 	models/Landau.cpp
+	models/SimpleWertheim.cpp
 	)
 	
 add_library(ch_common ${common_files})

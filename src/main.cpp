@@ -1,5 +1,6 @@
 #include "CahnHilliard.h"
 #include "models/Landau.h"
+#include "models/SimpleWertheim.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,22 +12,33 @@ namespace ch {
 class Manager final: public Object {
 public:
 	Manager(toml::table &config) {
-		if(!config["steps"] || config["steps"].value<long long int>().value() < 0) {
+		_steps = _config_value<long long int>(config, "steps");
+
+		if(_steps < 0) {
 			critical("steps should be a number larger than 0");
 		}
 
-		_steps = config["steps"].value<long long int>().value();
-		_print_mass_every = config["print-every"].value<long long int>().value_or(0);
-		_print_trajectory_every = config["print-trajectory-every"].value<long long int>().value_or(0);
+		_print_mass_every = _config_optional_value<long long int>(config, "print_every", 0);
+		_print_trajectory_every = _config_optional_value<long long int>(config, "print_trajectory_every", 0);
 
 		if(config["seed"]) {
-			srand48(config["seed"].value<long long int>().value());
+			srand48(_config_value<long long int>(config, "seed"));
 		}
 		else {
 			srand48(std::time(NULL));
 		}
 
-		_model = std::make_unique<ch::Landau>(config);
+		std::string model_name = _config_value<std::string>(config, "free_energy");
+		if(model_name == "landau") {
+			_model = std::make_unique<ch::Landau>(config);
+		}
+		else if(model_name == "simple_wertheim") {
+			_model = std::make_unique<ch::SimpleWertheim>(config);
+		}
+		else {
+			critical("Unsupported free energy model '{}'", model_name);
+		}
+
 		_system = std::make_unique<ch::CahnHilliard<DIM>>(_model.get(), config);
 
 		_trajectories.resize(_model->N_species());
