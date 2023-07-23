@@ -11,7 +11,7 @@
 #define SQR(X) ((X) * (X))
 
 #define TOML_EXCEPTIONS 0
-//#define TOML_ENABLE_FORMATTERS 0
+#define TOML_ENABLE_FORMATTERS 0
 #include <toml++/toml.hpp>
 
 #endif /* SRC_DEFS_H_ */

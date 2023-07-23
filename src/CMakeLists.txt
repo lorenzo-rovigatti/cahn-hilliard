@@ -3,6 +3,7 @@ set(common_files
 	Object.cpp
 	models/Landau.cpp
 	models/SimpleWertheim.cpp
+	utils/Delta.cpp
 	)
 	
 add_library(ch_common ${common_files})

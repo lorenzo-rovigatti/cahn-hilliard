@@ -2,7 +2,7 @@ steps = 1e8
 print_every = 1e5
 print_trajectory_every = 1e7
 N = 64
-dt = 1e-6
+dt = 1e-4
 initial_density = 1e-5
 free_energy = "simple_wertheim"
 H = 20
@@ -13,6 +13,10 @@ valence = 4
 B2 = 10600
 salt = 0.025
 T = 290.15
+
+[wertheim.delta]
+T = 290.15
 deltaH = -42790
 deltaS = -119.84
+salt = 0.025
 sticky_size = 6

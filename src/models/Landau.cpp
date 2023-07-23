@@ -13,6 +13,8 @@ Landau::Landau(toml::table &config) :
 				FreeEnergyModel(config) {
 
 	_epsilon = _config_value<double>(config, "landau.epsilon");
+
+	info("epsilon = {}", _epsilon);
 }
 
 Landau::~Landau() {

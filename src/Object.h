@@ -26,21 +26,18 @@ public:
 	Object(const Object &other) = default;
 	Object(Object &&other) = default;
 
+	toml::node_view<toml::node> _config_node_view(toml::table &tbl, const std::string &path, bool mandatory) const;
+
 	template<typename T>
 	T _config_value(toml::table &tbl, const std::string &path) const {
-		toml::path t_path(path);
-		auto nv = tbl[t_path];
-		if(!nv) {
-			critical("Mandatory option '{}' not found", path);
-		}
-
+		auto nv = _config_node_view(tbl, path, true);
 		return nv.value<T>().value();
 	}
 
 	template<typename T>
 	T _config_optional_value(toml::table &tbl, const std::string &path, T default_value) const {
-		toml::path t_path(path);
-		return tbl[t_path].value<T>().value_or(default_value);
+		auto nv = _config_node_view(tbl, path, false);
+		return nv.value<T>().value_or(default_value);
 	}
 
 	template<typename FormatString, typename... Args>

@@ -7,6 +7,10 @@
 
 #include "SimpleWertheim.h"
 
+#include "../utils/Delta.h"
+
+#include <iostream>
+
 namespace ch {
 
 SimpleWertheim::SimpleWertheim(toml::table &config) :
@@ -15,19 +19,9 @@ SimpleWertheim::SimpleWertheim(toml::table &config) :
 	_valence = _config_value<int>(config, "wertheim.valence");
 	_B2 = _config_value<double>(config, "wertheim.B2");
 	_regularisation_delta = _config_optional_value<double>(config, "wertheim.regularisation_delta", 0.0);
+	_delta = Delta(config, "wertheim.delta");
+
 	_log_delta = std::log(_regularisation_delta);
-	_T = _config_value<double>(config, "wertheim.T");
-
-	double salt = _config_optional_value<double>(config, "wertheim.salt", 1.0);
-	int L_DNA = _config_optional_value<int>(config, "wertheim.sticky_size", 6);
-	double delta_H = _config_value<double>(config, "wertheim.deltaH");
-	double delta_S = _config_value<double>(config, "wertheim.deltaS");
-
-	double delta_S_salt = 0.368 * (L_DNA - 1.0) * std::log(salt);
-	double delta_G = delta_H - _T * (delta_S + delta_S_salt);
-
-	const double k_B = 1.9872036;
-	_delta = 1.6606 * std::exp(-delta_G / (k_B * _T));
 	_two_valence_delta = 2 * _valence * _delta;
 
 	info("valence = {}, delta = {}", _valence, _delta);

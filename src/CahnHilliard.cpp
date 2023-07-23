@@ -25,6 +25,8 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	M = _config_optional_value<double>(config, "M", 1.0);
 	H = _config_optional_value<double>(config, "H", 1.0);
 
+	info("Running a simulation with N = {}, dt = {}, H = {}, M = {}", N, dt, H, M);
+
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
 		critical("N should be a power of 2");

@@ -31,7 +31,6 @@ public:
 private:
 	double _B2;
 	int _valence;
-	double _T;
 	double _delta, _two_valence_delta;
 	double _regularisation_delta, _log_delta;
 
