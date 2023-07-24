@@ -26,7 +26,7 @@ public:
 
 	virtual int N_species() = 0;
 	virtual double der_bulk_free_energy(int species, std::vector<double> &) = 0;
-	virtual double bulk_free_energy(int species, std::vector<double> &) = 0;
+	virtual double bulk_free_energy(std::vector<double> &) = 0;
 };
 
 } /* namespace ch */

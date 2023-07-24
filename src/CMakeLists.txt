@@ -2,6 +2,7 @@ set(common_files
 	CahnHilliard.cpp
 	Object.cpp
 	models/Landau.cpp
+	models/SalehWertheim.cpp
 	models/SimpleWertheim.cpp
 	utils/Delta.cpp
 	)

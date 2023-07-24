@@ -149,8 +149,6 @@ struct FreeEnergyModel {
 	}
 
 	double bulk_free_energy(std::array<double, SPECIES> &partial_rho) {
-		return bonding_free_energy(partial_rho);
-
 		double rho = std::accumulate(partial_rho.begin(), partial_rho.end(), 0.);
 
 		double mixing_S = 0., B2_contrib = 0.;

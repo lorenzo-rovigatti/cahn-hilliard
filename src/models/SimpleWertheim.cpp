@@ -31,8 +31,8 @@ SimpleWertheim::~SimpleWertheim() {
 
 }
 
-double SimpleWertheim::bulk_free_energy(int species, std::vector<double> &rhos) {
-	double rho = rhos[species];
+double SimpleWertheim::bulk_free_energy(std::vector<double> &rhos) {
+	double rho = rhos[0];
 	double f_ref = rho * std::log(rho) - rho + _B2 * SQR(rho);
 	double f_bond = _valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
 

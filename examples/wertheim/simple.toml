@@ -11,8 +11,6 @@ k = 1e7
 [wertheim]
 valence = 4
 B2 = 10600
-salt = 0.025
-T = 290.15
 
 [wertheim.delta]
 T = 290.15

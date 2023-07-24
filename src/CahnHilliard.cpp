@@ -74,27 +74,13 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		load_from.close();
 	}
 	else { // initial-density
-		auto densities = config["initial_density"];
-		if(model->N_species() > 1) {
-			if(!densities.is_array() || densities.as_array()->size()) {
-				critical("initial_density should contain as many elements as the number of species ({})", model->N_species());
+		std::vector<double> densities = _config_array_values<double>(config, "initial_density", model->N_species());
+		std::for_each(rho.begin(), rho.end(), [this, densities](std::vector<double> &species_rho) {
+			for(int i = 0; i < species_rho.size(); i++) {
+				double average_rho = densities[i];
+				species_rho[i] = average_rho * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2);
 			}
-
-			toml::array& rho_array = *densities.as_array();
-
-			std::for_each(rho.begin(), rho.end(), [this, rho_array](std::vector<double> &species_rho) {
-				for(int i = 0; i < species_rho.size(); i++) {
-					double average_rho = *rho_array.get_as<double>(i);
-					species_rho[i] = average_rho * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2);
-				}
-			});
-		}
-		else { // single species
-			double average_rho = *densities.as_floating_point();
-			std::for_each(rho.begin(), rho.end(), [this, average_rho](std::vector<double> &species_rho) {
-				species_rho[0] = average_rho * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2);
-			});
-		}
+		});
 	}
 }
 

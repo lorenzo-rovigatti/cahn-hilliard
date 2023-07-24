@@ -1,5 +1,6 @@
 #include "CahnHilliard.h"
 #include "models/Landau.h"
+#include "models/SalehWertheim.h"
 #include "models/SimpleWertheim.h"
 
 #include <iostream>
@@ -34,6 +35,9 @@ public:
 		}
 		else if(model_name == "simple_wertheim") {
 			_model = std::make_unique<ch::SimpleWertheim>(config);
+		}
+		else if(model_name == "saleh") {
+			_model = std::make_unique<ch::SalehWertheim>(config);
 		}
 		else {
 			critical("Unsupported free energy model '{}'", model_name);
@@ -70,7 +74,7 @@ public:
 				}
 			}
 			if(_print_mass_every > 0 && t % _print_mass_every == 0) {
-				std::string mass_line = fmt::format("{} {} {}", t * _system->dt, _system->total_mass(), t);
+				std::string mass_line = fmt::format("{:.5} {:.5} {:L}", t * _system->dt, _system->total_mass(), t);
 				mass_output << mass_line << std::endl;
 				std::cout << mass_line << std::endl;
 			}

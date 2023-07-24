@@ -22,7 +22,7 @@ public:
 
 	int N_species() override;
 	double der_bulk_free_energy(int species, std::vector<double> &) override;
-	double bulk_free_energy(int species, std::vector<double> &) override;
+	double bulk_free_energy(std::vector<double> &) override;
 
 	GET_NAME(Landau free energy model)
 

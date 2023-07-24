@@ -1,0 +1,27 @@
+steps = 1e8
+print_every = 1e5
+print_trajectory_every = 1e6
+N = 64
+dt = 1e-5
+initial_density = [1e-5, 1e-5, 1e-5]
+free_energy = "saleh"
+H = 20
+k = 1e7
+
+[saleh]
+valence = [2, 3, 4]
+B2 = 2190
+
+[saleh.delta_AA]
+T = 293.15
+deltaH = -42200
+deltaS = -119.1
+salt = 0.5
+sticky_size = 6
+
+[saleh.delta_BB]
+T = 293.15
+deltaH = -42400
+deltaS = -120.6
+salt = 0.5
+sticky_size = 6
