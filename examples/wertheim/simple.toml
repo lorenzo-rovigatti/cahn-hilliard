@@ -5,7 +5,7 @@ N = 64
 dt = 1e-4
 initial_density = 1e-5
 free_energy = "simple_wertheim"
-H = 20
+dx = 20
 k = 1e7
 
 [wertheim]

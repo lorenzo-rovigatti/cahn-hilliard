@@ -26,7 +26,7 @@ public:
 	double dt = 0.0;
 	double k_laplacian = 0.0;
 	double M = 0.0;
-	double H = 0.0;
+	double dx = 0.0;
 	FreeEnergyModel *model = nullptr;
 
 	std::vector<std::vector<double>> rho;

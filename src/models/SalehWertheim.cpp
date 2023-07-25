@@ -15,12 +15,12 @@ namespace ch {
 SalehWertheim::SalehWertheim(toml::table &config) :
 				FreeEnergyModel(config) {
 
-	_B2 = Delta(config, "saleh.B2");
+	_B2 = _config_value<double>(config, "saleh.B2");
 	_delta_AA = Delta(config, "saleh.delta_AA");
 	_delta_BB = Delta(config, "saleh.delta_BB");
 	_valence = _config_array_values<int>(config, "saleh.valence", 3);
 
-	info("valences = ({}), delta_AA = {}, delta_BB = {}", fmt::join(_valence, ", "), _delta_AA, _delta_BB);
+	info("valences = ({}), B2 = {}, delta_AA = {}, delta_BB = {}", fmt::join(_valence, ", "), _B2, _delta_AA, _delta_BB);
 }
 
 SalehWertheim::~SalehWertheim() {

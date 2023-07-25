@@ -1,15 +1,15 @@
-steps = 1e8
+steps = 1e9
 print_every = 1e5
 print_trajectory_every = 1e6
 N = 64
-dt = 1e-5
-initial_density = [1e-5, 1e-5, 1e-5]
+dt = 1e-6
+initial_density = 9e-5
 free_energy = "saleh"
-H = 20
+dx = 20
 k = 1e7
 
 [saleh]
-valence = [2, 3, 4]
+valence = [4, 4, 4]
 B2 = 2190
 
 [saleh.delta_AA]

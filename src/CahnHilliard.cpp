@@ -23,9 +23,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	k_laplacian = _config_optional_value<double>(config, "k", 1.0);
 	dt = _config_value<double>(config, "dt");
 	M = _config_optional_value<double>(config, "M", 1.0);
-	H = _config_optional_value<double>(config, "H", 1.0);
+	dx = _config_optional_value<double>(config, "dx", 1.0);
 
-	info("Running a simulation with N = {}, dt = {}, H = {}, M = {}", N, dt, H, M);
+	info("Running a simulation with N = {}, dt = {}, H = {}, M = {}", N, dt, dx, M);
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -113,7 +113,7 @@ double CahnHilliard<1>::cell_laplacian(std::vector<std::vector<double>> &field, 
 	int idx_m = (idx - 1 + N) & N_minus_one;
 	int idx_p = (idx + 1) & N_minus_one;
 
-	return (field[idx_m][species] + field[idx_p][species] - 2.0 * field[idx][species]) / SQR(H);
+	return (field[idx_m][species] + field[idx_p][species] - 2.0 * field[idx][species]) / SQR(dx);
 }
 
 template<>
@@ -147,7 +147,7 @@ double CahnHilliard<2>::cell_laplacian(std::vector<std::vector<double>> &field, 
 			field[cell_idx(coords_xym)][species] +
 			field[cell_idx(coords_xyp)][species] -
 			4 * field[idx][species])
-			/ SQR(H);
+			/ SQR(dx);
 }
 
 template<int dims>
