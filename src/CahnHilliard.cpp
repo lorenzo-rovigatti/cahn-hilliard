@@ -47,7 +47,15 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	}
 
 	if(config["load_from"]) {
-		std::ifstream load_from(_config_value<std::string>(config, "load_from").c_str());
+		std::string filename = _config_value<std::string>(config, "load_from");
+		std::ifstream load_from(filename.c_str());
+
+		if(load_from.good()) {
+			info("Using filename '{}' for the initial conditions", filename);
+		}
+		else {
+			critical("The initial conditions file '{}' is not readable", filename);
+		}
 
 		for(int s = 0; s < model->N_species(); s++) {
 			switch(dims) {

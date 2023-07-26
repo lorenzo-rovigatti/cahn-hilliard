@@ -31,6 +31,7 @@ public:
 
 private:
 	std::vector<int> _valence;
+	int _linker_half_valence;
 	double _B2;
 	double _delta_AA, _delta_BB;
 };

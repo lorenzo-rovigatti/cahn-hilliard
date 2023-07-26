@@ -19,6 +19,7 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 	_delta_AA = Delta(config, "saleh.delta_AA");
 	_delta_BB = Delta(config, "saleh.delta_BB");
 	_valence = _config_array_values<int>(config, "saleh.valence", 3);
+	_linker_half_valence = _valence[2] / 2;
 
 	info("valences = ({}), B2 = {}, delta_AA = {}, delta_BB = {}", fmt::join(_valence, ", "), _B2, _delta_AA, _delta_BB);
 }
@@ -27,18 +28,18 @@ SalehWertheim::~SalehWertheim() {
 }
 
 double SalehWertheim::bonding_free_energy(std::vector<double> &rhos) {
-	double rho_factor =  _delta_AA * (_valence[0] * rhos[0] + _valence[2] * rhos[2] / 2.0);
+	double rho_factor =  _delta_AA * (_valence[0] * rhos[0] + _linker_half_valence * rhos[2]);
 	double X_1A = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
 	double fe_part_1 = std::log(X_1A) - X_1A / 2.0 + 0.5;
 
-	rho_factor =  _delta_BB * (_valence[1] * rhos[1] + _valence[2] * rhos[2] / 2.0);
+	rho_factor =  _delta_BB * (_valence[1] * rhos[1] + _linker_half_valence * rhos[2]);
 	double X_2B = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
 	double fe_part_2 = std::log(X_2B) - X_2B / 2.0 + 0.5;
 
 	double bonding_fe =
 			rhos[0] * _valence[0] * fe_part_1 +
 			rhos[1] * _valence[1] * fe_part_2 +
-			rhos[2] * _valence[2] * (fe_part_1 / 2.0 + fe_part_2 / 2.0);
+			rhos[2] * _linker_half_valence * (fe_part_1 + fe_part_2);
 
 	return bonding_fe;
 }

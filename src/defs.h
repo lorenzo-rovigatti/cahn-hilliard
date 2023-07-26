@@ -14,4 +14,6 @@
 #define TOML_ENABLE_FORMATTERS 0
 #include <toml++/toml.hpp>
 
+#include <iostream>
+
 #endif /* SRC_DEFS_H_ */
