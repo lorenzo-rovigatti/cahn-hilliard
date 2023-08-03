@@ -6,6 +6,7 @@ OPTION(NATIVE_COMPILATION "Set to OFF to compile without the -march=native flag.
 
 project(ch)
 
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Release)
 
 if(Debug)
