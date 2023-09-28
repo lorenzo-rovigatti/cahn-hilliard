@@ -83,12 +83,17 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	}
 	else { // initial-density
 		std::vector<double> densities = _config_array_values<double>(config, "initial_density", model->N_species());
-		std::for_each(rho.begin(), rho.end(), [this, densities](std::vector<double> &species_rho) {
+		double initial_A = _config_optional_value<double>(config, "initial_A", 1e-2);
+		int initial_N_peaks = _config_optional_value<int>(config, "initial_N_peaks", 0);
+		double initial_k = 2 * M_PI * initial_N_peaks / (double) N; // wave vector of the modulation
+		for(int bin = 0; bin < N; bin++) {
+			auto &species_rho = rho[bin];
+			double modulation = initial_A * std::cos(initial_k * bin);
 			for(int i = 0; i < species_rho.size(); i++) {
 				double average_rho = densities[i];
-				species_rho[i] = average_rho * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2);
+				species_rho[i] = average_rho * (1.0 + modulation * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2));
 			}
-		});
+		}
 	}
 }
 
