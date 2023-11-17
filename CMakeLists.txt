@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
+option(CUDA "Set to ON to compile with CUDA support" OFF)
 option(Debug "Set to ON to compile with debug symbols" OFF)
 option(G "Set to ON to compile with optimisations and debug symbols" OFF)
-OPTION(NATIVE_COMPILATION "Set to OFF to compile without the -march=native flag. This may be required when compiling binaries to be used elsewhere" ON)
+option(NATIVE_COMPILATION "Set to OFF to compile without the -march=native flag. This may be required when compiling binaries to be used elsewhere" ON)
+option(CUDA_COMMON_ARCH "Set to OFF to autodetect the GPU and compile for its architecture, set to ON (default) to compile for the most common architectures" ON)
 
 project(ch)
 
