@@ -9,6 +9,8 @@
 
 #include "../utils/Delta.h"
 
+#include "CUDA/SimpleWertheim.cuh"
+
 #include <iostream>
 
 namespace ch {
@@ -31,14 +33,6 @@ SimpleWertheim::~SimpleWertheim() {
 
 }
 
-double SimpleWertheim::bulk_free_energy(std::vector<double> &rhos) {
-	double rho = rhos[0];
-	double f_ref = rho * std::log(rho) - rho + _B2 * SQR(rho);
-	double f_bond = _valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
-
-	return (f_ref + f_bond);
-}
-
 double SimpleWertheim::der_bulk_free_energy(int species, std::vector<double> &rhos) {
 	double rho = rhos[species];
 	double der_f_ref = _regularised_log(rho) + 2 * _B2 * rho;
@@ -48,9 +42,21 @@ double SimpleWertheim::der_bulk_free_energy(int species, std::vector<double> &rh
 	return (der_f_ref + der_f_bond);
 }
 
+double SimpleWertheim::bulk_free_energy(std::vector<double> &rhos) {
+	double rho = rhos[0];
+	double f_ref = rho * std::log(rho) - rho + _B2 * SQR(rho);
+	double f_bond = _valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
+
+	return (f_ref + f_bond);
+}
+
 double SimpleWertheim::_X(double rho) {
 	double sqrt_argument = 2.0 * _two_valence_delta * rho;
 	return (sqrt_argument < 1e-3) ? 1.0 - sqrt_argument / 2.0 : (-1 + std::sqrt(1 + 2 * _two_valence_delta * rho)) / (_two_valence_delta * rho);
+}
+
+void SimpleWertheim::der_bulk_free_energy(number *rho, number *rho_der, int grid_size) {
+	simple_wertheim_der_bulk_free_energy(rho, rho_der, grid_size, _B2, _valence, _two_valence_delta);
 }
 
 } /* namespace ch */

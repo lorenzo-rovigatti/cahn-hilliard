@@ -40,8 +40,8 @@ public:
 	double cell_laplacian(std::vector<std::vector<double>> &field, int species, int idx);
 
 	void evolve();
-	double total_mass();
 
+	double total_mass();
 	void print_species_density(int species, const std::string &filename);
 	void print_species_density(int species, std::ofstream &output);
 	void print_total_density(const std::string &filename);
@@ -49,6 +49,16 @@ public:
 	GET_NAME(Simulation manager)
 
 private:
+	bool _use_CUDA;
+	bool _output_ready = false;
+	int _d_vec_size;
+	std::vector<number> _h_rho;
+	number *_d_rho = nullptr;
+	number *_d_rho_der = nullptr;
+
+	void _init_CUDA(toml::table &config);
+	void _CPU_GPU();
+	void _GPU_CPU();
 };
 
 } /* namespace ch */

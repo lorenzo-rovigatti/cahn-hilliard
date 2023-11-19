@@ -23,8 +23,9 @@ public:
 		return 1;
 	}
 
-	double bulk_free_energy(std::vector<double> &) override;
+	void der_bulk_free_energy(number *rho, number *rho_der, int grid_size) override;
 	double der_bulk_free_energy(int species, std::vector<double> &) override;
+	double bulk_free_energy(std::vector<double> &) override;
 
 	GET_NAME(Simple Wertheim free energy model)
 

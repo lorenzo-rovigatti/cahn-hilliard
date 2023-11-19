@@ -39,20 +39,20 @@ IF(CUDA)
 	SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -use_fast_math --compiler-options "-ffast-math -O3" -Xcudafe "--diag_suppress=unrecognized_gcc_pragma")
 
 	LIST(APPEND common_files
-		
+		models/CUDA/SimpleWertheim.cu
 	)
 
 	cuda_add_library(ch_common ${common_files})
-	cuda_add_executable(ch_1D main.cpp ${source_files})
-	cuda_add_executable(ch_2D main.cpp ${source_files})
+	cuda_add_executable(ch_1D main.cpp)
+	cuda_add_executable(ch_2D main.cpp)
 
 	set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 else()
 	add_definitions(-DNOCUDA)
 
 	add_library(ch_common ${common_files})
-	add_executable(ch_1D main.cpp ${source_files})
-	add_executable(ch_2D main.cpp ${source_files})
+	add_executable(ch_1D main.cpp)
+	add_executable(ch_2D main.cpp)
 endif(CUDA)
 	
 target_link_libraries(ch_1D ch_common spdlog::spdlog)

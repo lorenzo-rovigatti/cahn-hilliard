@@ -16,4 +16,6 @@
 
 #include <iostream>
 
+#include "defs_CUDA.h"
+
 #endif /* SRC_DEFS_H_ */
