@@ -21,6 +21,8 @@ public:
 	Landau(Landau &&other) = default;
 
 	int N_species() override;
+
+	void der_bulk_free_energy(double *psi, float *psi_der, int grid_size) override;
 	double der_bulk_free_energy(int species, std::vector<double> &) override;
 	double bulk_free_energy(std::vector<double> &) override;
 

@@ -40,6 +40,7 @@ IF(CUDA)
 
 	LIST(APPEND common_files
 		CUDA/CahnHilliard.cu
+		CUDA/models/Landau.cu
 		CUDA/models/SimpleWertheim.cu
 	)
 

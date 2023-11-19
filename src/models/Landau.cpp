@@ -5,7 +5,9 @@
  *      Author: lorenzo
  */
 
-#include "../models/Landau.h"
+#include "Landau.h"
+
+#include "../CUDA/models/Landau.cuh"
 
 namespace ch {
 
@@ -33,6 +35,10 @@ double Landau::der_bulk_free_energy(int species, std::vector<double> &rhos) {
 double Landau::bulk_free_energy(std::vector<double> &rhos) {
 	double op = rhos[0];
 	return -0.5 * _epsilon * SQR(op) + 0.25 * SQR(SQR(op));
+}
+
+void Landau::der_bulk_free_energy(double *psi, float *psi_der, int grid_size) {
+	landau_der_bulk_free_energy(psi, psi_der, grid_size, _epsilon);
 }
 
 } /* namespace ch */
