@@ -88,7 +88,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		double initial_A = _config_optional_value<double>(config, "initial_A", 1e-2);
 		int initial_N_peaks = _config_optional_value<int>(config, "initial_N_peaks", 0);
 		double initial_k = 2 * M_PI * initial_N_peaks / (double) N; // wave vector of the modulation
-		for(int bin = 0; bin < N; bin++) {
+		for(int bin = 0; bin < size; bin++) {
 			auto &species_rho = rho[bin];
 			double modulation = initial_A * std::cos(initial_k * bin);
 			for(int i = 0; i < species_rho.size(); i++) {
@@ -175,7 +175,7 @@ double CahnHilliard<2>::cell_laplacian(std::vector<std::vector<double>> &field, 
 template<int dims>
 void CahnHilliard<dims>::evolve() {
 	if(_use_CUDA) {
-		model->der_bulk_free_energy(_d_rho, _d_rho_der, rho.size());
+		model->der_bulk_free_energy(_d_rho, _d_rho_der, _h_rho.size());
 		add_surface_term<dims>(_d_rho, _d_rho_der, dx, k_laplacian);
 		integrate<dims>(_d_rho, _d_rho_der, dx, dt, M);
 
@@ -276,13 +276,13 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 	_use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
 	if(!_use_CUDA) return;
 
-	_d_vec_size = rho.size() * model->N_species() * sizeof(number);
+	_d_vec_size = rho.size() * model->N_species() * sizeof(double);
 
 	info("Initialising CUDA arrays of size {} bytes", _d_vec_size);
 
 	_h_rho.resize(rho.size() * model->N_species());
 	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho, _d_vec_size));
-	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_der, _d_vec_size));
+	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_der, _d_vec_size / 2)); // float instead of double
 
 	init_symbols(N, size, model->N_species());
 

@@ -25,7 +25,7 @@ public:
 	}
 
 	virtual int N_species() = 0;
-	virtual void der_bulk_free_energy(number *rho, number *rho_der, int grid_size) {
+	virtual void der_bulk_free_energy(double *rho, float *rho_der, int grid_size) {
 		critical("this model does not support CUDA simulations");
 	}
 	virtual double der_bulk_free_energy(int species, std::vector<double> &) = 0;

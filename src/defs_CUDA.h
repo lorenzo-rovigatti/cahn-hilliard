@@ -52,6 +52,4 @@
 		CUDA_SAFE_CALL(cudaMemcpyToSymbol((dest), &tmp, sizeof(float)));\
 		}
 
-using number = float;
-
 #endif /* SRC_DEFS_CUDA_H_ */

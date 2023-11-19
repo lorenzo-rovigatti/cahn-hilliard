@@ -23,7 +23,7 @@ public:
 		return 1;
 	}
 
-	void der_bulk_free_energy(number *rho, number *rho_der, int grid_size) override;
+	void der_bulk_free_energy(double *rho, float *rho_der, int grid_size) override;
 	double der_bulk_free_energy(int species, std::vector<double> &) override;
 	double bulk_free_energy(std::vector<double> &) override;
 

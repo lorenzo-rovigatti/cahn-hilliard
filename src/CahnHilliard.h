@@ -52,9 +52,9 @@ private:
 	bool _use_CUDA;
 	bool _output_ready = false;
 	int _d_vec_size;
-	std::vector<number> _h_rho;
-	number *_d_rho = nullptr;
-	number *_d_rho_der = nullptr;
+	std::vector<double> _h_rho;
+	double *_d_rho = nullptr;
+	float *_d_rho_der = nullptr;
 
 	void _init_CUDA(toml::table &config);
 	void _CPU_GPU();
