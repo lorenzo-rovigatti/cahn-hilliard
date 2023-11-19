@@ -9,7 +9,9 @@
 
 #include "../utils/Delta.h"
 
+#ifndef NOCUDA
 #include "../CUDA/models/SimpleWertheim.cuh"
+#endif
 
 #include <iostream>
 
@@ -56,7 +58,9 @@ double SimpleWertheim::_X(double rho) {
 }
 
 void SimpleWertheim::der_bulk_free_energy(double *rho, float *rho_der, int grid_size) {
+#ifndef NOCUDA
 	simple_wertheim_der_bulk_free_energy(rho, rho_der, grid_size, _B2, _valence, _two_valence_delta);
+#endif
 }
 
 } /* namespace ch */
