@@ -9,7 +9,7 @@
 
 #include "../utils/Delta.h"
 
-#include "CUDA/SimpleWertheim.cuh"
+#include "../CUDA/models/SimpleWertheim.cuh"
 
 #include <iostream>
 

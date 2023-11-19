@@ -7,6 +7,8 @@
 
 #include "CahnHilliard.h"
 
+#include "CUDA/CahnHilliard.cuh"
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -174,6 +176,9 @@ template<int dims>
 void CahnHilliard<dims>::evolve() {
 	if(_use_CUDA) {
 		model->der_bulk_free_energy(_d_rho, _d_rho_der, rho.size());
+		add_surface_term<dims>(_d_rho, _d_rho_der, dx, k_laplacian);
+		integrate<dims>(_d_rho, _d_rho_der, dx, dt, M);
+
 		_output_ready = false;
 	}
 	else {
@@ -278,6 +283,8 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 	_h_rho.resize(rho.size() * model->N_species());
 	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho, _d_vec_size));
 	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_der, _d_vec_size));
+
+	init_symbols(N, size, model->N_species());
 
 	_CPU_GPU();
 }

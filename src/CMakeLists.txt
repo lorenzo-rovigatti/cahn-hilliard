@@ -39,7 +39,8 @@ IF(CUDA)
 	SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -use_fast_math --compiler-options "-ffast-math -O3" -Xcudafe "--diag_suppress=unrecognized_gcc_pragma")
 
 	LIST(APPEND common_files
-		models/CUDA/SimpleWertheim.cu
+		CUDA/CahnHilliard.cu
+		CUDA/models/SimpleWertheim.cu
 	)
 
 	cuda_add_library(ch_common ${common_files})

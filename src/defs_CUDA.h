@@ -10,6 +10,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <stdio.h>
 
 /// CUDA_SAFE_CALL replacement for backwards compatibility (CUDA < 5.0)
 #define CUDA_SAFE_CALL(call)                                  \
