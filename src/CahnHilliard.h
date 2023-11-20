@@ -52,8 +52,8 @@ private:
 	bool _use_CUDA;
 	bool _output_ready = false;
 	int _d_vec_size;
-	std::vector<double> _h_rho;
-	double *_d_rho = nullptr;
+	std::vector<field_type> _h_rho;
+	field_type *_d_rho = nullptr;
 	float *_d_rho_der = nullptr;
 
 	void _init_CUDA(toml::table &config);

@@ -35,7 +35,7 @@ __device__ float _cell_laplacian(number *field, int idx, float dx) {
         int idx_m = (rel_idx - 1 + c_N[0]) & N_minus_one;
         int idx_p = (rel_idx + 1) & N_minus_one;
 
-        return (field[base_idx + idx_m] + field[base_idx + idx_p] - 2.f * field[idx]) / (dx * dx);
+        return ((float) field[base_idx + idx_m] + (float) field[base_idx + idx_p] - 2.f * (float) field[idx]) / (dx * dx);
     }
     else if(dims == 2) {
         int base_idx = idx / c_size[0];
@@ -66,24 +66,24 @@ __device__ float _cell_laplacian(number *field, int idx, float dx) {
         };
 
         return (
-                field[base_idx + _cell_idx<2>(coords_xmy)] +
-                field[base_idx + _cell_idx<2>(coords_xpy)] +
-                field[base_idx + _cell_idx<2>(coords_xym)] +
-                field[base_idx + _cell_idx<2>(coords_xyp)] -
-                4 * field[idx])
+                (float) field[base_idx + _cell_idx<2>(coords_xmy)] +
+                (float) field[base_idx + _cell_idx<2>(coords_xpy)] +
+                (float) field[base_idx + _cell_idx<2>(coords_xym)] +
+                (float) field[base_idx + _cell_idx<2>(coords_xyp)] -
+                4.f * (float) field[idx])
                 / (dx * dx);
     }
 }
 
 template<int dims> 
-__global__ void _add_surface_term(double *rho, float *rho_der, float dx, float k_laplacian) {
+__global__ void _add_surface_term(field_type *rho, float *rho_der, float dx, float k_laplacian) {
     if(IND >= c_grid_size[0]) return;
     
     rho_der[IND] -= 2.f * k_laplacian * _cell_laplacian<dims>(rho, IND, dx);
 }
 
 template<int dims> 
-__global__ void _integrate(double *rho, float *rho_der, float dx, float dt, float M) {
+__global__ void _integrate(field_type *rho, float *rho_der, float dx, float dt, float M) {
     if(IND >= c_grid_size[0]) return;
 
     rho[IND] += M * _cell_laplacian<dims>(rho_der, IND, dx) * dt;
@@ -103,21 +103,21 @@ void init_symbols(int N, int size, int N_species) {
 }
 
 template<int dims> 
-void add_surface_term<dims>(double *rho, float *rho_der, float dx, float k_laplacian) {
+void add_surface_term<dims>(field_type *rho, float *rho_der, float dx, float k_laplacian) {
     const int blocks = grid_size / BLOCK_SIZE + 1;
     _add_surface_term<dims><<<blocks, BLOCK_SIZE>>>(rho, rho_der, dx, k_laplacian);
 }
 
 template<int dims> 
-void integrate<dims>(double *rho, float *rho_der, float dx, float dt, float M) {
+void integrate<dims>(field_type *rho, float *rho_der, float dx, float dt, float M) {
     const int blocks = grid_size / BLOCK_SIZE + 1;
     _integrate<dims><<<blocks, BLOCK_SIZE>>>(rho, rho_der, dx, dt, M);
 }
 
-template void add_surface_term<1>(double *rho, float *rho_der, float dx, float k_laplacian);
-template void add_surface_term<2>(double *rho, float *rho_der, float dx, float k_laplacian);
+template void add_surface_term<1>(field_type *rho, float *rho_der, float dx, float k_laplacian);
+template void add_surface_term<2>(field_type *rho, float *rho_der, float dx, float k_laplacian);
 
-template void integrate<1>(double *rho, float *rho_der, float dx, float dt, float M);
-template void integrate<2>(double *rho, float *rho_der, float dx, float dt, float M);
+template void integrate<1>(field_type *rho, float *rho_der, float dx, float dt, float M);
+template void integrate<2>(field_type *rho, float *rho_der, float dx, float dt, float M);
 
 }

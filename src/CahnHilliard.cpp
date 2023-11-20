@@ -27,7 +27,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	M = _config_optional_value<double>(config, "M", 1.0);
 	dx = _config_optional_value<double>(config, "dx", 1.0);
 
-	info("Running a simulation with N = {}, dt = {}, H = {}, M = {}", N, dt, dx, M);
+	info("Running a simulation with N = {}, dt = {}, dx = {}, M = {}", N, dt, dx, M);
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -281,13 +281,14 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 	_use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
 	if(!_use_CUDA) return;
 
-	_d_vec_size = rho.size() * model->N_species() * sizeof(double);
+	_d_vec_size = rho.size() * model->N_species() * sizeof(field_type);
+	int d_der_vec_size = rho.size() * model->N_species() * sizeof(float);
 
 	info("Initialising CUDA arrays of size {} bytes", _d_vec_size);
 
 	_h_rho.resize(rho.size() * model->N_species());
 	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho, _d_vec_size));
-	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_der, _d_vec_size / 2)); // float instead of double
+	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_der, d_der_vec_size)); // float instead of double
 
 	init_symbols(N, size, model->N_species());
 

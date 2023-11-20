@@ -57,7 +57,7 @@ double SimpleWertheim::_X(double rho) {
 	return (sqrt_argument < 1e-3) ? 1.0 - sqrt_argument / 2.0 : (-1 + std::sqrt(1 + 2 * _two_valence_delta * rho)) / (_two_valence_delta * rho);
 }
 
-void SimpleWertheim::der_bulk_free_energy(double *rho, float *rho_der, int grid_size) {
+void SimpleWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) {
 #ifndef NOCUDA
 	simple_wertheim_der_bulk_free_energy(rho, rho_der, grid_size, _B2, _valence, _two_valence_delta);
 #endif

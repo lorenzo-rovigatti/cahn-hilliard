@@ -7,7 +7,7 @@ __device__ float _CUDA_X(float rho, float B2, float two_valence_delta) {
 	return (sqrt_argument < 1e-3f) ? 1.f - sqrt_argument / 2.f : (-1.f + sqrtf(1.f + 2.f * two_valence_delta * rho)) / (two_valence_delta * rho);
 }
 
-__global__ void _compute_der_bulk_free_energy(double *rho, float *rho_der, int grid_size, float B2, int valence, float two_valence_delta) {
+__global__ void _compute_der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size, float B2, int valence, float two_valence_delta) {
 	if(IND >= grid_size) return;
 
     float rho_ind = rho[IND];
@@ -20,7 +20,7 @@ __global__ void _compute_der_bulk_free_energy(double *rho, float *rho_der, int g
 
 namespace ch {
 
-    void simple_wertheim_der_bulk_free_energy(double *rho, float *rho_der, int grid_size, float B2, int valence, float two_valence_delta) {
+    void simple_wertheim_der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size, float B2, int valence, float two_valence_delta) {
         const int blocks = grid_size / BLOCK_SIZE + 1;
         _compute_der_bulk_free_energy<<<blocks, BLOCK_SIZE>>>(rho, rho_der, grid_size, B2, valence, two_valence_delta);
     }

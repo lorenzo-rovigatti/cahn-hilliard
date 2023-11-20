@@ -12,8 +12,8 @@
 
 namespace ch {
     void init_symbols(int N, int size, int N_species);
-    template<int dims> void add_surface_term(double *rho, float *rho_der, float dx, float k_laplacian);
-    template<int dims> void integrate(double *rho, float *rho_der, float dx, float dt, float M);
+    template<int dims> void add_surface_term(field_type *rho, float *rho_der, float dx, float k_laplacian);
+    template<int dims> void integrate(field_type *rho, float *rho_der, float dx, float dt, float M);
 }
 
 #endif /* SRC_CUDA_CAHNHILLIARD_CUH_ */
