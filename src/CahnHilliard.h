@@ -49,12 +49,15 @@ public:
 	GET_NAME(Simulation manager)
 
 private:
+	double _user_to_internal, _internal_to_user;
 	bool _use_CUDA;
 	bool _output_ready = false;
 	int _d_vec_size;
 	std::vector<field_type> _h_rho;
 	field_type *_d_rho = nullptr;
 	float *_d_rho_der = nullptr;
+
+	double _density_to_user(double v);
 
 	void _init_CUDA(toml::table &config);
 	void _CPU_GPU();

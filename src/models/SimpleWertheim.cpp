@@ -29,6 +29,9 @@ SimpleWertheim::SimpleWertheim(toml::table &config) :
 	_two_valence_delta = 2 * _valence * _delta;
 
 	info("valence = {}, delta = {}", _valence, _delta);
+
+	_B2 *= CUB(_user_to_internal);
+	_delta *= CUB(_user_to_internal);
 }
 
 SimpleWertheim::~SimpleWertheim() {

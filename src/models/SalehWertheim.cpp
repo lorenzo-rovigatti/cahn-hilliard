@@ -27,6 +27,10 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 
 	info("valences = ({}), B2 = {}, delta_AA = {}, delta_BB = {}", fmt::join(_valence, ", "), _B2, _delta_AA, _delta_BB);
 
+	_B2 *= CUB(_user_to_internal);
+	_delta_AA *= CUB(_user_to_internal);
+	_delta_BB *= CUB(_user_to_internal);
+
 #ifndef NOCUDA
 	if(_config_optional_value<bool>(config, "use_CUDA", false)) {
 		init_saleh_symbols(_valence, _linker_half_valence, _delta_AA, _delta_BB);

@@ -26,8 +26,10 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	dt = _config_value<double>(config, "dt");
 	M = _config_optional_value<double>(config, "M", 1.0);
 	dx = _config_optional_value<double>(config, "dx", 1.0);
+	_internal_to_user = _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
+	_user_to_internal = 1.0 / _internal_to_user;
 
-	info("Running a simulation with N = {}, dt = {}, dx = {}, M = {}", N, dt, dx, M);
+	info("Running a simulation with N = {}, dt = {}, dx = {}, M = {}, scaling factor = {}", N, dt, dx, M, _internal_to_user);
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -97,6 +99,15 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 				double average_rho = densities[i];
 				species_rho[i] = average_rho * (1.0 + modulation * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2));
 			}
+		}
+	}
+
+	dx *= _user_to_internal; // proportional to m
+	M /= _user_to_internal; // proportional to m^-1
+	k_laplacian *= SQR(SQR(_user_to_internal)) * _user_to_internal; // proportional to m^5
+	for(unsigned int idx = 0; idx < rho.size(); idx++) {
+		for(int species = 0; species < model->N_species(); species++) {
+			rho[idx][species] /= CUB(_user_to_internal); // proportional to m^-3
 		}
 	}
 
@@ -211,12 +222,17 @@ template<int dims>
 double CahnHilliard<dims>::total_mass() {
 	if(!_output_ready) _GPU_CPU();
 
+	double V_bin = 1;
+	for(int d = 0; d < dims; d++) {
+		V_bin *= dx;
+	}
+
 	double mass = 0.;
 	for(unsigned int i = 0; i < rho.size(); i++) {
 		mass += std::accumulate(rho[i].begin(), rho[i].end(), 0.);
 	}
 
-	return mass;
+	return mass * V_bin;
 }
 
 template<int dims>
@@ -233,7 +249,7 @@ void CahnHilliard<1>::print_species_density(int species, std::ofstream &output) 
 	if(!_output_ready) _GPU_CPU();
 
 	for(int idx = 0; idx < size; idx++) {
-		output << rho[idx][species] << " " << std::endl;
+		output << _density_to_user(rho[idx][species]) << " " << std::endl;
 	}
 	output << std::endl;
 }
@@ -252,7 +268,7 @@ void CahnHilliard<dims>::print_species_density(int species, std::ofstream &outpu
 				modulo <<= bits;
 			}
 		}
-		output << rho[idx][species] << " ";
+		output << _density_to_user(rho[idx][species]) << " ";
 	}
 	output << std::endl;
 }
@@ -273,10 +289,16 @@ void CahnHilliard<dims>::print_total_density(const std::string &filename) {
 				modulo <<= bits;
 			}
 		}
-		output << std::accumulate(rho[idx].begin(), rho[idx].end(), 0.) << std::endl;
+		output << _density_to_user(std::accumulate(rho[idx].begin(), rho[idx].end(), 0.)) << std::endl;
 	}
 
 	output.close();
+}
+
+
+template<int dims>
+double CahnHilliard<dims>::_density_to_user(double v) {
+	return v / (_internal_to_user * _internal_to_user * _internal_to_user);
 }
 
 template<int dims>
