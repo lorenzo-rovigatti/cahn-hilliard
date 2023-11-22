@@ -52,6 +52,6 @@
 		CUDA_SAFE_CALL(cudaMemcpyToSymbol((dest), &tmp, sizeof(float)));\
 		}
 
-using field_type = float;
+using field_type = double;
 
 #endif /* SRC_DEFS_CUDA_H_ */

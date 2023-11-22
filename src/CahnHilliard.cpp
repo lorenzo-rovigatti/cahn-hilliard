@@ -88,6 +88,8 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		double initial_A = _config_optional_value<double>(config, "initial_A", 1e-2);
 		int initial_N_peaks = _config_optional_value<int>(config, "initial_N_peaks", 0);
 		double initial_k = 2 * M_PI * initial_N_peaks / (double) N; // wave vector of the modulation
+		int seed = _config_optional_value<int>(config, "seed", time(NULL));
+		srand48(seed);
 		for(int bin = 0; bin < size; bin++) {
 			auto &species_rho = rho[bin];
 			double modulation = initial_A * std::cos(initial_k * bin);
@@ -190,6 +192,7 @@ void CahnHilliard<dims>::evolve() {
 		// we first evaluate the time derivative for all the fields
 		for(unsigned int idx = 0; idx < rho.size(); idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
+				// if(species == 1 && idx == 0) printf("0 %lf\n", model->der_bulk_free_energy(species, rho[idx]));
 				rho_der[idx][species] = model->der_bulk_free_energy(species, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
 			}
 		}
@@ -197,6 +200,7 @@ void CahnHilliard<dims>::evolve() {
 		// and then we integrate them
 		for(unsigned int idx = 0; idx < rho.size(); idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
+				// if(species == 1 && idx == 0) printf("0 %e %lf\n", cell_laplacian(rho_der, species, idx), rho_der[idx][species]);
 				rho[idx][species] += M * cell_laplacian(rho_der, species, idx) * dt;
 			}
 		}
@@ -284,7 +288,7 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 	_d_vec_size = rho.size() * model->N_species() * sizeof(field_type);
 	int d_der_vec_size = rho.size() * model->N_species() * sizeof(float);
 
-	info("Initialising CUDA arrays of size {} bytes", _d_vec_size);
+	info("Initialising CUDA arrays of size {} ({} bytes)", rho.size() * model->N_species(), _d_vec_size);
 
 	_h_rho.resize(rho.size() * model->N_species());
 	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho, _d_vec_size));

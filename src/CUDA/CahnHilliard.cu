@@ -27,21 +27,20 @@ __device__ int _cell_idx(int coords[dims]) {
 
 template<int dims, typename number> 
 __device__ float _cell_laplacian(number *field, int idx, float dx) {
+    int base_idx = (idx / c_size[0]) * c_size[0];
+    int rel_idx = idx % c_size[0];
+    int N_minus_one = c_N[0] - 1;
+
     if(dims == 1) {
-        int base_idx = idx / c_size[0];
-        int rel_idx = idx % c_size[0];
-        int N_minus_one = c_N[0] - 1;
+        int rel_idx_m = (rel_idx - 1 + c_N[0]) & N_minus_one;
+        int rel_idx_p = (rel_idx + 1) & N_minus_one;
 
-        int idx_m = (rel_idx - 1 + c_N[0]) & N_minus_one;
-        int idx_p = (rel_idx + 1) & N_minus_one;
+        // if(idx / c_size[0] == 1 && rel_idx == 0) printf("%d %d %d %d %e %lf\n", base_idx, rel_idx, rel_idx_m, rel_idx_p, 
+        //     ((float) field[base_idx + rel_idx_m] + (float) field[base_idx + rel_idx_p] - 2.f * (float) field[idx]) / (dx * dx), field[idx]);
 
-        return ((float) field[base_idx + idx_m] + (float) field[base_idx + idx_p] - 2.f * (float) field[idx]) / (dx * dx);
+        return ((float) field[base_idx + rel_idx_m] + (float) field[base_idx + rel_idx_p] - 2.f * (float) field[idx]) / (dx * dx);
     }
     else if(dims == 2) {
-        int base_idx = idx / c_size[0];
-        int rel_idx = idx % c_size[0];
-        int N_minus_one = c_N[0] - 1;
-
         int coords_xy[2];
         _fill_coords<2>(coords_xy, rel_idx);
 
@@ -86,7 +85,7 @@ template<int dims>
 __global__ void _integrate(field_type *rho, float *rho_der, float dx, float dt, float M) {
     if(IND >= c_grid_size[0]) return;
 
-    rho[IND] += M * _cell_laplacian<dims>(rho_der, IND, dx) * dt;
+    rho[IND] += M * (field_type) _cell_laplacian<dims>(rho_der, IND, dx) * (field_type) dt;
 }
 
 namespace ch {
