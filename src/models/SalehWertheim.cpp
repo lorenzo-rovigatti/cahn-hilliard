@@ -8,6 +8,10 @@
 #include "SalehWertheim.h"
 #include "../utils/Delta.h"
 
+#ifndef NOCUDA
+#include "../CUDA/models/SalehWertheim.cuh"
+#endif
+
 #include <numeric>
 
 namespace ch {
@@ -22,6 +26,16 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 	_linker_half_valence = _valence[2] / 2;
 
 	info("valences = ({}), B2 = {}, delta_AA = {}, delta_BB = {}", fmt::join(_valence, ", "), _B2, _delta_AA, _delta_BB);
+
+	_B2 *= CUB(_user_to_internal);
+	_delta_AA *= CUB(_user_to_internal);
+	_delta_BB *= CUB(_user_to_internal);
+
+#ifndef NOCUDA
+	if(_config_optional_value<bool>(config, "use_CUDA", false)) {
+		init_saleh_symbols(_valence, _linker_half_valence, _delta_AA, _delta_BB);
+	}
+#endif
 }
 
 SalehWertheim::~SalehWertheim() {
@@ -79,6 +93,12 @@ double SalehWertheim::der_bulk_free_energy(int species, std::vector<double> &rho
 	rhos[species] = rho_i;
 
 	return der_f_ref + (fe_rdr - fe_r) / delta_rho_i;
+}
+
+void SalehWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) {
+#ifndef NOCUDA
+	saleh_wertheim_der_bulk_free_energy(rho, rho_der, grid_size, _B2);
+#endif
 }
 
 } /* namespace ch */

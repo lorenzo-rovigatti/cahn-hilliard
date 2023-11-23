@@ -7,6 +7,8 @@
 
 #include "CahnHilliard.h"
 
+#include "CUDA/CahnHilliard.cuh"
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -24,8 +26,10 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	dt = _config_value<double>(config, "dt");
 	M = _config_optional_value<double>(config, "M", 1.0);
 	dx = _config_optional_value<double>(config, "dx", 1.0);
+	_internal_to_user = _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
+	_user_to_internal = 1.0 / _internal_to_user;
 
-	info("Running a simulation with N = {}, dt = {}, H = {}, M = {}", N, dt, dx, M);
+	info("Running a simulation with N = {}, dt = {}, dx = {}, M = {}, scaling factor = {}", N, dt, dx, M, _internal_to_user);
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -86,7 +90,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		double initial_A = _config_optional_value<double>(config, "initial_A", 1e-2);
 		int initial_N_peaks = _config_optional_value<int>(config, "initial_N_peaks", 0);
 		double initial_k = 2 * M_PI * initial_N_peaks / (double) N; // wave vector of the modulation
-		for(int bin = 0; bin < N; bin++) {
+		int seed = _config_optional_value<int>(config, "seed", time(NULL));
+		srand48(seed);
+		for(int bin = 0; bin < size; bin++) {
 			auto &species_rho = rho[bin];
 			double modulation = initial_A * std::cos(initial_k * bin);
 			for(int i = 0; i < species_rho.size(); i++) {
@@ -95,11 +101,29 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 			}
 		}
 	}
+
+	dx *= _user_to_internal; // proportional to m
+	M /= _user_to_internal; // proportional to m^-1
+	k_laplacian *= SQR(SQR(_user_to_internal)) * _user_to_internal; // proportional to m^5
+	for(unsigned int idx = 0; idx < rho.size(); idx++) {
+		for(int species = 0; species < model->N_species(); species++) {
+			rho[idx][species] /= CUB(_user_to_internal); // proportional to m^-3
+		}
+	}
+
+	_init_CUDA(config);
 }
 
 template<int dims>
 CahnHilliard<dims>::~CahnHilliard() {
-
+#ifndef NOCUDA
+	if(_d_rho != nullptr) {
+		CUDA_SAFE_CALL(cudaFree(_d_rho));
+	}
+	if(_d_rho_der != nullptr) {
+		CUDA_SAFE_CALL(cudaFree(_d_rho_der));
+	}
+#endif
 }
 
 template<int dims>
@@ -165,34 +189,56 @@ double CahnHilliard<2>::cell_laplacian(std::vector<std::vector<double>> &field, 
 
 template<int dims>
 void CahnHilliard<dims>::evolve() {
-	static std::vector<std::vector<double>> rho_der(rho.size(), std::vector<double>(model->N_species()));
-	// we first evaluate the time derivative for all the fields
-	for(unsigned int idx = 0; idx < rho.size(); idx++) {
-		for(int species = 0; species < model->N_species(); species++) {
-			rho_der[idx][species] = model->der_bulk_free_energy(species, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
-		}
-	}
+	if(_use_CUDA) {
+#ifndef NOCUDA
+		model->der_bulk_free_energy(_d_rho, _d_rho_der, _h_rho.size());
+		add_surface_term<dims>(_d_rho, _d_rho_der, dx, k_laplacian);
+		integrate<dims>(_d_rho, _d_rho_der, dx, dt, M);
 
-	// and then we integrate them
-	for(unsigned int idx = 0; idx < rho.size(); idx++) {
-		for(int species = 0; species < model->N_species(); species++) {
-			rho[idx][species] += M * cell_laplacian(rho_der, species, idx) * dt;
+		_output_ready = false;
+#endif
+	}
+	else {
+		static std::vector<std::vector<double>> rho_der(rho.size(), std::vector<double>(model->N_species()));
+		// we first evaluate the time derivative for all the fields
+		for(unsigned int idx = 0; idx < rho.size(); idx++) {
+			for(int species = 0; species < model->N_species(); species++) {
+				// if(species == 1 && idx == 0) printf("0 %lf\n", model->der_bulk_free_energy(species, rho[idx]));
+				rho_der[idx][species] = model->der_bulk_free_energy(species, rho[idx]) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
+			}
+		}
+
+		// and then we integrate them
+		for(unsigned int idx = 0; idx < rho.size(); idx++) {
+			for(int species = 0; species < model->N_species(); species++) {
+				// if(species == 1 && idx == 0) printf("0 %e %lf\n", cell_laplacian(rho_der, species, idx), rho_der[idx][species]);
+				rho[idx][species] += M * cell_laplacian(rho_der, species, idx) * dt;
+			}
 		}
 	}
 }
 
 template<int dims>
 double CahnHilliard<dims>::total_mass() {
+	if(!_output_ready) _GPU_CPU();
+
+	double V_bin = 1;
+	for(int d = 0; d < dims; d++) {
+		V_bin *= dx;
+	}
+
 	double mass = 0.;
 	for(unsigned int i = 0; i < rho.size(); i++) {
 		mass += std::accumulate(rho[i].begin(), rho[i].end(), 0.);
 	}
 
-	return mass;
+	return mass * V_bin;
 }
 
 template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, const std::string &filename) {
+	if(!_output_ready) _GPU_CPU();
+
 	std::ofstream output(filename);
 	print_species_density(species, output);
 	output.close();
@@ -200,14 +246,18 @@ void CahnHilliard<dims>::print_species_density(int species, const std::string &f
 
 template<>
 void CahnHilliard<1>::print_species_density(int species, std::ofstream &output) {
+	if(!_output_ready) _GPU_CPU();
+
 	for(int idx = 0; idx < size; idx++) {
-		output << rho[idx][species] << " " << std::endl;
+		output << _density_to_user(rho[idx][species]) << " " << std::endl;
 	}
 	output << std::endl;
 }
 
 template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output) {
+	if(!_output_ready) _GPU_CPU();
+
 	for(int idx = 0; idx < size; idx++) {
 		if(idx > 0) {
 			int modulo = N;
@@ -218,13 +268,15 @@ void CahnHilliard<dims>::print_species_density(int species, std::ofstream &outpu
 				modulo <<= bits;
 			}
 		}
-		output << rho[idx][species] << " ";
+		output << _density_to_user(rho[idx][species]) << " ";
 	}
 	output << std::endl;
 }
 
 template<int dims>
 void CahnHilliard<dims>::print_total_density(const std::string &filename) {
+	if(!_output_ready) _GPU_CPU();
+
 	std::ofstream output(filename.c_str());
 
 	for(int idx = 0; idx < size; idx++) {
@@ -237,10 +289,69 @@ void CahnHilliard<dims>::print_total_density(const std::string &filename) {
 				modulo <<= bits;
 			}
 		}
-		output << std::accumulate(rho[idx].begin(), rho[idx].end(), 0.) << std::endl;
+		output << _density_to_user(std::accumulate(rho[idx].begin(), rho[idx].end(), 0.)) << std::endl;
 	}
 
 	output.close();
+}
+
+
+template<int dims>
+double CahnHilliard<dims>::_density_to_user(double v) {
+	return v / (_internal_to_user * _internal_to_user * _internal_to_user);
+}
+
+template<int dims>
+void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
+#ifndef NOCUDA
+	_use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
+	if(!_use_CUDA) return;
+
+	_d_vec_size = rho.size() * model->N_species() * sizeof(field_type);
+	int d_der_vec_size = rho.size() * model->N_species() * sizeof(float);
+
+	info("Initialising CUDA arrays of size {} ({} bytes)", rho.size() * model->N_species(), _d_vec_size);
+
+	_h_rho.resize(rho.size() * model->N_species());
+	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho, _d_vec_size));
+	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_der, d_der_vec_size)); // float instead of double
+
+	init_symbols(N, size, model->N_species());
+
+	_CPU_GPU();
+#endif
+}
+
+template<int dims>
+void CahnHilliard<dims>::_CPU_GPU() {
+#ifndef NOCUDA
+	if(!_use_CUDA) return;
+
+	for(unsigned int idx = 0; idx < rho.size(); idx++) {
+		for(int species = 0; species < model->N_species(); species++) {
+			_h_rho[rho.size() * species + idx] = rho[idx][species];
+		}
+	}
+
+	CUDA_SAFE_CALL(cudaMemcpy(_d_rho, _h_rho.data(), _d_vec_size, cudaMemcpyHostToDevice));
+#endif
+}
+
+template<int dims>
+void CahnHilliard<dims>::_GPU_CPU() {
+#ifndef NOCUDA
+	if(!_use_CUDA) return;
+
+	CUDA_SAFE_CALL(cudaMemcpy(_h_rho.data(), _d_rho, _d_vec_size, cudaMemcpyDeviceToHost));
+
+	for(unsigned int idx = 0; idx < rho.size(); idx++) {
+		for(int species = 0; species < model->N_species(); species++) {
+			rho[idx][species] = _h_rho[rho.size() * species + idx];
+		}
+	}
+
+	_output_ready = true;
+#endif
 }
 
 template class CahnHilliard<1>;
