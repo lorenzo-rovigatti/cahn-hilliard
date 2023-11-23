@@ -8,6 +8,8 @@
 #ifndef SRC_DEFS_CUDA_H_
 #define SRC_DEFS_CUDA_H_
 
+#ifndef NOCUDA
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <stdio.h>
@@ -51,6 +53,8 @@
 		float tmp = src;\
 		CUDA_SAFE_CALL(cudaMemcpyToSymbol((dest), &tmp, sizeof(float)));\
 		}
+
+#endif
 
 using field_type = double;
 
