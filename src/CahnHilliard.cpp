@@ -146,6 +146,34 @@ int CahnHilliard<dims>::cell_idx(int coords[dims]) {
 }
 
 template<>
+std::array<double, 1> CahnHilliard<1>::gradient(std::vector<std::vector<double>> &field, int species, int idx) {
+	int idx_p = (idx + 1) & N_minus_one;
+
+	return {(field[idx_p][species] - field[idx][species]) / dx};
+}
+
+template<>
+std::array<double, 2> CahnHilliard<2>::gradient(std::vector<std::vector<double>> &field, int species, int idx) {
+	int coords_xy[2];
+	fill_coords(coords_xy, idx);
+
+	int coords_xpy[2] = {
+			(coords_xy[0] + 1) & N_minus_one,
+			coords_xy[1]
+	};
+
+	int coords_xyp[2] = {
+			coords_xy[0],
+			(coords_xy[1] + 1) & N_minus_one
+	};
+
+	return {
+		(field[cell_idx(coords_xpy)][species] - field[idx][species]) / dx,
+		(field[cell_idx(coords_xyp)][species] - field[idx][species]) / dx
+	};
+}
+
+template<>
 double CahnHilliard<1>::cell_laplacian(std::vector<std::vector<double>> &field, int species, int idx) {
 	int idx_m = (idx - 1 + N) & N_minus_one;
 	int idx_p = (idx + 1) & N_minus_one;
@@ -233,6 +261,30 @@ double CahnHilliard<dims>::total_mass() {
 	}
 
 	return mass * V_bin;
+}
+
+template<int dims>
+double CahnHilliard<dims>::total_free_energy() {
+	if(!_output_ready) _GPU_CPU();
+
+	double V_bin = 1;
+	for(int d = 0; d < dims; d++) {
+		V_bin *= dx;
+	}
+
+	double fe = 0.;
+	for(unsigned int i = 0; i < rho.size(); i++) {
+		double interfacial_contrib = 0.;
+		for(int species = 0; species < model->N_species(); species++) {
+			auto rho_grad = gradient(rho, species, i);
+			for(int d = 0; d < dims; d++) {
+				interfacial_contrib += k_laplacian * rho_grad[d] * rho_grad[d];
+			}
+		}
+		fe += model->bulk_free_energy(rho[i]) + interfacial_contrib;
+	}
+
+	return fe * V_bin;
 }
 
 template<int dims>

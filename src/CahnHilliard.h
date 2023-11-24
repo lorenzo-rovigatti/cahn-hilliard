@@ -13,6 +13,7 @@
 
 #include <vector>
 #include <string>
+#include <array>
 
 namespace ch {
 
@@ -37,11 +38,13 @@ public:
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);
 
+	std::array<double, dims> gradient(std::vector<std::vector<double>> &field, int species, int idx);
 	double cell_laplacian(std::vector<std::vector<double>> &field, int species, int idx);
 
 	void evolve();
 
 	double total_mass();
+	double total_free_energy();
 	void print_species_density(int species, const std::string &filename);
 	void print_species_density(int species, std::ofstream &output);
 	void print_total_density(const std::string &filename);

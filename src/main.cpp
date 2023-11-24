@@ -64,7 +64,7 @@ public:
 	void run() {
 		_print_current_state("init_");
 
-		std::ofstream mass_output("mass.dat");
+		std::ofstream mass_output("energy.dat");
 
 		for(long long int t = 0; t < _steps; t++) {
 			if(_print_trajectory_every > 0 && t % _print_trajectory_every == 0) {
@@ -74,9 +74,9 @@ public:
 				}
 			}
 			if(_print_mass_every > 0 && t % _print_mass_every == 0) {
-				std::string mass_line = fmt::format("{:.5} {:.5} {:L}", t * _system->dt, _system->total_mass(), t);
-				mass_output << mass_line << std::endl;
-				std::cout << mass_line << std::endl;
+				std::string output_line = fmt::format("{:.5} {:.5} {:.5} {:L}", t * _system->dt, _system->total_free_energy(), _system->total_mass(), t);
+				mass_output << output_line << std::endl;
+				std::cout << output_line << std::endl;
 			}
 			_system->evolve();
 		}
