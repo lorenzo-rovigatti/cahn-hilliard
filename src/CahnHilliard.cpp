@@ -117,9 +117,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		sqr_wave_vectors.resize(size / 2 + 1);
 		dealiaser.resize(size / 2 + 1);
 
-		// rho_plan = fftw_plan_dft_r2c_1d(size, rho.data(), reinterpret_cast<fftw_complex *>(rho_hat.data()), FFTW_ESTIMATE);
-		// // c2r transforms overwrite the input if FFTW_PRESERVE_INPUT is not specified
-		// rho_inverse_plan = fftw_plan_dft_c2r_1d(size, reinterpret_cast<fftw_complex *>(rho_hat.data()), rho.data(), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+		rho_plan = fftw_plan_dft_r2c_1d(size, rho.data(), reinterpret_cast<fftw_complex *>(rho_hat.data()), FFTW_ESTIMATE);
+		// c2r transforms overwrite the input if FFTW_PRESERVE_INPUT is not specified
+		rho_inverse_plan = fftw_plan_dft_c2r_1d(size, reinterpret_cast<fftw_complex *>(rho_hat.data()), rho.data(), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
 
 		double nyquist_mode = size * M_PI / (N * dx) * 2.0 / 3.0;
 		for(unsigned int i = 0; i < sqr_wave_vectors.size(); i++) {
@@ -136,6 +136,11 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 template<int dims>
 CahnHilliard<dims>::~CahnHilliard() {
+	if(_reciprocal) {
+		fftw_destroy_plan(rho_plan);
+		fftw_destroy_plan(rho_inverse_plan);
+	}
+
 #ifndef NOCUDA
 	if(_d_rho != nullptr) {
 		CUDA_SAFE_CALL(cudaFree(_d_rho));
@@ -278,7 +283,30 @@ void CahnHilliard<dims>::_evolve_direct() {
 
 template<int dims>
 void CahnHilliard<dims>::_evolve_reciprocal() {
-	
+	static std::vector<double> f_der(size);
+	static std::vector<std::complex<double>> f_der_hat(size / 2 + 1);
+	static fftw_plan f_plan = fftw_plan_dft_r2c_1d(size, f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
+
+	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+		for(int species = 0; species < model->N_species(); species++) {
+			f_der[idx] = model->der_bulk_free_energy(species, rho.rho_species(idx));
+		}
+	}
+
+	fftw_execute(f_plan); // transform f_der into f_der_hat
+
+	for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
+		f_der_hat[k_idx] *= dealiaser[k_idx];
+		rho_hat[k_idx] = (rho_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * 2.0 * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+	}
+
+	fftw_execute(rho_inverse_plan);
+
+	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+		for(int species = 0; species < model->N_species(); species++) {
+			rho(idx, species) /= size;
+		}
+	}
 }
 
 template<int dims>
