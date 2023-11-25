@@ -9,11 +9,14 @@
 #define SRC_CAHNHILLIARD_H_
 
 #include "defs.h"
+#include "utils/RhoMatrix.h"
 #include "models/FreeEnergyModel.h"
 
 #include <vector>
 #include <string>
 #include <array>
+#include <complex>
+#include <fftw3.h>
 
 namespace ch {
 
@@ -30,7 +33,7 @@ public:
 	double dx = 0.0;
 	FreeEnergyModel *model = nullptr;
 
-	std::vector<std::vector<double>> rho;
+	RhoMatrix<double> rho;
 
 	CahnHilliard(FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();
@@ -38,8 +41,8 @@ public:
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);
 
-	std::array<double, dims> gradient(std::vector<std::vector<double>> &field, int species, int idx);
-	double cell_laplacian(std::vector<std::vector<double>> &field, int species, int idx);
+	std::array<double, dims> gradient(RhoMatrix<double> &field, int species, int idx);
+	double cell_laplacian(RhoMatrix<double> &field, int species, int idx);
 
 	void evolve();
 
@@ -53,18 +56,27 @@ public:
 
 private:
 	double _user_to_internal, _internal_to_user;
-	bool _use_CUDA;
+	bool _reciprocal = false;
+	bool _use_CUDA = false;
 	bool _output_ready = false;
 	int _d_vec_size;
-	std::vector<field_type> _h_rho;
+	RhoMatrix<field_type> _h_rho;
 	field_type *_d_rho = nullptr;
 	float *_d_rho_der = nullptr;
 
+	void _evolve_direct();
 	double _density_to_user(double v);
 
 	void _init_CUDA(toml::table &config);
 	void _CPU_GPU();
 	void _GPU_CPU();
+
+	// pseudospectral stuff
+	std::vector<std::complex<double>> rho_hat;
+	std::vector<double> sqr_wave_vectors, dealiaser;
+
+	fftw_plan rho_plan, rho_inverse_plan;
+	void _evolve_reciprocal();
 };
 
 } /* namespace ch */

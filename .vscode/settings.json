@@ -70,6 +70,12 @@
         "variant": "cpp",
         "semaphore": "cpp",
         "unordered_set": "cpp",
-        "__nullptr": "cpp"
+        "__nullptr": "cpp",
+        "regex": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "queue": "cpp",
+        "stack": "cpp"
     }
 }

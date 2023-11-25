@@ -4,8 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/extern",
-                "${workspaceFolder}/extern/spdlog/include"
+                "${workspaceFolder}/extern/"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
