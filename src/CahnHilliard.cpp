@@ -7,6 +7,7 @@
 
 #include "CahnHilliard.h"
 
+#include "utils/utility_functions.h"
 #include "CUDA/CahnHilliard.cuh"
 
 #include <iostream>
@@ -321,6 +322,9 @@ double CahnHilliard<dims>::total_mass() {
 	double mass = 0.;
 	for(unsigned int i = 0; i < rho.bins(); i++) {
 		mass += rho.rho_tot(i);
+		if(safe_isnan(mass)) {
+			critical("Encountered a nan while computing the total mass (bin {})", i);
+		}
 	}
 
 	return mass * V_bin;
