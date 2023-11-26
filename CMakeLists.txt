@@ -22,7 +22,7 @@ if(G)
 endif(G)
 
 if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
-	add_definitions(-ffast-math)
+	#add_definitions(-ffast-math)
 	
 	if(NATIVE_COMPILATION)
 		include(CheckCXXCompilerFlag)

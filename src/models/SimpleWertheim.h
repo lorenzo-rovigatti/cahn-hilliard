@@ -38,7 +38,7 @@ private:
 	double _X(double rho);
 
 	inline double _regularised_log(double rho) {
-		return (rho < _regularisation_delta) ? _log_delta + (rho - _regularisation_delta) / _regularisation_delta : std::log(rho);
+		return (rho < _regularisation_delta) ? _log_delta + (rho - _regularisation_delta) / (2.0 * _regularisation_delta) : std::log(rho);
 	}
 };
 

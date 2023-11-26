@@ -106,12 +106,14 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 	dx *= _user_to_internal; // proportional to m
 	M /= _user_to_internal; // proportional to m^-1
-	k_laplacian *= SQR(SQR(_user_to_internal)) * _user_to_internal; // proportional to m^5
+	k_laplacian *= std::pow(_user_to_internal, 5); // proportional to m^5
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
 		for(int species = 0; species < model->N_species(); species++) {
 			rho(idx, species) /= CUB(_user_to_internal); // proportional to m^-3
 		}
 	}
+
+	V_bin = CUB(dx);
 
 	if(_reciprocal) {
 		rho_hat.resize(size / 2 + 1);
@@ -267,7 +269,6 @@ void CahnHilliard<dims>::_evolve_direct() {
 		// we first evaluate the time derivative for all the fields
 		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
-				// if(species == 1 && idx == 0) printf("0 %lf\n", model->der_bulk_free_energy(species, rho[idx]));
 				rho_der(idx, species) = model->der_bulk_free_energy(species, rho.rho_species(idx)) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
 			}
 		}
@@ -275,8 +276,10 @@ void CahnHilliard<dims>::_evolve_direct() {
 		// and then we integrate them
 		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
-				// if(species == 1 && idx == 0) printf("0 %e %lf\n", cell_laplacian(rho_der, species, idx), rho_der[idx][species]);
 				rho(idx, species) += M * cell_laplacian(rho_der, species, idx) * dt;
+				if(std::isinf(rho(idx, species))) {
+					critical("{}, {}", rho_der(idx, species), M * cell_laplacian(rho_der, species, idx));
+				}
 			}
 		}
 	}
@@ -314,11 +317,6 @@ template<int dims>
 double CahnHilliard<dims>::total_mass() {
 	if(!_output_ready) _GPU_CPU();
 
-	double V_bin = 1;
-	for(int d = 0; d < dims; d++) {
-		V_bin *= dx;
-	}
-
 	double mass = 0.;
 	for(unsigned int i = 0; i < rho.bins(); i++) {
 		mass += rho.rho_tot(i);
@@ -333,11 +331,6 @@ double CahnHilliard<dims>::total_mass() {
 template<int dims>
 double CahnHilliard<dims>::total_free_energy() {
 	if(!_output_ready) _GPU_CPU();
-
-	double V_bin = 1;
-	for(int d = 0; d < dims; d++) {
-		V_bin *= dx;
-	}
 
 	double fe = 0.;
 	for(unsigned int i = 0; i < rho.bins(); i++) {

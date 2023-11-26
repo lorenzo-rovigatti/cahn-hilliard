@@ -13,7 +13,7 @@ T2 cpp11_bit_cast(T1 t1) {
 }
 
 // copied from https://codereview.stackexchange.com/a/272170
-bool safe_isnan(double val) noexcept {
+inline bool safe_isnan(double val) noexcept {
     const auto x = cpp11_bit_cast<std::uint64_t>(val);
     return (x & 0x7FFFFFFFFFFFFFFFu) >= 0x7FF0000000000001u;
 }
