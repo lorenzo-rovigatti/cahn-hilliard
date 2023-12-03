@@ -73,18 +73,19 @@ private:
 	void _GPU_CPU();
 
 	// pseudospectral stuff
-	std::vector<std::complex<double>> rho_hat;
+	std::vector<std::complex<double>> rho_hat, f_der_hat;
+	RhoMatrix<double> f_der;
 	std::vector<double> sqr_wave_vectors, dealiaser;
 
-	fftw_plan rho_plan, rho_inverse_plan;
+	fftw_plan rho_plan, rho_inverse_plan, f_der_plan;
 
 #ifndef NOCUDA
-	cufftFieldComplex *_d_rho_hat = nullptr;
+	cufftFieldComplex *_d_rho_hat = nullptr, *_d_rho_hat_copy;
 	cufftComplex *_d_f_der_hat = nullptr;
 	float *_d_sqr_wave_vectors = nullptr; 
 	float *_d_dealiaser = nullptr;
 
-	cufftHandle _d_rho_plan, _d_rho_inverse_plan, _d_f_der_plan;
+	cufftHandle _d_rho_inverse_plan, _d_f_der_plan;
 #endif
 
 	void _evolve_reciprocal();
