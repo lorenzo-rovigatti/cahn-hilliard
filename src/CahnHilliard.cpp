@@ -116,25 +116,55 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	V_bin = CUB(dx);
 
 	if(_reciprocal) {
-		rho_hat.resize(size / 2 + 1);
-		sqr_wave_vectors.resize(size / 2 + 1);
-		dealiaser.resize(size / 2 + 1);
-		f_der = RhoMatrix<double>(rho.bins(), model->N_species());
-		f_der_hat.resize(size / 2 + 1);
-		f_der_plan = fftw_plan_dft_r2c_1d(size, f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
-
-		rho_plan = fftw_plan_dft_r2c_1d(size, rho.data(), reinterpret_cast<fftw_complex *>(rho_hat.data()), FFTW_ESTIMATE);
-		// c2r transforms overwrite the input if FFTW_PRESERVE_INPUT is not specified
-		rho_inverse_plan = fftw_plan_dft_c2r_1d(size, reinterpret_cast<fftw_complex *>(rho_hat.data()), rho.data(), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
-
-		double nyquist_mode = size * M_PI / (N * dx) * 2.0 / 3.0;
-		for(unsigned int i = 0; i < sqr_wave_vectors.size(); i++) {
-			double k = 2.0 * M_PI * i / (N * dx);
-			dealiaser[i] = (k < nyquist_mode) ? 1.0 : 0.0;
-			sqr_wave_vectors[i] = SQR(k);
+		std::array<int, dims> n; // the dimensions of the grids to be transformed
+		n.fill(N);
+		int hat_size = n[dims - 1] / 2 + 1; // n1 x n2 x ... x (n_d / 2 + 1)
+		for(int i = 0; i < dims - 1; i++) {
+			hat_size *= n[i];
 		}
 
+		info("Size of the reciprocal vectors: {}", hat_size);
+
+		rho_hat.resize(hat_size);
+		rho_hat_copy.resize(hat_size);
+		sqr_wave_vectors.resize(hat_size);
+		dealiaser.resize(hat_size);
+		f_der = RhoMatrix<double>(rho.bins(), model->N_species());
+		f_der_hat.resize(hat_size);
+		
+		f_der_plan = fftw_plan_dft_r2c(dims, n.data(), f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
+
+		// c2r transforms overwrite the input array
+		rho_inverse_plan = fftw_plan_dft_c2r(dims, n.data(), reinterpret_cast<fftw_complex *>(rho_hat_copy.data()), rho.data(), FFTW_ESTIMATE);
+
+		double nyquist_mode = N * M_PI / (N * dx) * 2.0 / 3.0;
+		if(dims == 1) {
+			for(unsigned int i = 0; i < hat_size; i++) {
+				double k = 2.0 * M_PI * i / (N * dx);
+				dealiaser[i] = (k < nyquist_mode) ? 1.0 : 0.0;
+				sqr_wave_vectors[i] = SQR(k);
+			}
+		}
+		else if(dims == 2) {
+			int k_idx = 0;
+			for(int kx_idx = 0; kx_idx < n[0]; kx_idx++) {
+				int kx = (kx_idx < n[0] / 2) ? kx_idx : n[0] - kx_idx;
+				for(int ky = 0; ky < (n[1] / 2 + 1); ky++) {
+					double k = 2.0 * M_PI * std::sqrt(SQR(kx) + SQR(ky)) / (N * dx);
+					dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
+					sqr_wave_vectors[k_idx] = SQR(k);
+					k_idx++;
+				}
+			}
+		}
+		else {
+			critical("Unsupported number of dimensions {}", dims);
+		}
+
+		fftw_plan rho_plan = fftw_plan_dft_r2c(dims, n.data(), rho.data(), reinterpret_cast<fftw_complex *>(rho_hat.data()), FFTW_ESTIMATE);
 		fftw_execute(rho_plan);
+		rho_hat_copy = rho_hat;
+		fftw_destroy_plan(rho_plan);
 	}
 
 	_init_CUDA(config);
@@ -143,7 +173,6 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 template<int dims>
 CahnHilliard<dims>::~CahnHilliard() {
 	if(_reciprocal) {
-		fftw_destroy_plan(rho_plan);
 		fftw_destroy_plan(rho_inverse_plan);
 		fftw_destroy_plan(f_der_plan);
 		fftw_cleanup();
@@ -332,7 +361,7 @@ void CahnHilliard<dims>::_evolve_reciprocal() {
 
 		for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
 			f_der_hat[k_idx] *= dealiaser[k_idx];
-			rho_hat[k_idx] = (rho_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * 2.0 * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+			rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * 2.0 * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
 		}
 
 		fftw_execute(rho_inverse_plan);

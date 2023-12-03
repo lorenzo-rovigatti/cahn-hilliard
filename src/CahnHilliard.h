@@ -73,11 +73,11 @@ private:
 	void _GPU_CPU();
 
 	// pseudospectral stuff
-	std::vector<std::complex<double>> rho_hat, f_der_hat;
+	std::vector<std::complex<double>> rho_hat, rho_hat_copy, f_der_hat;
 	RhoMatrix<double> f_der;
 	std::vector<double> sqr_wave_vectors, dealiaser;
 
-	fftw_plan rho_plan, rho_inverse_plan, f_der_plan;
+	fftw_plan rho_inverse_plan, f_der_plan;
 
 #ifndef NOCUDA
 	cufftFieldComplex *_d_rho_hat = nullptr, *_d_rho_hat_copy;
