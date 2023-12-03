@@ -46,6 +46,10 @@ IF(CUDA)
 	)
 
 	cuda_add_library(ch_common ${common_files})
+
+	find_package(CUDAToolkit REQUIRED)
+	target_link_libraries(ch_common CUDA::cufft)
+
 	cuda_add_executable(ch_1D main.cpp)
 	cuda_add_executable(ch_2D main.cpp)
 

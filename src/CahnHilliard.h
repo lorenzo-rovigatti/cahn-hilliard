@@ -77,6 +77,16 @@ private:
 	std::vector<double> sqr_wave_vectors, dealiaser;
 
 	fftw_plan rho_plan, rho_inverse_plan;
+
+#ifndef NOCUDA
+	cufftFieldComplex *_d_rho_hat = nullptr;
+	cufftComplex *_d_f_der_hat = nullptr;
+	float *_d_sqr_wave_vectors = nullptr; 
+	float *_d_dealiaser = nullptr;
+
+	cufftHandle _d_rho_plan, _d_rho_inverse_plan, _d_f_der_plan;
+#endif
+
 	void _evolve_reciprocal();
 };
 

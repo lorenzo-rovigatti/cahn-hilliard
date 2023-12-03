@@ -151,6 +151,20 @@ CahnHilliard<dims>::~CahnHilliard() {
 	if(_d_rho_der != nullptr) {
 		CUDA_SAFE_CALL(cudaFree(_d_rho_der));
 	}
+	if(_d_rho_hat != nullptr) {
+		CUDA_SAFE_CALL(cudaFree(_d_rho_hat));
+		CUFFT_CALL(cufftDestroy(_d_rho_plan));
+		CUFFT_CALL(cufftDestroy(_d_rho_inverse_plan));
+	}
+	if(_d_f_der_hat != nullptr) {
+		CUDA_SAFE_CALL(cudaFree(_d_f_der_hat));
+	}
+	if(_d_sqr_wave_vectors != nullptr) {
+		CUDA_SAFE_CALL(cudaFree(_d_sqr_wave_vectors));
+	}
+	if(_d_dealiaser != nullptr) {
+		CUDA_SAFE_CALL(cudaFree(_d_dealiaser));
+	}
 #endif
 }
 
@@ -277,9 +291,6 @@ void CahnHilliard<dims>::_evolve_direct() {
 		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
 				rho(idx, species) += M * cell_laplacian(rho_der, species, idx) * dt;
-				if(std::isinf(rho(idx, species))) {
-					critical("{}, {}", rho_der(idx, species), M * cell_laplacian(rho_der, species, idx));
-				}
 			}
 		}
 	}
@@ -287,28 +298,52 @@ void CahnHilliard<dims>::_evolve_direct() {
 
 template<int dims>
 void CahnHilliard<dims>::_evolve_reciprocal() {
-	static std::vector<double> f_der(size);
-	static std::vector<std::complex<double>> f_der_hat(size / 2 + 1);
-	static fftw_plan f_plan = fftw_plan_dft_r2c_1d(size, f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
+	if(_use_CUDA) {
+#ifndef NOCUDA
+		model->der_bulk_free_energy(_d_rho, _d_rho_der, rho.bins());
 
-	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-		for(int species = 0; species < model->N_species(); species++) {
-			f_der[idx] = model->der_bulk_free_energy(species, rho.rho_species(idx));
+		CUFFT_CALL(cufftExecR2C(_d_f_der_plan, _d_rho_der, _d_f_der_hat));
+#ifdef CUDA_FIELD_FLOAT
+		CUFFT_CALL(cufftExecR2C(_d_rho_plan, _d_rho, _d_rho_hat)); // to be removed
+#else
+		CUFFT_CALL(cufftExecD2Z(_d_rho_plan, _d_rho, _d_rho_hat)); // to be removed
+#endif
+
+		integrate_fft<dims>(_d_rho_hat, _d_f_der_hat, _d_sqr_wave_vectors, _d_dealiaser, dt, M, k_laplacian);
+
+#ifdef CUDA_FIELD_FLOAT
+		CUFFT_CALL(cufftExecC2R(_d_rho_inverse_plan, _d_rho_hat, _d_rho));
+#else
+		CUFFT_CALL(cufftExecZ2D(_d_rho_inverse_plan, _d_rho_hat, _d_rho));
+#endif
+
+		_output_ready = false;
+#endif
+	}
+	else {
+		static RhoMatrix<double> f_der(rho.bins(), model->N_species());
+		static std::vector<std::complex<double>> f_der_hat(size / 2 + 1);
+		static fftw_plan f_plan = fftw_plan_dft_r2c_1d(size, f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
+
+		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+			for(int species = 0; species < model->N_species(); species++) {
+				f_der(idx, species) = model->der_bulk_free_energy(species, rho.rho_species(idx));
+			}
 		}
-	}
 
-	fftw_execute(f_plan); // transform f_der into f_der_hat
+		fftw_execute(f_plan); // transform f_der into f_der_hat
 
-	for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
-		f_der_hat[k_idx] *= dealiaser[k_idx];
-		rho_hat[k_idx] = (rho_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * 2.0 * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
-	}
+		for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
+			f_der_hat[k_idx] *= dealiaser[k_idx];
+			rho_hat[k_idx] = (rho_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * 2.0 * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+		}
 
-	fftw_execute(rho_inverse_plan);
+		fftw_execute(rho_inverse_plan);
 
-	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-		for(int species = 0; species < model->N_species(); species++) {
-			rho(idx, species) /= size;
+		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+			for(int species = 0; species < model->N_species(); species++) {
+				rho(idx, species) /= size;
+			}
 		}
 	}
 }
@@ -429,6 +464,36 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_der, d_der_vec_size)); // float instead of double
 
 	init_symbols(N, size, model->N_species());
+
+	if(_reciprocal) {
+		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_hat, sizeof(cufftFieldComplex) * rho_hat.size()));
+		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_f_der_hat, sizeof(cufftComplex) * rho_hat.size()));
+		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_sqr_wave_vectors, sizeof(float) * sqr_wave_vectors.size()));
+		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_dealiaser, sizeof(float) * dealiaser.size()));
+
+		// sqr_wave_vectors e deliaser are std::vector<double>, so we first have to convert them to std::vector<float>
+		// and then we can copy their content to the GPU
+		std::vector<float> f_sqr_wave_vectors(sqr_wave_vectors.begin(), sqr_wave_vectors.end());
+		CUDA_SAFE_CALL(cudaMemcpy(_d_sqr_wave_vectors, f_sqr_wave_vectors.data(), sizeof(float) * f_sqr_wave_vectors.size(), cudaMemcpyHostToDevice));
+		std::vector<float> f_dealiaser(dealiaser.begin(), dealiaser.end());
+		CUDA_SAFE_CALL(cudaMemcpy(_d_dealiaser, f_dealiaser.data(), sizeof(float) * f_dealiaser.size(), cudaMemcpyHostToDevice));
+
+		CUFFT_CALL(cufftCreate(&_d_rho_plan));
+		CUFFT_CALL(cufftCreate(&_d_rho_inverse_plan));
+		CUFFT_CALL(cufftCreate(&_d_f_der_plan));
+
+#ifdef CUDA_FIELD_FLOAT
+		CUFFT_CALL(cufftPlan1d(&_d_rho_plan, size, CUFFT_R2C, model->N_species()));
+		CUFFT_CALL(cufftPlan1d(&_d_rho_inverse_plan, size, CUFFT_C2R, model->N_species()));
+		CUFFT_CALL(cufftExecR2C(_d_rho_plan, _d_rho, _d_rho_hat));
+#else
+		CUFFT_CALL(cufftPlan1d(&_d_rho_plan, size, CUFFT_D2Z, model->N_species()));
+		CUFFT_CALL(cufftPlan1d(&_d_rho_inverse_plan, size, CUFFT_Z2D, model->N_species()));
+		CUFFT_CALL(cufftExecD2Z(_d_rho_plan, _d_rho, _d_rho_hat));
+#endif 
+		CUFFT_CALL(cufftPlan1d(&_d_f_der_plan, size, CUFFT_R2C, model->N_species()));
+		
+	}
 
 	_CPU_GPU();
 #endif
