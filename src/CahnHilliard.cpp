@@ -116,11 +116,10 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	V_bin = CUB(dx);
 
 	if(_reciprocal) {
-		std::array<int, dims> n; // the dimensions of the grids to be transformed
-		n.fill(N);
-		int hat_size = n[dims - 1] / 2 + 1; // n1 x n2 x ... x (n_d / 2 + 1)
+		_reciprocal_n.fill(N);
+		hat_size = _reciprocal_n[dims - 1] / 2 + 1; 
 		for(int i = 0; i < dims - 1; i++) {
-			hat_size *= n[i];
+			hat_size *= _reciprocal_n[i];
 		}
 
 		info("Size of the reciprocal vectors: {}", hat_size);
@@ -132,10 +131,10 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		f_der = RhoMatrix<double>(rho.bins(), model->N_species());
 		f_der_hat.resize(hat_size);
 		
-		f_der_plan = fftw_plan_dft_r2c(dims, n.data(), f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
+		f_der_plan = fftw_plan_dft_r2c(dims, _reciprocal_n.data(), f_der.data(), reinterpret_cast<fftw_complex *>(f_der_hat.data()), FFTW_ESTIMATE);
 
 		// c2r transforms overwrite the input array
-		rho_inverse_plan = fftw_plan_dft_c2r(dims, n.data(), reinterpret_cast<fftw_complex *>(rho_hat_copy.data()), rho.data(), FFTW_ESTIMATE);
+		rho_inverse_plan = fftw_plan_dft_c2r(dims, _reciprocal_n.data(), reinterpret_cast<fftw_complex *>(rho_hat_copy.data()), rho.data(), FFTW_ESTIMATE);
 
 		double nyquist_mode = N * M_PI / (N * dx) * 2.0 / 3.0;
 		if(dims == 1) {
@@ -147,9 +146,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		}
 		else if(dims == 2) {
 			int k_idx = 0;
-			for(int kx_idx = 0; kx_idx < n[0]; kx_idx++) {
-				int kx = (kx_idx < n[0] / 2) ? kx_idx : n[0] - kx_idx;
-				for(int ky = 0; ky < (n[1] / 2 + 1); ky++) {
+			for(int kx_idx = 0; kx_idx < _reciprocal_n[0]; kx_idx++) {
+				int kx = (kx_idx < _reciprocal_n[0] / 2) ? kx_idx : _reciprocal_n[0] - kx_idx;
+				for(int ky = 0; ky < (_reciprocal_n[1] / 2 + 1); ky++) {
 					double k = 2.0 * M_PI * std::sqrt(SQR(kx) + SQR(ky)) / (N * dx);
 					dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
 					sqr_wave_vectors[k_idx] = SQR(k);
@@ -161,7 +160,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 			critical("Unsupported number of dimensions {}", dims);
 		}
 
-		fftw_plan rho_plan = fftw_plan_dft_r2c(dims, n.data(), rho.data(), reinterpret_cast<fftw_complex *>(rho_hat.data()), FFTW_ESTIMATE);
+		fftw_plan rho_plan = fftw_plan_dft_r2c(dims, _reciprocal_n.data(), rho.data(), reinterpret_cast<fftw_complex *>(rho_hat.data()), FFTW_ESTIMATE);
 		fftw_execute(rho_plan);
 		rho_hat_copy = rho_hat;
 		fftw_destroy_plan(rho_plan);
@@ -339,7 +338,7 @@ void CahnHilliard<dims>::_evolve_reciprocal() {
 
 		CUFFT_CALL(cufftExecR2C(_d_f_der_plan, _d_rho_der, _d_f_der_hat));
 
-		integrate_fft<dims>(_d_rho_hat, _d_rho_hat_copy, _d_f_der_hat, _d_sqr_wave_vectors, _d_dealiaser, dt, M, k_laplacian);
+		integrate_fft(_d_rho_hat, _d_rho_hat_copy, _d_f_der_hat, _d_sqr_wave_vectors, _d_dealiaser, dt, M, k_laplacian, hat_size);
 
 #ifdef CUDA_FIELD_FLOAT
 		CUFFT_CALL(cufftExecC2R(_d_rho_inverse_plan, _d_rho_hat_copy, _d_rho));
@@ -360,17 +359,12 @@ void CahnHilliard<dims>::_evolve_reciprocal() {
 		fftw_execute(f_der_plan); // transform f_der into f_der_hat
 
 		for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
-			f_der_hat[k_idx] *= dealiaser[k_idx];
+			// f_der_hat[k_idx] *= dealiaser[k_idx];
 			rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + dt * M * 2.0 * k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+			rho_hat_copy[k_idx] /= size;
 		}
 
 		fftw_execute(rho_inverse_plan);
-
-		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-			for(int species = 0; species < model->N_species(); species++) {
-				rho(idx, species) /= size;
-			}
-		}
 	}
 }
 
@@ -494,7 +488,7 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 	if(_reciprocal) {
 		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_hat, sizeof(cufftFieldComplex) * rho_hat.size()));
 		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_hat_copy, sizeof(cufftFieldComplex) * rho_hat.size()));
-		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_f_der_hat, sizeof(cufftComplex) * rho_hat.size()));
+		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_f_der_hat, sizeof(cufftComplex) * f_der_hat.size()));
 		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_sqr_wave_vectors, sizeof(float) * sqr_wave_vectors.size()));
 		CUDA_SAFE_CALL(cudaMalloc((void **) &_d_dealiaser, sizeof(float) * dealiaser.size()));
 
@@ -509,17 +503,18 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 		CUFFT_CALL(cufftCreate(&_d_f_der_plan));
 
 #ifdef CUDA_FIELD_FLOAT
-		CUFFT_CALL(cufftPlan1d(&_d_rho_inverse_plan, size, CUFFT_C2R, model->N_species()));
+		CUFFT_CALL(cufftPlanMany(&_d_rho_inverse_plan, dims, _reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_C2R, model->N_species()));
 #else
-		CUFFT_CALL(cufftPlan1d(&_d_rho_inverse_plan, size, CUFFT_Z2D, model->N_species()));
+		CUFFT_CALL(cufftPlanMany(&_d_rho_inverse_plan, dims, _reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_Z2D, model->N_species()));
 #endif 
-		CUFFT_CALL(cufftPlan1d(&_d_f_der_plan, size, CUFFT_R2C, model->N_species()));
+		CUFFT_CALL(cufftPlanMany(&_d_f_der_plan, dims, _reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_R2C, model->N_species()));
 		
-		CUDA_SAFE_CALL(cudaMemcpy(_d_rho_hat, rho_hat.data(), sizeof(double) * rho_hat.size(), cudaMemcpyHostToDevice));
+		// copy the initial conditions
+		CUDA_SAFE_CALL(cudaMemcpy(_d_rho_hat, rho_hat.data(), sizeof(cufftFieldComplex) * rho_hat.size(), cudaMemcpyHostToDevice));
 	}
 
 	_CPU_GPU();
-#endif
+#endif /* NOCUDA */
 }
 
 template<int dims>

@@ -73,6 +73,8 @@ private:
 	void _GPU_CPU();
 
 	// pseudospectral stuff
+	std::array<int, dims> _reciprocal_n; // the dimensions of the grids to be transformed
+	int hat_size; // n1 x n2 x ... x (n_d / 2 + 1)
 	std::vector<std::complex<double>> rho_hat, rho_hat_copy, f_der_hat;
 	RhoMatrix<double> f_der;
 	std::vector<double> sqr_wave_vectors, dealiaser;

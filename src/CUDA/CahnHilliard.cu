@@ -104,7 +104,6 @@ __device__ cufftFieldComplex operator/(const cufftFieldComplex &lhs, const float
     return cufftFieldComplex({lhs.x / rhs, lhs.y / rhs});
 }
 
-template<int dims> 
 __global__ void _integrate_fft(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian, int size_hat) {
     if(IND >= size_hat) return;
 
@@ -141,11 +140,9 @@ void integrate<dims>(field_type *rho, float *rho_der, float dx, float dt, float 
     _integrate<dims><<<blocks, BLOCK_SIZE>>>(rho, rho_der, dx, dt, M);
 }
 
-template<int dims>
-void integrate_fft(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian) {
-    int size_hat = grid_size / 2 + 1;
-    const int blocks = size_hat / BLOCK_SIZE + 1;
-    _integrate_fft<dims><<<blocks, BLOCK_SIZE>>>(rho_hat, rho_hat_for_inverse_transform, f_der_hat, sqr_wave_vectors, dealiaser, dt, M, k_laplacian, size_hat);
+void integrate_fft(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian, int hat_size) {
+    const int blocks = hat_size / BLOCK_SIZE + 1;
+    _integrate_fft<<<blocks, BLOCK_SIZE>>>(rho_hat, rho_hat_for_inverse_transform, f_der_hat, sqr_wave_vectors, dealiaser, dt, M, k_laplacian, hat_size);
 }
 
 template void add_surface_term<1>(field_type *rho, float *rho_der, float dx, float k_laplacian);
@@ -153,8 +150,5 @@ template void add_surface_term<2>(field_type *rho, float *rho_der, float dx, flo
 
 template void integrate<1>(field_type *rho, float *rho_der, float dx, float dt, float M);
 template void integrate<2>(field_type *rho, float *rho_der, float dx, float dt, float M);
-
-template void integrate_fft<1>(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian);
-template void integrate_fft<2>(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian);
 
 }
