@@ -305,7 +305,7 @@ template<int dims>
 void CahnHilliard<dims>::_evolve_direct() {
 	if(_use_CUDA) {
 #ifndef NOCUDA
-		model->der_bulk_free_energy(_d_rho, _d_rho_der, rho.bins());
+		model->der_bulk_free_energy(_d_rho, _d_rho_der, model->N_species() * rho.bins());
 		add_surface_term<dims>(_d_rho, _d_rho_der, dx, k_laplacian);
 		integrate<dims>(_d_rho, _d_rho_der, dx, dt, M);
 
@@ -369,7 +369,7 @@ void CahnHilliard<dims>::_evolve_reciprocal() {
 }
 
 template<int dims>
-double CahnHilliard<dims>::total_mass() {
+double CahnHilliard<dims>::average_mass() {
 	if(!_output_ready) _GPU_CPU();
 
 	double mass = 0.;
@@ -380,11 +380,11 @@ double CahnHilliard<dims>::total_mass() {
 		}
 	}
 
-	return mass * V_bin;
+	return mass * V_bin / rho.bins();
 }
 
 template<int dims>
-double CahnHilliard<dims>::total_free_energy() {
+double CahnHilliard<dims>::average_free_energy() {
 	if(!_output_ready) _GPU_CPU();
 
 	double fe = 0.;
@@ -399,7 +399,7 @@ double CahnHilliard<dims>::total_free_energy() {
 		fe += model->bulk_free_energy(rho.rho_species(i)) + interfacial_contrib;
 	}
 
-	return fe * V_bin;
+	return fe * V_bin / rho.bins();
 }
 
 template<int dims>

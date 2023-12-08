@@ -26,7 +26,7 @@ public:
 	int N = 0;
 	int N_minus_one = 0;
 	int bits = 0;
-	int size = 0;
+	int size = 0; // size of the grid
 	double dt = 0.0;
 	double k_laplacian = 0.0;
 	double M = 0.0;
@@ -47,8 +47,8 @@ public:
 
 	void evolve();
 
-	double total_mass();
-	double total_free_energy();
+	double average_mass();
+	double average_free_energy();
 	void print_species_density(int species, const std::string &filename);
 	void print_species_density(int species, std::ofstream &output);
 	void print_total_density(const std::string &filename);
