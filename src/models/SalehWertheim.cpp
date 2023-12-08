@@ -41,7 +41,7 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 SalehWertheim::~SalehWertheim() {
 }
 
-double SalehWertheim::bonding_free_energy(std::vector<double> &rhos) {
+double SalehWertheim::bonding_free_energy(const std::vector<double> &rhos) {
 	double rho_factor =  _delta_AA * (_valence[0] * rhos[0] + _linker_half_valence * rhos[2]);
 	double X_1A = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
 	double fe_part_1 = std::log(X_1A) - X_1A / 2.0 + 0.5;
@@ -58,7 +58,7 @@ double SalehWertheim::bonding_free_energy(std::vector<double> &rhos) {
 	return bonding_fe;
 }
 
-double SalehWertheim::bulk_free_energy(std::vector<double> &rhos) {
+double SalehWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 
 	double mixing_S = 0., B2_contrib = 0.;
@@ -76,7 +76,7 @@ double SalehWertheim::bulk_free_energy(std::vector<double> &rhos) {
 	return f_ref + bonding_free_energy(rhos);
 }
 
-double SalehWertheim::der_bulk_free_energy(int species, std::vector<double> &rhos) {
+double SalehWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
 	// the ideal + B2 part is computed analytically
 	double der_f_ref = std::log(rhos[species]);
 	for(int i = 0; i < N_species(); i++) {
@@ -84,13 +84,12 @@ double SalehWertheim::der_bulk_free_energy(int species, std::vector<double> &rho
 	}
 
 	// the bonding part is computed numerically
-	double rho_i = rhos[species];
-	double delta_rho_i = rho_i * 1e-5;
+	std::vector<double> local_rhos(rhos);
+	double delta_rho_i = local_rhos[species] * 1e-5;
 
-	double fe_r = bonding_free_energy(rhos);
-	rhos[species] += delta_rho_i;
-	double fe_rdr = bonding_free_energy(rhos);
-	rhos[species] = rho_i;
+	double fe_r = bonding_free_energy(local_rhos);
+	local_rhos[species] += delta_rho_i;
+	double fe_rdr = bonding_free_energy(local_rhos);
 
 	return der_f_ref + (fe_rdr - fe_r) / delta_rho_i;
 }

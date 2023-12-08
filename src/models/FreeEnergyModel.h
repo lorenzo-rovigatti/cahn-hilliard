@@ -9,6 +9,7 @@
 #define SRC_MODELS_FREEENERGYMODEL_H_
 
 #include "../Object.h"
+#include "../utils/RhoMatrix.h"
 
 #include <vector>
 
@@ -29,8 +30,8 @@ public:
 	virtual void der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) {
 		critical("this model does not support CUDA simulations");
 	}
-	virtual double der_bulk_free_energy(int species, std::vector<double> &) = 0;
-	virtual double bulk_free_energy(std::vector<double> &) = 0;
+	virtual double der_bulk_free_energy(int species, const std::vector<double> &) = 0;
+	virtual double bulk_free_energy(const std::vector<double> &) = 0;
 
 protected:
 	double _user_to_internal;

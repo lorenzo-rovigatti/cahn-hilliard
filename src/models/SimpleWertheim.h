@@ -24,8 +24,8 @@ public:
 	}
 
 	void der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) override;
-	double der_bulk_free_energy(int species, std::vector<double> &) override;
-	double bulk_free_energy(std::vector<double> &) override;
+	double der_bulk_free_energy(int species, const std::vector<double> &) override;
+	double bulk_free_energy(const std::vector<double> &) override;
 
 	GET_NAME(Simple Wertheim free energy model)
 
@@ -38,7 +38,7 @@ private:
 	double _X(double rho);
 
 	inline double _regularised_log(double rho) {
-		return (rho < _regularisation_delta) ? _log_delta + (rho - _regularisation_delta) / _regularisation_delta : std::log(rho);
+		return (rho < _regularisation_delta) ? _log_delta + (rho - _regularisation_delta) / (2.0 * _regularisation_delta) : std::log(rho);
 	}
 };
 

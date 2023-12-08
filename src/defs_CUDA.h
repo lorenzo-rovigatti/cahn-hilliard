@@ -12,6 +12,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <cufft.h>
 #include <stdio.h>
 
 /// CUDA_SAFE_CALL replacement for backwards compatibility (CUDA < 5.0)
@@ -26,6 +27,22 @@
   } while (0)
 /// CUT_CHECK_ERROR replacement for backwards compatibility (CUDA < 5.0)
 #define CUT_CHECK_ERROR(x) getLastCudaError(x);
+
+#ifndef CUFFT_CALL
+#define CUFFT_CALL( call )                                                                                             \
+    {                                                                                                                  \
+        auto status = static_cast<cufftResult>( call );                                                                \
+        if ( status != CUFFT_SUCCESS )                                                                                 \
+            fprintf( stderr,                                                                                           \
+                     "ERROR: CUFFT call \"%s\" in line %d of file %s failed "                                          \
+                     "with "                                                                                           \
+                     "code (%d).\n",                                                                                   \
+                     #call,                                                                                            \
+                     __LINE__,                                                                                         \
+                     __FILE__,                                                                                         \
+                     status );                                                                                         \
+    }
+#endif
 
 #define BLOCK_SIZE 64
 
@@ -54,8 +71,18 @@
 		CUDA_SAFE_CALL(cudaMemcpyToSymbol((dest), &tmp, sizeof(float)));\
 		}
 
-#endif
+#ifdef CUDA_FIELD_FLOAT
+using cufftFieldComplex = cufftComplex;
+#else
+using cufftFieldComplex = cufftDoubleComplex;
+#endif /* CUDA_FIELD_FLOAT */
 
+#endif /* NOCUDA */
+
+#ifdef CUDA_FIELD_FLOAT
+using field_type = float;
+#else
 using field_type = double;
+#endif /* CUDA_FIELD_FLOAT */
 
 #endif /* SRC_DEFS_CUDA_H_ */

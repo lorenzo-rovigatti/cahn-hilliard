@@ -29,12 +29,12 @@ int Landau::N_species() {
 	return 1;
 }
 
-double Landau::der_bulk_free_energy(int species, std::vector<double> &rhos) {
+double Landau::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
 	double op = rhos[species];
 	return -_epsilon * op + op * op * op;
 }
 
-double Landau::bulk_free_energy(std::vector<double> &rhos) {
+double Landau::bulk_free_energy(const std::vector<double> &rhos) {
 	double op = rhos[0];
 	return -0.5 * _epsilon * SQR(op) + 0.25 * SQR(SQR(op));
 }

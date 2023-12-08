@@ -46,6 +46,10 @@ IF(CUDA)
 	)
 
 	cuda_add_library(ch_common ${common_files})
+
+	find_package(CUDAToolkit REQUIRED)
+	target_link_libraries(ch_common CUDA::cufft)
+
 	cuda_add_executable(ch_1D main.cpp)
 	cuda_add_executable(ch_2D main.cpp)
 
@@ -58,10 +62,10 @@ else()
 	add_executable(ch_2D main.cpp)
 endif(CUDA)
 	
-target_link_libraries(ch_1D ch_common spdlog::spdlog)
+target_link_libraries(ch_1D ch_common spdlog::spdlog fftw3)
 target_compile_definitions(ch_1D PRIVATE DIM=1)
 
-target_link_libraries(ch_2D ch_common spdlog::spdlog)
+target_link_libraries(ch_2D ch_common spdlog::spdlog fftw3)
 target_compile_definitions(ch_2D PRIVATE DIM=2)
 
 add_compile_options(-Wall -Wextra)
