@@ -36,6 +36,8 @@ private:
 	int _linker_half_valence;
 	double _B2;
 	double _delta_AA, _delta_BB;
+
+	double _der_contribution(const std::vector<double> &, int);
 };
 
 } /* namespace ch */

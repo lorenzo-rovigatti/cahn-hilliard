@@ -13,7 +13,7 @@ __global__ void _compute_der_bulk_free_energy(field_type *rho, float *rho_der, i
     float rho_ind = rho[IND];
 	float der_f_ref = logf(rho_ind) + 2.f * B2 * rho_ind;
 	float X = _CUDA_X(rho_ind, B2, two_valence_delta);
-	float der_f_bond = valence * (logf(X) - 0.5f + 1.f / (2.f - X) - 0.5f * X / (2.f - X));
+	float der_f_bond = valence * logf(X);
 
 	rho_der[IND] = der_f_ref + der_f_bond;
 }

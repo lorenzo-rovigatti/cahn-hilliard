@@ -40,21 +40,17 @@ SimpleWertheim::~SimpleWertheim() {
 
 double SimpleWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
     double rho = rhos[species];
-    double der_f_ref = (rho < _regularisation_delta) ? 2.0 * rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
+    double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
 	der_f_ref += 2 * _B2 * rho;
     double X = _X(rho);
-    double der_f_bond = (rho <= 0.) ? 0.0 : _valence * (std::log(X) - 0.5 + 1.0 / (2.0 - X) - 0.5 * X / (2.0 - X));
-
-	if(rho < _regularisation_delta) {
-		info("{} {} {} {}", rho, der_f_ref, X, der_f_bond);
-	}
+    double der_f_bond = (rho <= 0.) ? 0.0 : _valence * std::log(X);
 
     return (der_f_ref + der_f_bond);
 }
 
 double SimpleWertheim::bulk_free_energy(const std::vector<double> &rhos) {
     double rho = rhos[0];
-    double f_ref = (rho < _regularisation_delta) ? SQR(rho) / _regularisation_delta + rho * _log_delta - _regularisation_delta : rho * std::log(rho);
+    double f_ref = (rho < _regularisation_delta) ? SQR(rho) / (2.0 * _regularisation_delta) + rho * _log_delta - _regularisation_delta / 2.0 : rho * std::log(rho);
     f_ref += -rho + _B2 * SQR(rho);
     double f_bond = (rho <= 0.) ? 0.0 : _valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
 
