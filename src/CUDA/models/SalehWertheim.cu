@@ -13,7 +13,7 @@ __device__ float _der_contribution(float rhos[3], int species) {
 	float delta = (species == 0) ? c_delta_AA[0] : c_delta_BB[0];
 	float rho_factor =  delta * (c_valence[species] * rhos[species] + c_linker_half_valence[0] * rhos[2]);
 	float X = (-1.f + sqrtf(1.f + 4.f * rho_factor)) / (2.f * rho_factor);
-	return logf(X);
+	return (rho_factor >= 0.f) ? logf(X) : 0.f;
 }
 
 __global__ void _compute_saleh_der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size, float B2) {
@@ -29,7 +29,6 @@ __global__ void _compute_saleh_der_bulk_free_energy(field_type *rho, float *rho_
 		(float) rho[2 * size + rel_idx]
 	};
 
-    // the ideal + B2 part is computed analytically
 	float der_f_ref = logf(rhos[species]);
 	for(int i = 0; i < N_SPECIES; i++) {
 		der_f_ref += 2.f * B2 * rhos[i];

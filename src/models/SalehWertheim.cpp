@@ -80,7 +80,7 @@ double SalehWertheim::_der_contribution(const std::vector<double> &rhos, int spe
 	double delta = (species == 0) ? _delta_AA : _delta_BB;
 	double rho_factor =  delta * (_valence[species] * rhos[species] + _linker_half_valence * rhos[2]);
 	double X = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
-	return (std::log(X));
+	return (rho_factor >= 0) ? std::log(X) : 0.0;
 }
 
 double SalehWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {

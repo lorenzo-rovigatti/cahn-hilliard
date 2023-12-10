@@ -35,9 +35,6 @@ __device__ float _cell_laplacian(number *field, int idx, float dx) {
         int rel_idx_m = (rel_idx - 1 + c_N[0]) & N_minus_one;
         int rel_idx_p = (rel_idx + 1) & N_minus_one;
 
-        // if(idx / c_size[0] == 1 && rel_idx == 0) printf("%d %d %d %d %e %lf\n", base_idx, rel_idx, rel_idx_m, rel_idx_p, 
-        //     ((float) field[base_idx + rel_idx_m] + (float) field[base_idx + rel_idx_p] - 2.f * (float) field[idx]) / (dx * dx), field[idx]);
-
         return ((float) field[base_idx + rel_idx_m] + (float) field[base_idx + rel_idx_p] - 2.f * (float) field[idx]) / (dx * dx);
     }
     else if(dims == 2) {
