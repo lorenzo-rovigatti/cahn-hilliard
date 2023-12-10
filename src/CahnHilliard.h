@@ -26,7 +26,7 @@ public:
 	int N = 0;
 	int N_minus_one = 0;
 	int bits = 0;
-	int size = 0; // size of the grid
+	int grid_size = 0; // size of the grid
 	double dt = 0.0;
 	double k_laplacian = 0.0;
 	double M = 0.0;
@@ -74,7 +74,8 @@ private:
 
 	// pseudospectral stuff
 	std::array<int, dims> _reciprocal_n; // the dimensions of the grids to be transformed
-	int hat_size; // n1 x n2 x ... x (n_d / 2 + 1)
+	int hat_grid_size; // n1 x n2 x ... x (n_d / 2 + 1)
+	int hat_vector_size; // hat_grid_size * N_species
 	std::vector<std::complex<double>> rho_hat, rho_hat_copy, f_der_hat;
 	RhoMatrix<double> f_der;
 	std::vector<double> sqr_wave_vectors, dealiaser;

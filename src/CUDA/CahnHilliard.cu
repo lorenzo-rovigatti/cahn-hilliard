@@ -101,8 +101,8 @@ __device__ cufftFieldComplex operator/(const cufftFieldComplex &lhs, const float
     return cufftFieldComplex({lhs.x / rhs, lhs.y / rhs});
 }
 
-__global__ void _integrate_fft(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian, int size_hat) {
-    if(IND >= size_hat) return;
+__global__ void _integrate_fft(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian, int hat_vector_size) {
+    if(IND >= hat_vector_size) return;
 
     float k2 = sqr_wave_vectors[IND];
     cufftComplex f_der_hat_dealiased = f_der_hat[IND];// * dealiaser[IND];
@@ -137,9 +137,9 @@ void integrate<dims>(field_type *rho, float *rho_der, float dx, float dt, float 
     _integrate<dims><<<blocks, BLOCK_SIZE>>>(rho, rho_der, dx, dt, M);
 }
 
-void integrate_fft(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian, int hat_size) {
-    const int blocks = hat_size / BLOCK_SIZE + 1;
-    _integrate_fft<<<blocks, BLOCK_SIZE>>>(rho_hat, rho_hat_for_inverse_transform, f_der_hat, sqr_wave_vectors, dealiaser, dt, M, k_laplacian, hat_size);
+void integrate_fft(cufftFieldComplex *rho_hat, cufftFieldComplex *rho_hat_for_inverse_transform, cufftComplex *f_der_hat, float *sqr_wave_vectors, float *dealiaser, float dt, float M, float k_laplacian, int hat_vector_size) {
+    const int blocks = hat_vector_size / BLOCK_SIZE + 1;
+    _integrate_fft<<<blocks, BLOCK_SIZE>>>(rho_hat, rho_hat_for_inverse_transform, f_der_hat, sqr_wave_vectors, dealiaser, dt, M, k_laplacian, hat_vector_size);
 }
 
 template void add_surface_term<1>(field_type *rho, float *rho_der, float dx, float k_laplacian);
