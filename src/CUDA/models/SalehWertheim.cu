@@ -16,17 +16,17 @@ __device__ float _der_contribution(float rhos[3], int species) {
 	return (rho_factor >= 0.f) ? logf(X) : 0.f;
 }
 
-__global__ void _compute_saleh_der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size, float B2) {
-	if(IND >= grid_size) return;
+__global__ void _compute_saleh_der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size, float B2) {
+	if(IND >= vec_size) return;
 
-	int size = grid_size / N_SPECIES;
-	int species = IND / size;
-    int rel_idx = IND % size;
+	int grid_size = vec_size / N_SPECIES;
+	int species = IND / grid_size;
+    int rel_idx = IND % grid_size;
 
 	float rhos[3] = {
 		(float) rho[rel_idx],
-		(float) rho[size + rel_idx],
-		(float) rho[2 * size + rel_idx]
+		(float) rho[grid_size + rel_idx],
+		(float) rho[2 * grid_size + rel_idx]
 	};
 
 	float der_f_ref = logf(rhos[species]);
@@ -53,9 +53,9 @@ namespace ch {
 		COPY_NUMBER_TO_FLOAT(c_delta_BB, delta_BB);
 	}
 
-    void saleh_wertheim_der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size, float B2) {
-        const int blocks = grid_size / BLOCK_SIZE + 1;
-        _compute_saleh_der_bulk_free_energy<<<blocks, BLOCK_SIZE>>>(rho, rho_der, grid_size, B2);
+    void saleh_wertheim_der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size, float B2) {
+        const int blocks = vec_size / BLOCK_SIZE + 1;
+        _compute_saleh_der_bulk_free_energy<<<blocks, BLOCK_SIZE>>>(rho, rho_der, vec_size, B2);
     }
 
 }

@@ -103,9 +103,9 @@ double SalehWertheim::der_bulk_free_energy(int species, const std::vector<double
 	return der_f_ref + der_f_bond;
 }
 
-void SalehWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) {
+void SalehWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size) {
 #ifndef NOCUDA
-	saleh_wertheim_der_bulk_free_energy(rho, rho_der, grid_size, _B2);
+	saleh_wertheim_der_bulk_free_energy(rho, rho_der, vec_size, _B2);
 #endif
 }
 

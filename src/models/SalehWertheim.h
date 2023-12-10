@@ -26,7 +26,7 @@ public:
 	double bonding_free_energy(const std::vector<double> &);
 	double bulk_free_energy(const std::vector<double> &) override;
 
-	void der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) override;
+	void der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size) override;
 	double der_bulk_free_energy(int species, const std::vector<double> &) override;
 
 	GET_NAME("Saleh's system Wertheim free energy")

@@ -121,7 +121,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		for(int i = 0; i < dims - 1; i++) {
 			hat_grid_size *= _reciprocal_n[i];
 		}
-		int hat_vector_size = hat_grid_size * model->N_species();
+		hat_vector_size = hat_grid_size * model->N_species();
 
 		info("Size of the reciprocal vectors: {}", hat_vector_size);
 
@@ -314,7 +314,7 @@ template<int dims>
 void CahnHilliard<dims>::_evolve_direct() {
 	if(_use_CUDA) {
 #ifndef NOCUDA
-		model->der_bulk_free_energy(_d_rho, _d_rho_der, model->N_species() * rho.bins());
+		model->der_bulk_free_energy(_d_rho, _d_rho_der, model->N_species() * grid_size);
 		add_surface_term<dims>(_d_rho, _d_rho_der, dx, k_laplacian);
 		integrate<dims>(_d_rho, _d_rho_der, dx, dt, M);
 
@@ -324,14 +324,14 @@ void CahnHilliard<dims>::_evolve_direct() {
 	else {
 		static RhoMatrix<double> rho_der(rho.bins(), model->N_species());
 		// we first evaluate the time derivative for all the fields
-		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+		for(unsigned int idx = 0; idx < grid_size; idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
 				rho_der(idx, species) = model->der_bulk_free_energy(species, rho.rho_species(idx)) - 2 * k_laplacian * cell_laplacian(rho, species, idx);
 			}
 		}
 
 		// and then we integrate them
-		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+		for(unsigned int idx = 0; idx < grid_size; idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
 				rho(idx, species) += M * cell_laplacian(rho_der, species, idx) * dt;
 			}
@@ -343,7 +343,7 @@ template<int dims>
 void CahnHilliard<dims>::_evolve_reciprocal() {
 	if(_use_CUDA) {
 #ifndef NOCUDA
-		model->der_bulk_free_energy(_d_rho, _d_rho_der, rho.bins());
+		model->der_bulk_free_energy(_d_rho, _d_rho_der, model->N_species() * grid_size);
 
 		CUFFT_CALL(cufftExecR2C(_d_f_der_plan, _d_rho_der, _d_f_der_hat));
 
@@ -359,7 +359,7 @@ void CahnHilliard<dims>::_evolve_reciprocal() {
 #endif
 	}
 	else {
-		for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+		for(unsigned int idx = 0; idx < grid_size; idx++) {
 			for(int species = 0; species < model->N_species(); species++) {
 				f_der(idx, species) = model->der_bulk_free_energy(species, rho.rho_species(idx));
 			}
@@ -483,10 +483,10 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 	_use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
 	if(!_use_CUDA) return;
 
-	_d_vec_size = rho.bins() * model->N_species() * sizeof(field_type);
-	int d_der_vec_size = rho.bins() * model->N_species() * sizeof(float);
+	_d_vec_size = grid_size * model->N_species() * sizeof(field_type);
+	int d_der_vec_size = grid_size * model->N_species() * sizeof(float);
 
-	info("Initialising CUDA arrays of size {} ({} bytes)", rho.bins() * model->N_species(), _d_vec_size);
+	info("Size of the CUDA direct-space vectors: {} ({} bytes)", grid_size * model->N_species(), _d_vec_size);
 
 	_h_rho = RhoMatrix<field_type>(rho.bins(), model->N_species());
 	CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho, _d_vec_size));
@@ -512,7 +512,7 @@ void CahnHilliard<dims>::_init_CUDA(toml::table &config) {
 		CUFFT_CALL(cufftCreate(&_d_f_der_plan));
 
 #ifdef CUDA_FIELD_FLOAT
-		CUFFT_CALL(cufftPlanMany(&_d_rho_inverse_plan, dims, _reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_C2R, model->N_species()));
+		CUFFT_CALL(cufftPlanMany(&_d_rho_inverse_plan, dims, _reciprocal_n.data(), nullptr, 1, odist, nullptr, 1, idist, CUFFT_C2R, model->N_species()));
 #else
 		CUFFT_CALL(cufftPlanMany(&_d_rho_inverse_plan, dims, _reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_Z2D, model->N_species()));
 #endif 
