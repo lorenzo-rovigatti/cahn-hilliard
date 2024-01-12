@@ -26,11 +26,20 @@ endif()
 
 # See: https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#gpu-feature-list
 
-# This list will be used for CUDA_ARCH_NAME = All option
-set(CUDA_KNOWN_GPU_ARCHITECTURES  "Fermi" "Kepler" "Maxwell")
+if(CUDA_VERSION VERSION_LESS "11.0")
+	# This list will be used for CUDA_ARCH_NAME = All option
+	set(CUDA_KNOWN_GPU_ARCHITECTURES  "Fermi" "Kepler" "Maxwell")
+	
+	# This list will be used for CUDA_ARCH_NAME = Common option (enabled by default)
+	set(CUDA_COMMON_GPU_ARCHITECTURES "3.0" "3.5")
+else()
+	set(CUDA_KNOWN_GPU_ARCHITECTURES  "")
+	set(CUDA_COMMON_GPU_ARCHITECTURES "")
+endif()
 
-# This list will be used for CUDA_ARCH_NAME = Common option (enabled by default)
-set(CUDA_COMMON_GPU_ARCHITECTURES "3.0" "3.5" "5.0")
+# as of now (Sept 2020), all CUDA versions support Maxwell GPUs
+list(APPEND CUDA_KNOWN_GPU_ARCHITECTURES "Maxwell")
+list(APPEND CUDA_COMMON_GPU_ARCHITECTURES "5.0")
 
 if(CUDA_VERSION VERSION_LESS "7.0")
   set(CUDA_LIMIT_GPU_ARCHITECTURE "4.9")
@@ -39,9 +48,6 @@ endif()
 # This list is used to filter CUDA archs when autodetecting
 set(CUDA_ALL_GPU_ARCHITECTURES "3.0" "3.2" "3.5" "5.0")
 
-set(CUDA_ALL_GPU_ARCHITECTURES "5.0")
-set(CUDA_COMMON_GPU_ARCHITECTURES "5.0")
-IF(0)
 if(CUDA_VERSION VERSION_GREATER "6.9")
   list(APPEND CUDA_KNOWN_GPU_ARCHITECTURES "Kepler+Tegra" "Kepler+Tesla" "Maxwell+Tegra")
   list(APPEND CUDA_COMMON_GPU_ARCHITECTURES "5.2")
@@ -61,7 +67,7 @@ if(CUDA_VERSION VERSION_GREATER "7.9")
     list(APPEND CUDA_COMMON_GPU_ARCHITECTURES "6.1+PTX")
     set(CUDA_LIMIT_GPU_ARCHITECTURE "6.9")
   endif()
-endif()
+endif ()
 
 if(CUDA_VERSION VERSION_GREATER "8.9")
   list(APPEND CUDA_KNOWN_GPU_ARCHITECTURES "Volta")
@@ -82,7 +88,6 @@ if(CUDA_VERSION VERSION_GREATER "9.9")
     set(CUDA_LIMIT_GPU_ARCHITECTURE "8.9")
   endif()
 endif()
-ENDIF(0)
 
 ################################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
