@@ -8,7 +8,10 @@
 #include "CahnHilliard.h"
 
 #include "utils/utility_functions.h"
+
+#ifndef NOCUDA
 #include "CUDA/CahnHilliard.cuh"
+#endif
 
 #include <iostream>
 #include <fstream>
