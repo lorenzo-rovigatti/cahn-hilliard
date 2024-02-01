@@ -101,8 +101,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		for(int bin = 0; bin < grid_size; bin++) {
 			double modulation = initial_A * std::cos(initial_k * bin);
 			for(int i = 0; i < model->N_species(); i++) {
+				double random_factor = (initial_N_peaks == 0) ? (drand48() - 0.5) : 1.0 + 0.02 * (drand48() - 0.5);
 				double average_rho = densities[i];
-				rho(bin, i) = average_rho * (1.0 + modulation * (1.0 + 2.0 * (drand48() - 0.5) * 1e-2));
+				rho(bin, i) = average_rho * (1.0 + 2.0 * modulation * random_factor);
 			}
 		}
 	}
