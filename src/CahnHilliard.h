@@ -11,6 +11,7 @@
 #include "defs.h"
 #include "utils/RhoMatrix.h"
 #include "models/FreeEnergyModel.h"
+#include "integrators/Integrator.h"
 
 #include <vector>
 #include <string>
@@ -33,6 +34,7 @@ public:
 	double dx = 0.0;
 	double V_bin;
 	FreeEnergyModel *model = nullptr;
+	Integrator<dims> *integrator = nullptr;
 
 	RhoMatrix<double> rho;
 
