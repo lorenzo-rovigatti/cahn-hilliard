@@ -1,6 +1,7 @@
 set(common_files
 	CahnHilliard.cpp
 	Object.cpp
+	integrators/EulerCPU.cpp
 	integrators/Integrator.cpp
 	models/Landau.cpp
 	models/SalehWertheim.cpp

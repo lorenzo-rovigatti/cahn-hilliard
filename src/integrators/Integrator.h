@@ -13,13 +13,18 @@ public:
 
     virtual ~Integrator();
 
-    void set_initial_rho(RhoMatrix<double> &rho) override;
+    virtual void set_initial_rho(RhoMatrix<double> &r);
 
     virtual void evolve() = 0;
+
+    virtual RhoMatrix<double> &rho() {
+        return _rho;
+    }
 
     GET_NAME(Integrator)
 
 protected:
+    RhoMatrix<double> _rho;
     int _N_per_dim = 0;
     int _N_bins = 0;
     double _dt = 0.0;
@@ -29,7 +34,6 @@ protected:
     double _user_to_internal, _internal_to_user;
 
     FreeEnergyModel *_model;
-    RhoMatrix<double> _rho;
 };
 
 } /* namespace ch */

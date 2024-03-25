@@ -7,6 +7,8 @@
 
 #include "CahnHilliard.h"
 
+#include "integrators/EulerCPU.h"
+
 #include "utils/utility_functions.h"
 
 #ifndef NOCUDA
@@ -180,6 +182,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	}
 
 	_init_CUDA(config);
+
+	integrator = new EulerCPU<dims>(m, config);
+	integrator->set_initial_rho(rho);
 }
 
 template<int dims>
@@ -310,7 +315,8 @@ void CahnHilliard<dims>::evolve() {
 		_evolve_reciprocal();
 	}
 	else {
-		_evolve_direct();
+		integrator->evolve();
+		// _evolve_direct();
 	}
 }
 
@@ -386,14 +392,14 @@ double CahnHilliard<dims>::average_mass() {
 	if(!_output_ready) _GPU_CPU();
 
 	double mass = 0.;
-	for(unsigned int i = 0; i < rho.bins(); i++) {
-		mass += rho.rho_tot(i);
+	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
+		mass += integrator->rho().rho_tot(i);
 		if(safe_isnan(mass)) {
 			critical("Encountered a nan while computing the total mass (bin {})", i);
 		}
 	}
 
-	return mass * V_bin / rho.bins();
+	return mass * V_bin / integrator->rho().bins();
 }
 
 template<int dims>
@@ -401,18 +407,18 @@ double CahnHilliard<dims>::average_free_energy() {
 	if(!_output_ready) _GPU_CPU();
 
 	double fe = 0.;
-	for(unsigned int i = 0; i < rho.bins(); i++) {
+	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
 		double interfacial_contrib = 0.;
 		for(int species = 0; species < model->N_species(); species++) {
-			auto rho_grad = gradient(rho, species, i);
+			auto rho_grad = gradient(integrator->rho(), species, i);
 			for(int d = 0; d < dims; d++) {
 				interfacial_contrib += k_laplacian * rho_grad[d] * rho_grad[d];
 			}
 		}
-		fe += model->bulk_free_energy(rho.rho_species(i)) + interfacial_contrib;
+		fe += model->bulk_free_energy(integrator->rho().rho_species(i)) + interfacial_contrib;
 	}
 
-	return fe * V_bin / rho.bins();
+	return fe * V_bin / integrator->rho().bins();
 }
 
 template<int dims>
@@ -429,7 +435,7 @@ void CahnHilliard<1>::print_species_density(int species, std::ofstream &output) 
 	if(!_output_ready) _GPU_CPU();
 
 	for(int idx = 0; idx < grid_size; idx++) {
-		output << _density_to_user(rho(idx, species)) << " " << std::endl;
+		output << _density_to_user(integrator->rho()(idx, species)) << " " << std::endl;
 	}
 	output << std::endl;
 }
@@ -448,7 +454,7 @@ void CahnHilliard<dims>::print_species_density(int species, std::ofstream &outpu
 				modulo <<= bits;
 			}
 		}
-		output << _density_to_user(rho(idx, species)) << " ";
+		output << _density_to_user(integrator->rho()(idx, species)) << " ";
 	}
 	output << std::endl;
 }
@@ -469,7 +475,7 @@ void CahnHilliard<dims>::print_total_density(const std::string &filename) {
 				modulo <<= bits;
 			}
 		}
-		output << _density_to_user(rho.rho_tot(idx)) << std::endl;
+		output << _density_to_user(integrator->rho().rho_tot(idx)) << std::endl;
 	}
 
 	output.close();
