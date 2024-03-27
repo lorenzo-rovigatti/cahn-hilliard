@@ -17,8 +17,8 @@ public:
     GET_NAME(EulerCPU)
 
 private:
-    int _N_bins_minus_one;
-    int _log2_N_bins;
+    int _N_per_dim_minus_one;
+    int _log2_N_per_dim;
 
     void _fill_coords(int coords[dims], int idx);
     int _cell_idx(int coords[dims]);
