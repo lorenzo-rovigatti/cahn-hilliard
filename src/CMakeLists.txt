@@ -3,6 +3,7 @@ set(common_files
 	Object.cpp
 	integrators/EulerCPU.cpp
 	integrators/Integrator.cpp
+	integrators/PseudospectralCPU.cpp
 	models/Landau.cpp
 	models/SalehWertheim.cpp
 	models/SimpleWertheim.cpp

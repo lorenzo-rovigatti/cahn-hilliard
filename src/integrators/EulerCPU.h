@@ -14,6 +14,8 @@ public:
 
     void evolve() override;
 
+    GET_NAME(EulerCPU)
+
 private:
     int _N_bins_minus_one;
     int _log2_N_bins;

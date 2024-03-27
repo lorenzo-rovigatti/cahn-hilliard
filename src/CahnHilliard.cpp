@@ -8,6 +8,7 @@
 #include "CahnHilliard.h"
 
 #include "integrators/EulerCPU.h"
+#include "integrators/PseudospectralCPU.h"
 
 #include "utils/utility_functions.h"
 
@@ -183,7 +184,12 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 	_init_CUDA(config);
 
-	integrator = new EulerCPU<dims>(m, config);
+	if(_reciprocal) {
+		integrator = new PseudospectralCPU<dims>(m, config);
+	}
+	else {
+		integrator = new EulerCPU<dims>(m, config);
+	}
 	integrator->set_initial_rho(rho);
 }
 
@@ -312,7 +318,8 @@ double CahnHilliard<2>::cell_laplacian(RhoMatrix<double> &field, int species, in
 template<int dims>
 void CahnHilliard<dims>::evolve() {
 	if(_reciprocal) {
-		_evolve_reciprocal();
+		integrator->evolve();
+		// _evolve_reciprocal();
 	}
 	else {
 		integrator->evolve();
