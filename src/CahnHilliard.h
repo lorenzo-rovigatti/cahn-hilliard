@@ -36,8 +36,6 @@ public:
 	FreeEnergyModel *model = nullptr;
 	Integrator<dims> *integrator = nullptr;
 
-	RhoMatrix<double> rho;
-
 	CahnHilliard(FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();
 
@@ -45,7 +43,6 @@ public:
 	int cell_idx(int coords[dims]);
 
 	std::array<double, dims> gradient(RhoMatrix<double> &field, int species, int idx);
-	double cell_laplacian(RhoMatrix<double> &field, int species, int idx);
 
 	void evolve();
 
@@ -59,41 +56,10 @@ public:
 
 private:
 	double _user_to_internal, _internal_to_user;
-	bool _reciprocal = false;
-	bool _use_CUDA = false;
 	bool _output_ready = false;
 	int _d_vec_size;
-	RhoMatrix<field_type> _h_rho;
-	field_type *_d_rho = nullptr;
-	float *_d_rho_der = nullptr;
 
-	void _evolve_direct();
 	double _density_to_user(double v);
-
-	void _init_CUDA(toml::table &config);
-	void _CPU_GPU();
-	void _GPU_CPU();
-
-	// pseudospectral stuff
-	std::array<int, dims> _reciprocal_n; // the dimensions of the grids to be transformed
-	int hat_grid_size; // n1 x n2 x ... x (n_d / 2 + 1)
-	int hat_vector_size; // hat_grid_size * N_species
-	std::vector<std::complex<double>> rho_hat, rho_hat_copy, f_der_hat;
-	RhoMatrix<double> f_der;
-	std::vector<double> sqr_wave_vectors, dealiaser;
-
-	fftw_plan rho_inverse_plan, f_der_plan;
-
-#ifndef NOCUDA
-	cufftFieldComplex *_d_rho_hat = nullptr, *_d_rho_hat_copy;
-	cufftComplex *_d_f_der_hat = nullptr;
-	float *_d_sqr_wave_vectors = nullptr; 
-	float *_d_dealiaser = nullptr;
-
-	cufftHandle _d_rho_inverse_plan, _d_f_der_plan;
-#endif
-
-	void _evolve_reciprocal();
 };
 
 } /* namespace ch */

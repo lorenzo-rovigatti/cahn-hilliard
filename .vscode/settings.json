@@ -77,6 +77,8 @@
         "__tree": "cpp",
         "queue": "cpp",
         "stack": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "__bit_reference": "cpp",
+        "filesystem": "cpp"
     }
 }

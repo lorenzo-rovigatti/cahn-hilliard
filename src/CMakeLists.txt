@@ -43,9 +43,9 @@ IF(CUDA)
 	SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -use_fast_math --compiler-options "-ffast-math -O3 --std=c++17" -Xcudafe "--diag_suppress=unrecognized_gcc_pragma")
 
 	LIST(APPEND common_files
-		CUDA/CahnHilliard.cu
 		CUDA/integrators/CUDAIntegrator.cu
 		CUDA/integrators/EulerCUDA.cu
+		CUDA/integrators/PseudospectralCUDA.cu
 		CUDA/models/Landau.cu
 		CUDA/models/SalehWertheim.cu
 		CUDA/models/SimpleWertheim.cu

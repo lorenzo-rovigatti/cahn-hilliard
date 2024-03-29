@@ -21,11 +21,11 @@ public:
 
     ~CUDAIntegrator();
 
-    GET_NAME(CUDAIntegrator)
-
     void set_initial_rho(RhoMatrix<double> &r) override;
 
     RhoMatrix<double> &rho() override;
+
+    GET_NAME(CUDAIntegrator)
 
 protected:
     void _CPU_GPU();

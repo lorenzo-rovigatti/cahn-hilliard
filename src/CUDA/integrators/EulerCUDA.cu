@@ -1,5 +1,5 @@
 /*
- * EulerCUDA.cpp
+ * EulerCUDA.cu
  *
  * Created on: 3/29/2024
  *     Author: Lorenzo
