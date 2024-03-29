@@ -13,6 +13,7 @@
 #include "utils/utility_functions.h"
 
 #ifndef NOCUDA
+#include "CUDA/integrators/EulerCUDA.h"
 #include "CUDA/CahnHilliard.cuh"
 #endif
 
@@ -188,7 +189,14 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		integrator = new PseudospectralCPU<dims>(m, config);
 	}
 	else {
-		integrator = new EulerCPU<dims>(m, config);
+		if(_use_CUDA) {
+#ifndef NOCUDA
+			integrator = new EulerCUDA<dims>(m, config);
+#endif
+		}
+		else {
+			integrator = new EulerCPU<dims>(m, config);
+		}
 	}
 	integrator->set_initial_rho(rho);
 }
