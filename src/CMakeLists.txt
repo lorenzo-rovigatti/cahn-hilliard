@@ -1,6 +1,9 @@
 set(common_files
 	CahnHilliard.cpp
 	Object.cpp
+	integrators/EulerCPU.cpp
+	integrators/Integrator.cpp
+	integrators/PseudospectralCPU.cpp
 	models/Landau.cpp
 	models/SalehWertheim.cpp
 	models/SimpleWertheim.cpp
@@ -11,6 +14,7 @@ IF(CUDA)
 	CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 	FIND_PACKAGE("CUDA" REQUIRED)
 
+	SET(CMAKE_CUDA_STANDARD 17)
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FORCE_INLINES")
 
 	INCLUDE_DIRECTORIES(${CUDA_INSTALL_PREFIX}/include/)
@@ -36,16 +40,19 @@ IF(CUDA)
 		SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -lineinfo -G)
 	ENDIF(DEBUG)
 
-	SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -use_fast_math --compiler-options "-ffast-math -O3" -Xcudafe "--diag_suppress=unrecognized_gcc_pragma")
+	SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -use_fast_math --compiler-options "-ffast-math -O3 --std=c++17" -Xcudafe "--diag_suppress=unrecognized_gcc_pragma")
 
 	LIST(APPEND common_files
-		CUDA/CahnHilliard.cu
+		CUDA/integrators/CUDAIntegrator.cu
+		CUDA/integrators/EulerCUDA.cu
+		CUDA/integrators/PseudospectralCUDA.cu
 		CUDA/models/Landau.cu
 		CUDA/models/SalehWertheim.cu
 		CUDA/models/SimpleWertheim.cu
 	)
 
 	cuda_add_library(ch_common ${common_files})
+	set_property(TARGET ch_common PROPERTY CUDA_STANDARD 17)
 
 	find_package(CUDAToolkit REQUIRED)
 	target_link_libraries(ch_common CUDA::cufft)

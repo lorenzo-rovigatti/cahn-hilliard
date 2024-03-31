@@ -71,7 +71,7 @@ double SalehWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 		}
 	}
 
-	double f_ref = rho * (std::log(rho) - 1.0 + mixing_S + B2_contrib);
+	double f_ref = rho * (std::log(rho * _density_conversion_factor) - 1.0 + mixing_S + B2_contrib);
 
 	return f_ref + bonding_free_energy(rhos);
 }
