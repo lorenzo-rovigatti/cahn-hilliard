@@ -18,6 +18,10 @@ Landau::Landau(toml::table &config) :
 
 	_epsilon = _config_value<double>(config, "landau.epsilon");
 
+	if(_user_to_internal != 1.0) {
+		critical("The Landau free energy does not support distance_scaling_factor values different from 1.0");
+	}
+
 	info("epsilon = {}", _epsilon);
 }
 

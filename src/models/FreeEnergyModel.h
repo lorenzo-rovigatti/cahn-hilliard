@@ -20,6 +20,7 @@ public:
 	FreeEnergyModel(toml::table &config) {
 		_use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
 		_user_to_internal = 1.0 / _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
+		_density_conversion_factor = CUB(_user_to_internal);
 	}
 
 	virtual ~FreeEnergyModel() {
@@ -35,6 +36,7 @@ public:
 
 protected:
 	double _user_to_internal;
+	double _density_conversion_factor;
 	bool _use_CUDA;
 };
 
