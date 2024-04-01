@@ -38,6 +38,22 @@ SimpleWertheim::~SimpleWertheim() {
 
 }
 
+double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::vector<double> &rhos) {
+    double rho = rhos[species];
+    double X = _X(rho);
+    double der_f_bond = (rho > 0.) ? _valence * std::log(X) : 0.0;
+
+    return der_f_bond;
+}
+
+double SimpleWertheim::der_bulk_free_energy_contractive(int species, const std::vector<double> &rhos) {
+    double rho = rhos[species];
+    double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
+	der_f_ref += 2 * _B2 * rho;
+
+    return der_f_ref;
+}
+
 double SimpleWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
     double rho = rhos[species];
     double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);

@@ -31,6 +31,14 @@ public:
 	virtual void der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) {
 		critical("this model does not support CUDA simulations");
 	}
+	virtual double der_bulk_free_energy_expansive(int species, const std::vector<double> &) {
+		critical("this model does not support expansive/contractive splitting");
+		return 0.;
+	}
+	virtual double der_bulk_free_energy_contractive(int species, const std::vector<double> &) {
+		critical("this model does not support expansive/contractive splitting");
+		return 0.;
+	}
 	virtual double der_bulk_free_energy(int species, const std::vector<double> &) = 0;
 	virtual double bulk_free_energy(const std::vector<double> &) = 0;
 

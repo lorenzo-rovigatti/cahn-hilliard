@@ -1,6 +1,7 @@
 set(common_files
 	CahnHilliard.cpp
 	Object.cpp
+	integrators/BailoFiniteVolume.cpp
 	integrators/EulerCPU.cpp
 	integrators/Integrator.cpp
 	integrators/PseudospectralCPU.cpp
@@ -8,6 +9,7 @@ set(common_files
 	models/SalehWertheim.cpp
 	models/SimpleWertheim.cpp
 	utils/Delta.cpp
+	../extern/fsolve/fsolve.cpp
 	)
 
 IF(CUDA)
