@@ -43,7 +43,7 @@ double SimpleWertheim::der_bulk_free_energy(int species, const std::vector<doubl
     double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
 	der_f_ref += 2 * _B2 * rho;
     double X = _X(rho);
-    double der_f_bond = (rho <= 0.) ? 0.0 : _valence * std::log(X);
+    double der_f_bond = (rho > 0.) ? _valence * std::log(X) : 0.0;
 
     return (der_f_ref + der_f_bond);
 }
@@ -52,7 +52,7 @@ double SimpleWertheim::bulk_free_energy(const std::vector<double> &rhos) {
     double rho = rhos[0];
     double f_ref = (rho < _regularisation_delta) ? SQR(rho) / (2.0 * _regularisation_delta) + rho * _log_delta - _regularisation_delta / 2.0 : rho * std::log(rho * _density_conversion_factor);
     f_ref += -rho + _B2 * SQR(rho);
-    double f_bond = (rho <= 0.) ? 0.0 : _valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho)));
+    double f_bond = (rho > 0.) ? _valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho))) : 0.0;
 
     return (f_ref + f_bond);
 }
