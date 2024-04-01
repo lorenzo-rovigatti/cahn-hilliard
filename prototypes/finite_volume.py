@@ -3,19 +3,20 @@
 import numpy as np
 from scipy import optimize
 
+B2 = 10600
+valence = 4
+Delta = 59769.7978988913
+two_valence_delta = 2 * valence * Delta
+
 def F_der_contractive(rho):
-    B2 = 10600
     F_der = np.log(rho) + 2.0 * B2 * rho
 
     return F_der
 
 def F_der_expansive(rho):
-    M = 4
-    Delta = 59769.7978988913
-    two_valence_delta = 2 * M * Delta
     X = (-1.0 + np.sqrt(1.0 + 2.0 * two_valence_delta * rho)) / (two_valence_delta * rho)
 
-    F_der = -M * np.log(X)
+    F_der = -valence * np.log(X)
 
     return F_der
 
@@ -23,26 +24,8 @@ def to_solve(rho_curr, rho_next, epsilon, dx, dt, M, n):
     F_der_con = F_der_contractive(rho_next)
     F_der_exp = F_der_expansive(rho_curr)
 
-    Lap = np.zeros(np.shape(rho_curr)[0])
-    Lap[1:-1] = epsilon**2*(rho_curr[0:-2]-2*rho_curr[1:-1]+rho_curr[2:]+rho_next[0:-2]-2*rho_next[1:-1]+rho_next[2:])/dx**2/2.
-    Lap[0] = epsilon**2*(rho_curr[-1]-2*rho_curr[0]+rho_curr[1]+rho_next[-1]-2*rho_next[0]+rho_next[1])/dx**2/2.
-    Lap[-1] = epsilon**2*(rho_curr[-2]-2*rho_curr[-1]+rho_curr[0]+rho_next[-2]-2*rho_next[-1]+rho_next[0])/dx**2/2.
-
-    uhalf = -(np.roll(F_der_con - F_der_exp - Lap, 1) - F_der_con + F_der_exp + Lap) / dx
-
-    positive_indices_u = uhalf > 0
-    negative_indices_u = uhalf < 0
-
-    uhalfplus = np.zeros(n)
-    uhalfminus = np.zeros(n)
-    uhalfplus[positive_indices_u] = uhalf[positive_indices_u]
-    uhalfminus[negative_indices_u] = uhalf[negative_indices_u]
-
-    # Compute (n+1) fluxes, including no-flux boundary conditions
-    Fhalf = np.zeros(n + 1)
-
-    # 1st order
-    Fhalf = uhalfplus * M + uhalfminus * M
+    Lap = epsilon**2 * (np.roll(rho_curr, 1) - 2 * rho_curr + np.roll(rho_curr, -1) + np.roll(rho_next, 1) - 2 * rho_next + np.roll(rho_next, -1)) / (2 * dx**2)
+    Fhalf = -(np.roll(F_der_con - F_der_exp - Lap, 1) - F_der_con + F_der_exp + Lap) / dx
 
     return rho_next - rho_curr + (Fhalf - np.roll(Fhalf, -1)) * dt / dx
 
@@ -59,25 +42,24 @@ def main():
     
     rho = np.zeros([n,ntimes+1]) # Density matrix
     rho[:,0] = rho0 # First column of density matrix is initial density
-    t = np.zeros(ntimes+1) # Time vector
 
     for i in np.arange(ntimes): #Temporal loop
         
         rho[:, i+1], infodict, ier, mesg = optimize.fsolve(lambda rhon: to_solve(rho[:,i], rhon, epsilon, dx, dt, M, n), rho[:,i], full_output = True)
-        
-        t[i+1] = t[i]+dt
-        
-        print('--------------------')
-        print('Time: ', t[i])
-        print(['L1 norm of the difference between the new and old state: ', np.linalg.norm(rho[:,i+1]-rho[:,i],1)])
-    
+        rho_curr = rho[:, i + 1]
+
+        if i % 10 == 0:
+            X = (-1.0 + np.sqrt(1.0 + 2.0 * two_valence_delta * rho_curr)) / (two_valence_delta * rho_curr)
+            grad = (np.roll(rho_curr, -1) - rho_curr) / dx
+            F_bulk = rho_curr * (np.log(rho_curr) - 1.0) + B2 * rho_curr**2 + valence * rho_curr * (np.log(X) + 0.5 * (1.0 - X))
+            F_interf = epsilon**2 / 2 * grad**2 # works in 1D
+            F = np.sum(F_bulk + F_interf) * dx**3 / n
+
+            print(f"{dt * i:.2f} {F:.5f}")
     
     with open("last_rho.dat", "w") as f:
         rho[:,-1].tofile(f, "\n")
         f.write("\n")
- 
-    # Compute free energy in time
-    F = 0
     
 
 if __name__ == '__main__':
