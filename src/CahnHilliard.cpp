@@ -7,6 +7,7 @@
 
 #include "CahnHilliard.h"
 
+#include "integrators/BailoFiniteVolume.h"
 #include "integrators/EulerCPU.h"
 #include "integrators/PseudospectralCPU.h"
 
@@ -36,6 +37,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	dx = _config_optional_value<double>(config, "dx", 1.0);
 	_internal_to_user = _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
 	_user_to_internal = 1.0 / _internal_to_user;
+	std::string user_integrator = _config_optional_value<std::string>(config, "integrator", "euler");
 
 	bool reciprocal = _config_optional_value<bool>(config, "use_reciprocal_space", false);
 	bool use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
@@ -124,17 +126,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 	V_bin = CUB(dx);
 
-	if(reciprocal) {
-		if(use_CUDA) {
-#ifndef NOCUDA
-			integrator = new PseudospectralCUDA<dims>(m, config);
-#endif
-		}
-		else {
-			integrator = new PseudospectralCPU<dims>(m, config);
-		}
-	}
-	else {
+	if(user_integrator == "euler") {
 		if(use_CUDA) {
 #ifndef NOCUDA
 			integrator = new EulerCUDA<dims>(m, config);
@@ -144,12 +136,38 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 			integrator = new EulerCPU<dims>(m, config);
 		}
 	}
+	else if(user_integrator == "pseudospectral") {
+		if(use_CUDA) {
+#ifndef NOCUDA
+			integrator = new PseudospectralCUDA<dims>(m, config);
+#endif
+		}
+		else {
+			integrator = new PseudospectralCPU<dims>(m, config);
+		}
+	}
+	else if(user_integrator == "bailo") {
+		if(use_CUDA) {
+#ifndef NOCUDA
+			critical("Unsupported CUDA integrator {}", user_integrator);
+#endif
+		}
+		else {
+			integrator = new BailoFiniteVolume<dims>(m, config);
+		}
+	}
+	else {
+		critical("Unsupported integrator {}", user_integrator);
+	}
+	
 	integrator->set_initial_rho(rho);
 }
 
 template<int dims>
 CahnHilliard<dims>::~CahnHilliard() {
-
+	if(integrator != nullptr) {
+		delete integrator;
+	}
 }
 
 template<int dims>

@@ -11,26 +11,56 @@
 
 namespace ch {
 
+int N_species;
 int N_bins;
 double k_laplacian;
-FreeEnergyModel *model;
+double dx;
+double dt;
+FreeEnergyModel *fe_model;
+RhoMatrix<double> rho_curr;
+RhoMatrix<double> base_csi;
 
 template<int dims> BailoFiniteVolume<dims> *bailo;
 
+double laplacian_1D(double *rho, int species, int idx) {
+	int idx_m = (idx - 1 + N_bins) & (N_bins - 1);
+	int idx_p = (idx + 1) & (N_bins - 1);
+
+	return (rho[species * N_bins + idx_m] + rho[species * N_bins + idx_p] - 2.0 * rho[species * N_bins + idx]) / SQR(dx);
+}
+
 template<int dims>
-void to_solve(int n, double *x, double *fvec) {
-    static RhoMatrix<double> rho_der(N_bins, model->N_species());
+void to_solve(int n, double *rho, double *fvec) {
+	static RhoMatrix<double> csi(N_bins, N_species);
+    static RhoMatrix<double> F_half(N_bins, N_species);
 
-    memset(fvec, 0, sizeof(double) * n);
-
-    // we first evaluate the time derivative for all the fields
-    for(unsigned int idx = 0; idx < N_bins; idx++) {
-        for(int species = 0; species < model->N_species(); species++) {
-            int matrix_idx = species * N_bins + idx;
-            // fvec[matrix_idx] += model->der_bulk_free_energy_contractive();
-            rho_der(idx, species) = model->der_bulk_free_energy(species, bailo<dims>->rho().rho_species(idx)) - 2 * k_laplacian * bailo<dims>->cell_laplacian(bailo<dims>->rho(), species, idx);
+	std::vector<double> rho_species(N_species);
+    for(int idx = 0; idx < N_bins; idx++) {
+		// build the rho_species vector from x
+        for(int species = 0; species < N_species; species++) {
+            rho_species[species] = rho[species * N_bins + idx];
+        }
+        for(int species = 0; species < N_species; species++) {
+			double F_der_con = fe_model->der_bulk_free_energy_contractive(species, rho_species);
+			double interf_con = 2 * k_laplacian * laplacian_1D(rho, species, idx);
+			csi(idx, species) = base_csi(idx, species) + F_der_con - 0.5 * interf_con;
         }
     }
+
+	for(int idx = 0; idx < N_bins; idx++) {
+		int prev_idx = (idx == 0) ? N_bins - 1 : idx - 1;
+        for(int species = 0; species < N_species; species++) {
+			F_half(idx, species) = -(csi(prev_idx, species) - csi(idx, species)) / dx;
+		}
+	}
+
+	for(int idx = 0; idx < N_bins; idx++) {
+		int next_idx = (idx == N_bins - 1) ?  0 : idx + 1;
+        for(int species = 0; species < N_species; species++) {
+			int matrix_idx = species * N_bins + idx;
+			fvec[matrix_idx] = rho[matrix_idx] - rho_curr(idx, species) + (F_half(idx, species) - F_half(next_idx, species)) * dt / dx;
+		}
+	}
 }
 
 template<int dims>
@@ -38,10 +68,14 @@ BailoFiniteVolume<dims>::BailoFiniteVolume(FreeEnergyModel *model, toml::table &
     _N_per_dim_minus_one = this->_N_per_dim - 1;
 	_log2_N_per_dim = (int) std::log2(this->_N_per_dim);
 
+	N_species = model->N_species();
     N_bins = this->_N_bins;
-    model = this->_model;
+    fe_model = model;
     bailo<dims> = this;
     k_laplacian = this->_k_laplacian;
+	dx = this->_dx;
+	dt = this->_dt;
+	base_csi = RhoMatrix<double>(N_bins, fe_model->N_species());
 }
 
 template<int dims>
@@ -51,14 +85,22 @@ BailoFiniteVolume<dims>::~BailoFiniteVolume() {
 
 template<int dims>
 void BailoFiniteVolume<dims>::evolve() {
-    static RhoMatrix<double> rho_next(this->_rho.bins(), this->_model->N_species());
     static RhoMatrix<double> solved(this->_rho.bins(), this->_model->N_species());
-    rho_next = this->_rho;
+    rho_curr = this->_rho;
+
+	// we compute the explicit parts (expansive contributions) at the beginning
+	for(int idx = 0; idx < N_bins; idx++) {
+        for(int species = 0; species < fe_model->N_species(); species++) {
+    		double F_der_exp = fe_model->der_bulk_free_energy_expansive(species, rho_curr.rho_species(idx));
+			double interf_exp = 2 * k_laplacian * bailo<dims>->cell_laplacian(rho_curr, species, idx);
+			base_csi(idx, species) = F_der_exp - 0.5 * interf_exp;
+        }
+    }
 
     int n = this->_rho.bins() * this->_model->N_species();
-    int lwa = (n*(3*n+13)) / 2;
+    int lwa = (n * (3 * n + 13)) / 2;
     static std::vector<double> wa(lwa);
-    fsolve(to_solve<dims>, n, this->_rho.data(), solved.data(), 1.49012e-08, wa.data(), lwa);
+    int info = fsolve(to_solve<dims>, n, this->_rho.data(), solved.data(), 1.49012e-08, wa.data(), lwa);
 }
 
 template<int dims>
