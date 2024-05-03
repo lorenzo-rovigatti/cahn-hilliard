@@ -85,7 +85,6 @@ public:
 				_print_current_state("last_", t);
 			}
 			if(_should_print_traj(t)) {
-				printf("printed %lld\n", t);
 				for(int i = 0; i < _model->N_species(); i++) {
 					_system->print_species_density(i, _trajectories[i], t);
 				}
