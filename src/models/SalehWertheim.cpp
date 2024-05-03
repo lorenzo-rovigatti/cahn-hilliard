@@ -20,6 +20,7 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 				FreeEnergyModel(config) {
 
 	_B2 = _config_value<double>(config, "saleh.B2");
+	_B3 = _config_optional_value<double>(config, "saleh.B3", 0.);
 	_delta_AA = Delta(config, "saleh.delta_AA");
 	_delta_BB = Delta(config, "saleh.delta_BB");
 	_valence = _config_array_values<int>(config, "saleh.valence", 3);
@@ -28,6 +29,7 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 	info("valences = ({}), B2 = {}, delta_AA = {}, delta_BB = {}", fmt::join(_valence, ", "), _B2, _delta_AA, _delta_BB);
 
 	_B2 *= CUB(_user_to_internal);
+	_B3 *= SQR(CUB(_user_to_internal));
 	_delta_AA *= CUB(_user_to_internal);
 	_delta_BB *= CUB(_user_to_internal);
 
@@ -61,17 +63,15 @@ double SalehWertheim::bonding_free_energy(const std::vector<double> &rhos) {
 double SalehWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 
-	double mixing_S = 0., B2_contrib = 0.;
+	double mixing_S = 0.;
 	for(int i = 0; i < N_species(); i++) {
 		double x_i = rhos[i] / rho;
 		mixing_S += x_i * std::log(x_i);
-
-		for(int j = 0; j < N_species(); j++) {
-			B2_contrib += _B2 * x_i * rhos[j];
-		}
 	}
+	double B2_contrib = _B2 * rho;
+	double B3_contrib = _B3 * SQR(rho);
 
-	double f_ref = rho * (std::log(rho * _density_conversion_factor) - 1.0 + mixing_S + B2_contrib);
+	double f_ref = rho * (std::log(rho * _density_conversion_factor) - 1.0 + mixing_S + B2_contrib + B3_contrib);
 
 	return f_ref + bonding_free_energy(rhos);
 }
@@ -84,10 +84,8 @@ double SalehWertheim::_der_contribution(const std::vector<double> &rhos, int spe
 }
 
 double SalehWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
-	double der_f_ref = std::log(rhos[species]);
-	for(int i = 0; i < N_species(); i++) {
-		der_f_ref += 2.0 * _B2 * rhos[i];
-	}
+	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
+	double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho + 3.0 * _B3 * SQR(rho);
 
 	double der_f_bond;
 	if(species == 0) {
@@ -105,7 +103,7 @@ double SalehWertheim::der_bulk_free_energy(int species, const std::vector<double
 
 void SalehWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size) {
 #ifndef NOCUDA
-	saleh_wertheim_der_bulk_free_energy(rho, rho_der, vec_size, _B2);
+	saleh_wertheim_der_bulk_free_energy(rho, rho_der, vec_size, _B2, _B3);
 #endif
 }
 

@@ -34,7 +34,7 @@ public:
 private:
 	std::vector<int> _valence;
 	int _linker_half_valence;
-	double _B2;
+	double _B2, _B3 = 0;
 	double _delta_AA, _delta_BB;
 
 	double _der_contribution(const std::vector<double> &, int);
