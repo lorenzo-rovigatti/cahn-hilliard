@@ -53,7 +53,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	bits = (int) log2N;
 
 	grid_size = N;
+	_grid_size_str = fmt::format("{}", N);
 	for(int i = 1; i < dims; i++) {
+		_grid_size_str += fmt::format("x{}", N);
 		grid_size *= N;
 	}
 
@@ -253,14 +255,15 @@ double CahnHilliard<dims>::average_free_energy() {
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_species_density(int species, const std::string &filename) {
+void CahnHilliard<dims>::print_species_density(int species, const std::string &filename, long long int t) {
 	std::ofstream output(filename);
-	print_species_density(species, output);
+	print_species_density(species, output, t);
 	output.close();
 }
 
 template<>
-void CahnHilliard<1>::print_species_density(int species, std::ofstream &output) {
+void CahnHilliard<1>::print_species_density(int species, std::ofstream &output, long long int t) {
+	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
 	for(int idx = 0; idx < grid_size; idx++) {
 		output << _density_to_user(integrator->rho()(idx, species)) << " " << std::endl;
 	}
@@ -268,7 +271,8 @@ void CahnHilliard<1>::print_species_density(int species, std::ofstream &output) 
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output) {
+void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output, long long int t) {
+	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
 	for(int idx = 0; idx < grid_size; idx++) {
 		if(idx > 0) {
 			int modulo = N;
@@ -285,9 +289,10 @@ void CahnHilliard<dims>::print_species_density(int species, std::ofstream &outpu
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_total_density(const std::string &filename) {
+void CahnHilliard<dims>::print_total_density(const std::string &filename, long long int t) {
 	std::ofstream output(filename.c_str());
 
+	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
 	for(int idx = 0; idx < grid_size; idx++) {
 		if(idx > 0) {
 			int modulo = N;

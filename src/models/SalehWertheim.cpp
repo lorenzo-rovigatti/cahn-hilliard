@@ -69,7 +69,7 @@ double SalehWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 		mixing_S += x_i * std::log(x_i);
 	}
 	double B2_contrib = _B2 * rho;
-	double B3_contrib = _B3 * SQR(rho);
+	double B3_contrib = 0.5 * _B3 * SQR(rho);
 
 	double f_ref = rho * (std::log(rho * _density_conversion_factor) - 1.0 + mixing_S + B2_contrib + B3_contrib);
 

@@ -48,9 +48,9 @@ public:
 
 	double average_mass();
 	double average_free_energy();
-	void print_species_density(int species, const std::string &filename);
-	void print_species_density(int species, std::ofstream &output);
-	void print_total_density(const std::string &filename);
+	void print_species_density(int species, const std::string &filename, long long int t);
+	void print_species_density(int species, std::ofstream &output, long long int t);
+	void print_total_density(const std::string &filename, long long int t);
 
 	GET_NAME(Simulation manager)
 
@@ -58,6 +58,7 @@ private:
 	double _user_to_internal, _internal_to_user;
 	bool _output_ready = false;
 	int _d_vec_size;
+	std::string _grid_size_str;
 
 	double _density_to_user(double v);
 };
