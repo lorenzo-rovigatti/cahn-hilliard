@@ -1,5 +1,6 @@
 import numpy as np
 from PIL import Image
+import matplotlib.pyplot as plt
 import sys
 
 if len(sys.argv) != 4:
@@ -21,3 +22,6 @@ data = (np.dstack(data / rho_max) * 255.999).astype(np.uint8)
 new_image = Image.fromarray(data)
 new_image.save('saleh.png')
 print("saleh.png printed", file=sys.stderr)
+#plt.imshow(new_image)
+#plt.show()
+
