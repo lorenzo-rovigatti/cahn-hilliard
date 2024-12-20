@@ -39,7 +39,6 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	_user_to_internal = 1.0 / _internal_to_user;
 	std::string user_integrator = _config_optional_value<std::string>(config, "integrator", "euler");
 
-	bool reciprocal = _config_optional_value<bool>(config, "use_reciprocal_space", false);
 	bool use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
 
 	info("Running a simulation with N = {}, dt = {}, dx = {}, M = {}, scaling factor = {}", N, dt, dx, M, _internal_to_user);

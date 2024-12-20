@@ -91,7 +91,7 @@ public:
 				_traj_printed++;
 			}
 			if(_print_mass_every > 0 && t % _print_mass_every == 0) {
-				std::string output_line = fmt::format("{:.5} {:.5} {:.5} {:L}", t * _system->dt, _system->average_free_energy(), _system->average_mass(), t);
+				std::string output_line = fmt::format("{:.5} {:.8} {:.5} {:L}", t * _system->dt, _system->average_free_energy(), _system->average_mass(), t);
 				mass_output << output_line << std::endl;
 				std::cout << output_line << std::endl;
 			}
