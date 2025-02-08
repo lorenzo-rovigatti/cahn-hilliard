@@ -16,7 +16,7 @@ public:
 
     GET_NAME(EulerCPU)
 
-private:
+protected:
     int _N_per_dim_minus_one;
     int _log2_N_per_dim;
 

@@ -3,6 +3,7 @@ set(common_files
 	Object.cpp
 	integrators/BailoFiniteVolume.cpp
 	integrators/EulerCPU.cpp
+	integrators/EulerMobilityCPU.cpp
 	integrators/Integrator.cpp
 	integrators/PseudospectralCPU.cpp
 	models/Landau.cpp

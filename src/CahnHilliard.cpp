@@ -9,6 +9,7 @@
 
 #include "integrators/BailoFiniteVolume.h"
 #include "integrators/EulerCPU.h"
+#include "integrators/EulerMobilityCPU.h"
 #include "integrators/PseudospectralCPU.h"
 
 #include "utils/utility_functions.h"
@@ -128,13 +129,23 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	V_bin = CUB(dx);
 
 	if(user_integrator == "euler") {
+		std::string mobility = _config_optional_value<std::string>(config, "mobility.type", "constant");
+
 		if(use_CUDA) {
 #ifndef NOCUDA
+			if(mobility != "constant") {
+				critical("Non-constant mobility is currently unsupported on CUDA");
+			}
 			integrator = new EulerCUDA<dims>(m, config);
 #endif
 		}
 		else {
-			integrator = new EulerCPU<dims>(m, config);
+			if(mobility == "constant") {
+				integrator = new EulerCPU<dims>(m, config);
+			}
+			else {
+				integrator = new EulerMobilityCPU<dims>(m, config);
+			}
 		}
 	}
 	else if(user_integrator == "pseudospectral") {
