@@ -21,6 +21,7 @@ template<int dims>
 void EulerMobilityCPU<dims>::evolve() {
     static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
 	static RhoMatrix<double> M_mu(this->_rho.bins(), this->_model->N_species());
+	static RhoMatrix<double> flux(this->_rho.bins(), this->_model->N_species());
 
     // we first evaluate the time derivative for all the fields
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
@@ -29,19 +30,22 @@ void EulerMobilityCPU<dims>::evolve() {
         }
     }
 
-    // we first evaluate the gradient of M * mu_gen
-    for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
+	// here we use a staggered grid discretisation to avoid numerical artifacts when computing the gradients
+	for(unsigned int idx = 0; idx < this->_N_bins - 1; idx++) {
+		int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
         for(int species = 0; species < this->_model->N_species(); species++) {
-			double mobility = this->_M * this->_rho.rho_species(idx)[species] / (this->_rho.rho_species(idx)[species] + _rho_min);
-			// mobility = this->_M;
-			M_mu(idx, species) =  mobility * this->_cell_gradient(rho_der, species, idx)[0];
+			double M_idx = this->_M * this->_rho(idx, species) / (this->_rho(idx, species) + _rho_min);
+			double M_p = this->_M * this->_rho(idx_p, species) / (this->_rho(idx_p, species) + _rho_min);
+			double M_flux = 0.5 * (M_idx + M_p);
+			flux(idx, species) = M_flux * (rho_der(idx_p, species) - rho_der(idx, species)) / this->_dx;
         }
     }
 
-	// then the gradient of M_mu and integrate
 	for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
+		int idx_m = (idx - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
         for(int species = 0; species < this->_model->N_species(); species++) {
-            this->_rho(idx, species) += this->_cell_gradient(M_mu, species, idx)[0] * this->_dt;
+			double divergence = (flux(idx, species) - flux(idx_m, species)) / this->_dx;
+			this->_rho(idx, species) += divergence * this->_dt;
         }
     }
 }
