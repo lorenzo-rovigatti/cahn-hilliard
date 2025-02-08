@@ -74,7 +74,6 @@ double SimpleWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 }
 
 double SimpleWertheim::_X(double rho) {
-    double sqrt_argument = 2.0 * _two_valence_delta * rho;
     return (-1.0 + std::sqrt(1.0 + 2.0 * _two_valence_delta * rho)) / (_two_valence_delta * rho);
 }
 
