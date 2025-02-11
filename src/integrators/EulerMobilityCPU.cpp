@@ -77,13 +77,13 @@ Gradient<2> EulerMobilityCPU<2>::_cell_gradient(RhoMatrix<double> &field, int sp
 }
 
 template<>
-double EulerMobilityCPU<1>::_divergence(RhoMatrix<Gradient<1>> &gradients, int species, int idx) {
+double EulerMobilityCPU<1>::_divergence(RhoMatrix<Gradient<1>> &flux, int species, int idx) {
 	int idx_m = (idx - 1 + _N_bins) & _N_per_dim_minus_one;
-	return (gradients(idx, species)[0] - gradients(idx_m, species)[0]) / this->_dx;
+	return (flux(idx, species)[0] - flux(idx_m, species)[0]) / this->_dx;
 }
 
 template<int dims>
-double EulerMobilityCPU<dims>::_divergence(RhoMatrix<Gradient<dims>> &gradients, int species, int idx) {
+double EulerMobilityCPU<dims>::_divergence(RhoMatrix<Gradient<dims>> &flux, int species, int idx) {
 	double res = 0;
 	int coords[dims], coords_m[dims];
 	this->_fill_coords(coords, idx);
@@ -92,7 +92,7 @@ double EulerMobilityCPU<dims>::_divergence(RhoMatrix<Gradient<dims>> &gradients,
 	for(int d = 0; d < dims; d++) {
 		coords_m[d] = (coords[d] - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
 		int idx_m = this->_cell_idx(coords_m);
-		res += (gradients(idx, species)[d] - gradients(idx_m, species)[d]) / this->_dx;
+		res += (flux(idx, species)[d] - flux(idx_m, species)[d]) / this->_dx;
 		coords_m[d] = coords[d];
 	}
 

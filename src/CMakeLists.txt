@@ -43,11 +43,12 @@ IF(CUDA)
 		SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -lineinfo -G)
 	ENDIF(DEBUG)
 
-	SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -use_fast_math --compiler-options "-ffast-math -O3 --std=c++17" -Xcudafe "--diag_suppress=unrecognized_gcc_pragma")
+	SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; --expt-relaxed-constexpr -use_fast_math --compiler-options "-ffast-math -O3 --std=c++17" -Xcudafe "--diag_suppress=unrecognized_gcc_pragma")
 
 	LIST(APPEND common_files
 		CUDA/integrators/CUDAIntegrator.cu
 		CUDA/integrators/EulerCUDA.cu
+		CUDA/integrators/EulerMobilityCUDA.cu
 		CUDA/integrators/PseudospectralCUDA.cu
 		CUDA/models/Landau.cu
 		CUDA/models/SalehWertheim.cu

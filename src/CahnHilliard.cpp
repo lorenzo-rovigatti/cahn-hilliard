@@ -16,6 +16,7 @@
 
 #ifndef NOCUDA
 #include "CUDA/integrators/EulerCUDA.h"
+#include "CUDA/integrators/EulerMobilityCUDA.h"
 #include "CUDA/integrators/PseudospectralCUDA.h"
 #endif
 
@@ -134,9 +135,11 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		if(use_CUDA) {
 #ifndef NOCUDA
 			if(mobility != "constant") {
-				critical("Non-constant mobility is currently unsupported on CUDA");
+				integrator = new EulerMobilityCUDA<dims>(m, config);
 			}
-			integrator = new EulerCUDA<dims>(m, config);
+			else {
+				integrator = new EulerCUDA<dims>(m, config);
+			}
 #endif
 		}
 		else {
