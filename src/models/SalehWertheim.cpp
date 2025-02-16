@@ -66,7 +66,7 @@ double SalehWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	double mixing_S = 0.;
 	for(int i = 0; i < N_species(); i++) {
 		double x_i = rhos[i] / rho;
-		mixing_S += x_i * std::log(x_i);
+		mixing_S += (x_i > 0) ? x_i * std::log(x_i) : 0;
 	}
 	double B2_contrib = _B2 * rho;
 	double B3_contrib = 0.5 * _B3 * SQR(rho);
@@ -84,6 +84,11 @@ double SalehWertheim::_der_contribution(const std::vector<double> &rhos, int spe
 }
 
 double SalehWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
+	// early return if the species has zero density
+	if(rhos[species] == 0.) {
+		return 0.;
+	}
+	
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 	double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho + 3.0 * _B3 * SQR(rho);
 
