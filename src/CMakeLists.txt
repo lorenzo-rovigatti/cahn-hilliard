@@ -7,6 +7,7 @@ set(common_files
 	integrators/Integrator.cpp
 	integrators/PseudospectralCPU.cpp
 	models/Landau.cpp
+	models/GenericWertheim.cpp
 	models/SalehWertheim.cpp
 	models/SimpleWertheim.cpp
 	utils/Delta.cpp

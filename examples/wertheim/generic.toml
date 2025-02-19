@@ -1,0 +1,38 @@
+steps = 1e9
+print_every = 1e5
+print_trajectory_every = 1e6
+N = 128
+dt = 5e-5
+initial_density = [2e-5, 2e-5, 2e-5, 2e-5]
+free_energy = "generic_wertheim"
+dx = 10
+k = 1e6
+
+[mobility]
+type = "regularised"
+rho_min = 1e-5
+
+[generic_wertheim]
+valence = 4
+B2 = 2190
+
+[generic_wertheim.delta_AA]
+T = 300
+deltaH = -42200
+deltaS = -119.1
+salt = 0.5
+sticky_size = 6
+
+[generic_wertheim.delta_BB]
+T = 300
+deltaH = -42200
+deltaS = -119.1
+salt = 0.5
+sticky_size = 6
+
+[generic_wertheim.delta_CC]
+T = 300
+deltaH = -42200
+deltaS = -119.1
+salt = 0.5
+sticky_size = 6

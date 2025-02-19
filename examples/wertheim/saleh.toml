@@ -5,8 +5,8 @@ N = 64
 dt = 1e-6
 initial_density = 9e-5
 free_energy = "saleh"
-dx = 20
-k = 1e7
+dx = 10
+k = 1e6
 
 [saleh]
 valence = [4, 4, 4]
