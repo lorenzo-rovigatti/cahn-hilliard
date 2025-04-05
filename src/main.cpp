@@ -37,12 +37,7 @@ public:
 			critical("Unsupported printing strategy '{}'", _print_traj_strategy);
 		}
 
-		if(config["seed"]) {
-			srand48(_config_value<long long int>(config, "seed"));
-		}
-		else {
-			srand48(std::time(NULL));
-		}
+		srand48(_config_optional_value<long long int>(config, "seed", std::time(NULL)));
 
 		std::string model_name = _config_value<std::string>(config, "free_energy");
 		if(model_name == "landau") {

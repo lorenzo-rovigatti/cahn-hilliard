@@ -35,7 +35,6 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	N = _config_value<int>(config, "N");
 	k_laplacian = _config_optional_value<double>(config, "k", 1.0);
 	dt = _config_value<double>(config, "dt");
-	M = _config_optional_value<double>(config, "M", 1.0);
 	dx = _config_optional_value<double>(config, "dx", 1.0);
 	_internal_to_user = _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
 	_user_to_internal = 1.0 / _internal_to_user;
@@ -43,7 +42,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 	bool use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
 
-	info("Running a simulation with N = {}, dt = {}, dx = {}, M = {}, scaling factor = {}", N, dt, dx, M, _internal_to_user);
+	info("Running a simulation with N = {}, dt = {}, dx = {}, scaling factor = {}", N, dt, dx, _internal_to_user);
 
 	double log2N = std::log2(N);
 	if(ceil(log2N) != floor(log2N)) {
@@ -106,8 +105,6 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		double initial_A = _config_optional_value<double>(config, "initial_A", 1e-2);
 		int initial_N_peaks = _config_optional_value<int>(config, "initial_N_peaks", 0);
 		double initial_k = 2 * M_PI * initial_N_peaks / (double) N; // wave vector of the modulation
-		int seed = _config_optional_value<int>(config, "seed", time(NULL));
-		srand48(seed);
 		for(int bin = 0; bin < grid_size; bin++) {
 			double modulation = initial_A * std::cos(initial_k * bin);
 			for(int i = 0; i < model->N_species(); i++) {
@@ -119,7 +116,6 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 	}
 
 	dx *= _user_to_internal; // proportional to m
-	M /= _user_to_internal; // proportional to m^-1
 	k_laplacian *= std::pow(_user_to_internal, 5); // proportional to m^5
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
 		for(int species = 0; species < model->N_species(); species++) {

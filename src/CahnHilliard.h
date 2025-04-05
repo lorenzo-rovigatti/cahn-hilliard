@@ -30,7 +30,6 @@ public:
 	int grid_size = 0; // size of the grid
 	double dt = 0.0;
 	double k_laplacian = 0.0;
-	double M = 0.0;
 	double dx = 0.0;
 	double V_bin;
 	FreeEnergyModel *model = nullptr;

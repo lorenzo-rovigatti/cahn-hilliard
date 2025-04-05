@@ -33,6 +33,23 @@ Here is a (likely incomplete) list of options. Note that each free energy model 
     * `print_last_every`: the (linear) frequency with which the configuration is printed to `last_*` files. Note that this option is mandatory when the "log" printing strategy is specified.
 * `[seed = time(NULL)]`: the seed used to initialise the random number generator.
 * `free_energy`: the free energy model to be used (see [below](#free-energy-models) for a list of models).
+* `N`: the linear size of the simulation grid. In 1D system this is the number of bins, whereas in 2D the number of bins is `N` squared.
+* `k`: the coefficient linked to the free energy penalty that comes with the creation of an interface between two phases in the Cahn-Hilliard equation.
+* `dt`: the integration time step.
+* `dx`: the linear size of the bins, in nanometers.
+* `[distance_scaling_factor = 1]`: a numerical factor used internally to rescale all lengths. Depending on the free energy model and on the parameters chosen, changing this value may increase the numerical stability of the simulation. For instance, in DNA nanostar systems setting it to 10 brings densities and other numerical constants rather close to 1, which helps the numerical stability, especially on GPUs.
+* `[integrator = "euler"]`: the algorithm that will be used to integrate the Cahn-Hilliard equation in time (see [below](#integrators) for a list of integrators).
+* `[use_CUDA = false]`: if `true`, the simulation will be run on the GPU.
+* `load_from`: the filename of the initial configuration. See [below](#initial-configuration) for details.
+* `initial_density`: used only if `load_from` is not specified, this is the average density of the initial configuration, which will be generated randomly. This should be either a single value, or an array with as many entries as the number of species to be simulated, which is controlled by the free energy model chosen. The way the random configuration is generated is controlled by the `initial_A` and `initial_N_peaks` options (see [below](#initial-configuration) for details). 
+
+## Initial configuration
+
+To be written
+
+## Integrators
+
+To be written
 
 ## Free energy models
 
