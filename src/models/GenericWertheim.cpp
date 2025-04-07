@@ -21,19 +21,28 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 
 	_B2 = _config_value<double>(config, "generic_wertheim.B2");
 	_B3 = _config_optional_value<double>(config, "generic_wertheim.B3", 0.);
-	_delta_AA = Delta(config, "generic_wertheim.delta_AA");
-	_delta_BB = Delta(config, "generic_wertheim.delta_BB");
-	_delta_CC = Delta(config, "generic_wertheim.delta_CC");
-	// _valence = _config_array_values<int>(config, "generic_wertheim.valence", 3);
-	_valence = _config_value<int>(config, "generic_wertheim.valence");
-	_linker_partial_valence = 2;
-
-	info("valence = {}, linker_partial_valence = {}, B2 = {}, delta_AA = {}, delta_BB = {}", _valence, _linker_partial_valence, _B2, _delta_AA, _delta_BB);
 
 	_B2 *= CUB(_user_to_internal);
 	_B3 *= SQR(CUB(_user_to_internal));
-	_delta_AA *= CUB(_user_to_internal);
-	_delta_BB *= CUB(_user_to_internal);
+
+	Species species;
+	species.patches.push_back(0);
+	species.patches.push_back(0);
+	species.patches.push_back(0);
+	species.patches.push_back(0);
+	species.idx = _species.size();
+	species.N_patches = species.patches.size();
+	_species.push_back(species);
+	_species.push_back(species);
+	_delta[{0, 0}] = 10000;
+
+	for(auto &species : _species) {
+		_N_patches += species.patches.size();
+	}
+
+	for(auto &delta : _delta) {
+		delta.second *= CUB(_user_to_internal);
+	}
 
 #ifndef NOCUDA
 	// if(_config_optional_value<bool>(config, "use_CUDA", false)) {
@@ -45,25 +54,47 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 GenericWertheim::~GenericWertheim() {
 }
 
+void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<double> &Xs) {
+	double tolerance = 1e-8;
+	int max_iter = 1000;
+
+	for(int iter = 0; iter < max_iter; ++iter) {
+		double max_delta = 0.0;
+
+		for(auto& species : _species) {
+			for(uint patch = 0; patch < species.N_patches; patch++) {
+				double sum = 0.0;
+				for(const auto& other : _species) {
+					for(uint other_patch = 0; other_patch < other.N_patches; other_patch++) {
+						double delta = _delta[{patch, other_patch}];
+						sum += other.idx * Xs[other_patch] * delta;
+					}
+				}
+
+				double new_X = 1.0 / (1.0 + sum);
+				max_delta = std::max(max_delta, std::abs(new_X - Xs[patch]));
+				Xs[patch] = new_X;
+			}
+		}
+
+		if (max_delta < tolerance) break;
+	}
+}
+
 double GenericWertheim::bonding_free_energy(const std::vector<double> &rhos) {
-	double rho_factor =  _delta_AA * (_valence * rhos[0] + _linker_partial_valence * rhos[3]);
-	double X_1A = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
-	double fe_part_1 = std::log(X_1A) - X_1A / 2.0 + 0.5;
+	double bonding_fe = 0;
+	std::vector<double> Xs(0.0, N_species());
+	_update_X(rhos, Xs);
 
-	rho_factor =  _delta_BB * (_valence * rhos[1] + _linker_partial_valence * rhos[3]);
-	double X_2B = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
-	double fe_part_2 = std::log(X_2B) - X_2B / 2.0 + 0.5;
-
-	rho_factor =  _delta_CC * (_valence * rhos[2] + _linker_partial_valence * rhos[3]);
-	double X_3C = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
-	double fe_part_3 = std::log(X_3C) - X_3C / 2.0 + 0.5;
-
-	double bonding_fe =
-			rhos[0] * _valence * fe_part_1 +
-			rhos[1] * _valence * fe_part_2 +
-			rhos[2] * _valence * fe_part_3 +
-			rhos[3] * _linker_partial_valence * (fe_part_1 + fe_part_2 + fe_part_3);
-
+	for(auto &species : _species) {
+		double species_fe = 0;
+		for(uint patch = 0; patch < species.N_patches; patch++) {
+			species_fe += std::log(Xs[patch]) - Xs[patch] / 2.0;
+		}
+		species_fe += species.N_patches / 2.0;
+		bonding_fe += rhos[species.idx] * species_fe;
+	}
+	
 	return bonding_fe;
 }
 
@@ -84,10 +115,11 @@ double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 }
 
 double GenericWertheim::_der_contribution(const std::vector<double> &rhos, int species) {
-	double delta = (species == 0) ? _delta_AA : _delta_BB;
-	double rho_factor =  delta * (_valence * rhos[species] + _linker_partial_valence * rhos[3]);
-	double X = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
-	return (rho_factor >= 0) ? std::log(X) : 0.0;
+	return 0;
+	// double delta = (species == 0) ? _delta_AA : _delta_BB;
+	// double rho_factor =  delta * (_valence * rhos[species] + _linker_partial_valence * rhos[3]);
+	// double X = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
+	// return (rho_factor >= 0) ? std::log(X) : 0.0;
 }
 
 double GenericWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
@@ -99,12 +131,11 @@ double GenericWertheim::der_bulk_free_energy(int species, const std::vector<doub
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 	double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho + 3.0 * _B3 * SQR(rho);
 
-	double der_f_bond;
-	if(species == 3) {
-		der_f_bond = _linker_partial_valence * (_der_contribution(rhos, 0) + _der_contribution(rhos, 1) + _der_contribution(rhos, 2));
-	}
-	else {
-		der_f_bond = _valence * _der_contribution(rhos, species);
+	std::vector<double> Xs(0.0, N_species());
+	_update_X(rhos, Xs);
+	double der_f_bond = 0;
+	for(uint patch = 0; patch < _species[species].N_patches; patch++) {
+		der_f_bond += std::log(Xs[patch]);
 	}
 
 	return der_f_ref + der_f_bond;

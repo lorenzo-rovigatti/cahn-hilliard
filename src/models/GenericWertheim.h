@@ -12,6 +12,14 @@
 
 namespace ch {
 
+using DeltaMap = std::map<std::pair<int, int>, double>;
+
+struct Species {
+	int idx;
+	int N_patches;
+	std::vector<int> patches;
+};
+
 class GenericWertheim final: public FreeEnergyModel {
 public:
 	GenericWertheim(toml::table &config);
@@ -20,7 +28,7 @@ public:
 	GenericWertheim(GenericWertheim &&other) = default;
 
 	int N_species() override {
-		return 4;
+		return _species.size();
 	}
 
 	double bonding_free_energy(const std::vector<double> &);
@@ -32,10 +40,12 @@ public:
 	GET_NAME("Generic Wertheim free energy")
 
 private:
-	int _valence, _linker_partial_valence;
+	std::vector<Species> _species;
+	DeltaMap _delta;
+	int _N_patches = 0;
 	double _B2, _B3 = 0;
-	double _delta_AA, _delta_BB, _delta_CC;
 
+	void _update_X(const std::vector<double> &, std::vector<double> &);
 	double _der_contribution(const std::vector<double> &, int);
 };
 
