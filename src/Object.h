@@ -27,10 +27,10 @@ public:
 	Object(const Object &other) = default;
 	Object(Object &&other) = default;
 
-	toml::node_view<toml::node> _config_node_view(toml::table &tbl, const std::string &path, bool mandatory) const;
+	toml::node_view<const toml::node> _config_node_view(const toml::table &tbl, const std::string &path, bool mandatory) const;
 
 	template<typename T>
-	std::vector<T> _config_array_values(toml::table &tbl, const std::string &path, size_t output_size) const {
+	std::vector<T> _config_array_values(const toml::table &tbl, const std::string &path, size_t output_size=0) const {
 		static_assert(std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, std::string>,
 				"_config_array_values only accepts std::string, integral or floating point types");
 
@@ -48,8 +48,8 @@ public:
 		std::vector<T> output;
 
 		auto nv = _config_node_view(tbl, path, true);
-		// if there is a single value then we assume the user want to use it for all the output_size cells of the output
-		if(nv.is<toml_T>()) {
+		// if there is a single value and the user specified an output size, then we assume they want to use it for all the output_size cells of the output
+		if(nv.is<toml_T>() && output_size > 0) {
 			T value = nv.value<toml_T>().value();
 			output = std::vector<T>(output_size, value);
 		}
@@ -70,7 +70,7 @@ public:
 				output.push_back(value);
 			}
 		}
-		if(output.size() != output_size) {
+		if(output_size > 0 && output.size() != output_size) {
 			critical("Option '{}' should be a single value or an array of size {}", path, output_size);
 		}
 
@@ -78,13 +78,13 @@ public:
 	}
 
 	template<typename T>
-	T _config_value(toml::table &tbl, const std::string &path) const {
+	T _config_value(const toml::table &tbl, const std::string &path) const {
 		auto nv = _config_node_view(tbl, path, true);
 		return nv.value<T>().value();
 	}
 
 	template<typename T>
-	T _config_optional_value(toml::table &tbl, const std::string &path, T default_value) const {
+	T _config_optional_value(const toml::table &tbl, const std::string &path, T default_value) const {
 		auto nv = _config_node_view(tbl, path, false);
 		return nv.value<T>().value_or(default_value);
 	}

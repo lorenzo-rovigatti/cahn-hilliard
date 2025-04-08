@@ -17,7 +17,7 @@ Object::~Object() {
 
 }
 
-toml::node_view<toml::node> Object::_config_node_view(toml::table &tbl, const std::string &path, bool mandatory) const {
+toml::node_view<const toml::node> Object::_config_node_view(const toml::table &tbl, const std::string &path, bool mandatory) const {
 	toml::path t_path(path);
 	auto nv = tbl[t_path];
 

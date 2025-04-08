@@ -7,6 +7,7 @@
 
 #include "GenericWertheim.h"
 #include "../utils/Delta.h"
+#include "../utils/strings.h"
 
 #ifndef NOCUDA
 // #include "../CUDA/models/GenericWertheim.cuh"
@@ -25,19 +26,40 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 	_B2 *= CUB(_user_to_internal);
 	_B3 *= SQR(CUB(_user_to_internal));
 
-	Species species;
-	species.patches.push_back(0);
-	species.patches.push_back(0);
-	species.patches.push_back(0);
-	species.patches.push_back(0);
-	species.idx = _species.size();
-	species.N_patches = species.patches.size();
-	_species.push_back(species);
-	_species.push_back(species);
+	if(auto arr = config["generic_wertheim"]["species"].as_array()) {
+        for(const auto& elem : *arr) {
+			Species new_species;
+            new_species.patches = _config_array_values<int>(*elem.as_table(), "patches");
+			new_species.N_patches = new_species.patches.size();
+			new_species.idx = _species.size();
+			_species.push_back(new_species);
+        }
+
+    } else {
+        critical("Key 'generic_wertheim.species' should be an array\n");
+    }
+
+	if(auto arr = config["generic_wertheim"]["deltas"].as_array()) {
+        for(const auto& elem : *arr) {
+			auto interaction = _config_value<std::string>(*elem.as_table(), "interaction");
+			auto split = utils::split(interaction, "-");
+			if(split.size() != 2) {
+				critical("The following delta interaction specifier is malformed: {}", interaction);
+			}
+			// TODO: check that these are effectively numbers
+			int patch_A = std::atoi(split[0].c_str());
+			int patch_B = std::atoi(split[1].c_str());
+			// TODO: add log printing of the parsed values
+			// _delta[{patch_A, patch_B}] = Delta(*elem.as_table(), );
+		}
+    } else {
+        critical("Key 'generic_wertheim.deltas' should be an array\n");
+    }
+
 	_delta[{0, 0}] = 10000;
 
 	for(auto &species : _species) {
-		_N_patches += species.patches.size();
+		_N_patches += species.N_patches;
 	}
 
 	for(auto &delta : _delta) {

@@ -11,6 +11,7 @@ set(common_files
 	models/SalehWertheim.cpp
 	models/SimpleWertheim.cpp
 	utils/Delta.cpp
+	utils/strings.cpp
 	../extern/fsolve/fsolve.cpp
 	)
 

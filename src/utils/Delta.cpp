@@ -17,7 +17,7 @@ Delta::Delta(toml::table &table, std::string path) {
 		_delta = nv.value<double>().value();
 	}
 	else if(nv.is_table()){
-		toml::table &delta_table = *nv.as_table();
+		const toml::table &delta_table = *nv.as_table();
 		double T = _config_value<double>(delta_table, "T");
 		double salt = _config_optional_value<double>(delta_table, "salt", 1.0);
 		int L_DNA = _config_optional_value<int>(delta_table, "sticky_size", 6);
