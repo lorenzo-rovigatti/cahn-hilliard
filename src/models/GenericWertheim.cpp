@@ -62,10 +62,10 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 		double max_delta = 0.0;
 
 		for(auto& species : _species) {
-			for(uint patch = 0; patch < species.N_patches; patch++) {
+			for(auto &patch : species.patches) {
 				double sum = 0.0;
 				for(const auto& other : _species) {
-					for(uint other_patch = 0; other_patch < other.N_patches; other_patch++) {
+					for(auto &other_patch : other.patches) {
 						double delta = _delta[{patch, other_patch}];
 						sum += other.idx * Xs[other_patch] * delta;
 					}
@@ -77,18 +77,18 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 			}
 		}
 
-		if (max_delta < tolerance) break;
+		if(max_delta < tolerance) break;
 	}
 }
 
 double GenericWertheim::bonding_free_energy(const std::vector<double> &rhos) {
 	double bonding_fe = 0;
-	std::vector<double> Xs(0.0, N_species());
+	std::vector<double> Xs(_N_patches, 0.0);
 	_update_X(rhos, Xs);
 
 	for(auto &species : _species) {
 		double species_fe = 0;
-		for(uint patch = 0; patch < species.N_patches; patch++) {
+		for(auto &patch : species.patches) {
 			species_fe += std::log(Xs[patch]) - Xs[patch] / 2.0;
 		}
 		species_fe += species.N_patches / 2.0;
@@ -114,14 +114,6 @@ double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	return f_ref + bonding_free_energy(rhos);
 }
 
-double GenericWertheim::_der_contribution(const std::vector<double> &rhos, int species) {
-	return 0;
-	// double delta = (species == 0) ? _delta_AA : _delta_BB;
-	// double rho_factor =  delta * (_valence * rhos[species] + _linker_partial_valence * rhos[3]);
-	// double X = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
-	// return (rho_factor >= 0) ? std::log(X) : 0.0;
-}
-
 double GenericWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
 	// early return if the species has zero density
 	if(rhos[species] == 0.) {
@@ -131,10 +123,10 @@ double GenericWertheim::der_bulk_free_energy(int species, const std::vector<doub
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 	double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho + 3.0 * _B3 * SQR(rho);
 
-	std::vector<double> Xs(0.0, N_species());
+	std::vector<double> Xs(_N_patches, 0.0);
 	_update_X(rhos, Xs);
 	double der_f_bond = 0;
-	for(uint patch = 0; patch < _species[species].N_patches; patch++) {
+	for(auto &patch : _species[species].patches) {
 		der_f_bond += std::log(Xs[patch]);
 	}
 
