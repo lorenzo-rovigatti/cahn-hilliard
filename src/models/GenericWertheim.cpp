@@ -136,9 +136,27 @@ double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 }
 
 void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+	static std::vector<std::vector<double>> all_Xs(rho.bins(), std::vector<double>(_N_patches, 0.0));
+
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+		std::vector<double> rhos = rho.rho_species(idx);
+		std::vector<double> &Xs = all_Xs[idx];
+		_update_X(rhos, Xs);
         for(int species = 0; species < N_species(); species++) {
-            rho_der(idx, species) = der_bulk_free_energy(species, rho.rho_species(idx));
+			// early return if the species has zero density
+			if(rhos[species] == 0.) {
+				rho_der(idx, species) = 0.;
+			}
+			else {
+				double rho_tot = std::accumulate(rhos.begin(), rhos.end(), 0.);
+				double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho_tot + 3.0 * _B3 * SQR(rho_tot);
+				
+				double der_f_bond = 0;
+				for(auto &patch : _species[species].patches) {
+					der_f_bond += std::log(Xs[patch]);
+				}
+				rho_der(idx, species) = der_f_ref + der_f_bond;
+			}
         }
     }
 }
