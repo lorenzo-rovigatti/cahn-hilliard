@@ -36,7 +36,7 @@ GenericWertheim::GenericWertheim(toml::table &config) :
         }
 
     } else {
-        critical("Key 'generic_wertheim.species' should be an array\n");
+        critical("Missing 'generic_wertheim.species' array");
     }
 
 	if(auto arr = config["generic_wertheim"]["deltas"].as_array()) {
@@ -49,14 +49,13 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 			// TODO: check that these are effectively numbers
 			int patch_A = std::atoi(split[0].c_str());
 			int patch_B = std::atoi(split[1].c_str());
-			// TODO: add log printing of the parsed values
-			// _delta[{patch_A, patch_B}] = Delta(*elem.as_table(), );
+			double my_delta = Delta(toml::node_view<const toml::node>{ elem }); // the horror
+			_delta[{patch_A, patch_B}] = _delta[{patch_B, patch_A}] = my_delta;
+			info("Adding {}-{} interaction with delta = {:.2f}", patch_A, patch_B, my_delta);
 		}
     } else {
-        critical("Key 'generic_wertheim.deltas' should be an array\n");
+        critical("Missing 'generic_wertheim.deltas' array");
     }
-
-	_delta[{0, 0}] = 10000;
 
 	for(auto &species : _species) {
 		_N_patches += species.N_patches;
@@ -78,7 +77,7 @@ GenericWertheim::~GenericWertheim() {
 
 void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<double> &Xs) {
 	double tolerance = 1e-8;
-	int max_iter = 1000;
+	int max_iter = 100000;
 
 	for(int iter = 0; iter < max_iter; ++iter) {
 		double max_delta = 0.0;
@@ -89,7 +88,7 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 				for(const auto& other : _species) {
 					for(auto &other_patch : other.patches) {
 						double delta = _delta[{patch, other_patch}];
-						sum += other.idx * Xs[other_patch] * delta;
+						sum += rhos[other.idx] * Xs[other_patch] * delta;
 					}
 				}
 

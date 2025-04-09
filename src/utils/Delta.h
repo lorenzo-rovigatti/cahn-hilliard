@@ -14,7 +14,8 @@ namespace ch {
 
 class Delta : public Object {
 public:
-	Delta(toml::table &table, std::string path);
+	Delta(toml::node_view<const toml::node> nv);
+	Delta(const toml::table &table, std::string path);
 	virtual ~Delta();
 	Delta(const Delta &other) = default;
 	Delta(Delta &&other) = default;

@@ -8,11 +8,11 @@
 #include "Delta.h"
 
 #include "../defs.h"
+#include <spdlog/fmt/ostr.h>
 
 namespace ch {
 
-Delta::Delta(toml::table &table, std::string path) {
-	auto nv = _config_node_view(table, path, true);
+Delta::Delta(toml::node_view<const toml::node> nv) {
 	if(nv.is_number()) {
 		_delta = nv.value<double>().value();
 	}
@@ -31,8 +31,14 @@ Delta::Delta(toml::table &table, std::string path) {
 		_delta = 1.6606 * std::exp(-delta_G / (k_B * T));
 	}
 	else {
-		critical("The {} option should be either a number or a table of values", path);
+		std::ostringstream oss;
+    	oss << nv.node();
+		critical("A delta must be specified either as a single number or as a table of values. This is the offending part of the input file that couldn't be parsed: {}", oss.str());
 	}
+}
+
+Delta::Delta(const toml::table &table, std::string path) : Delta(_config_node_view(table, path, true)) {
+	
 }
 
 Delta::~Delta() {
