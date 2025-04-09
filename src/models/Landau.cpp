@@ -33,6 +33,14 @@ int Landau::N_species() {
 	return 1;
 }
 
+void Landau::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+        for(int species = 0; species < N_species(); species++) {
+            rho_der(idx, species) = der_bulk_free_energy(species, rho.rho_species(idx));
+        }
+    }
+}
+
 double Landau::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
 	double op = rhos[species];
 	return -_epsilon * op + op * op * op;

@@ -17,9 +17,10 @@ template<int dims>
 void EulerCPU<dims>::evolve() {
     static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
     // we first evaluate the time derivative for all the fields
+	this->_model->der_bulk_free_energy(this->_rho, rho_der);
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
         for(int species = 0; species < this->_model->N_species(); species++) {
-            rho_der(idx, species) = this->_model->der_bulk_free_energy(species, this->_rho.rho_species(idx)) - 2 * this->_k_laplacian * _cell_laplacian(this->_rho, species, idx);
+            rho_der(idx, species) -= 2 * this->_k_laplacian * _cell_laplacian(this->_rho, species, idx);
         }
     }
 

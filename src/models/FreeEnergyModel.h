@@ -40,6 +40,7 @@ public:
 		return 0.;
 	}
 	virtual double der_bulk_free_energy(int species, const std::vector<double> &) = 0;
+	virtual void der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) = 0;
 	virtual double bulk_free_energy(const std::vector<double> &) = 0;
 
 protected:

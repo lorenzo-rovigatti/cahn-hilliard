@@ -24,6 +24,7 @@ public:
 	}
 
 	void der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) override;
+	void der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) override;
 	double der_bulk_free_energy_expansive(int species, const std::vector<double> &) override;
 	double der_bulk_free_energy_contractive(int species, const std::vector<double> &) override;
 	double der_bulk_free_energy(int species, const std::vector<double> &) override;

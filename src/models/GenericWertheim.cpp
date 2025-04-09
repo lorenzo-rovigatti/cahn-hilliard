@@ -77,7 +77,7 @@ GenericWertheim::~GenericWertheim() {
 
 void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<double> &Xs) {
 	double tolerance = 1e-8;
-	int max_iter = 100000;
+	int max_iter = 10000;
 
 	for(int iter = 0; iter < max_iter; ++iter) {
 		double max_delta = 0.0;
@@ -133,6 +133,14 @@ double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	double f_ref = rho * (std::log(rho * _density_conversion_factor) - 1.0 + mixing_S + B2_contrib + B3_contrib);
 
 	return f_ref + bonding_free_energy(rhos);
+}
+
+void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+        for(int species = 0; species < N_species(); species++) {
+            rho_der(idx, species) = der_bulk_free_energy(species, rho.rho_species(idx));
+        }
+    }
 }
 
 double GenericWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {

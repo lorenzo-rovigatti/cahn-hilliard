@@ -38,6 +38,14 @@ SimpleWertheim::~SimpleWertheim() {
 
 }
 
+void SimpleWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+        for(int species = 0; species < N_species(); species++) {
+            rho_der(idx, species) = der_bulk_free_energy(species, rho.rho_species(idx));
+        }
+    }
+}
+
 double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::vector<double> &rhos) {
     double rho = rhos[species];
     double X = _X(rho);

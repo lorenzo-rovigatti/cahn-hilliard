@@ -16,8 +16,12 @@ class RhoMatrix {
     int _bins;
     int _species;
 
-   public:
+public:
     T &operator()(int idx, int species) {
+        return _data[species * _bins + idx];
+    }
+
+    T operator()(int idx, int species) const{
         return _data[species * _bins + idx];
     }
 
@@ -25,7 +29,7 @@ class RhoMatrix {
         return _data.data();
     }
 
-    T rho_tot(int idx) {
+    T rho_tot(int idx) const {
         T tot = 0.;
         for(int s = 0; s < _species; s++) {
             tot += (*this)(idx, s);
@@ -34,7 +38,7 @@ class RhoMatrix {
         return tot;
     }
 
-    std::vector<T> rho_species(int idx) {
+    std::vector<T> rho_species(int idx) const {
         std::vector<T> res(_species);
         for(int s = 0; s < _species; s++) {
             res[s] = (*this)(idx, s);
@@ -43,7 +47,7 @@ class RhoMatrix {
         return res;
     }
 
-    int bins() {
+    int bins() const {
         return _bins;
     }
 

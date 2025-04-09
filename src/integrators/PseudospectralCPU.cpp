@@ -85,11 +85,7 @@ void PseudospectralCPU<dims>::set_initial_rho(RhoMatrix<double> &r) {
 
 template<int dims>
 void PseudospectralCPU<dims>::evolve() {
-    for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
-        for(int species = 0; species < this->_model->N_species(); species++) {
-            f_der(idx, species) = this->_model->der_bulk_free_energy(species, this->_rho.rho_species(idx));
-        }
-    }
+    this->_model->der_bulk_free_energy(this->_rho, f_der);
 
     fftw_execute(f_der_plan); // transform f_der into f_der_hat
 
