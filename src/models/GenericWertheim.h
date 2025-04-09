@@ -10,14 +10,19 @@
 
 #include "FreeEnergyModel.h"
 
-namespace ch {
+#include <set>
 
-using DeltaMap = std::map<std::pair<int, int>, double>;
+namespace ch {
 
 struct Species {
 	int idx;
 	int N_patches;
+	// all the patches (e.g. [0, 0, 1])
 	std::vector<int> patches;
+	// only unique patches ([0, 1] for the example above)
+	std::vector<int> unique_patches;
+	// the multiplicity of each unique patch ([2, 1] for the example above)
+	std::vector<int> unique_patch_multiplicity;
 };
 
 class GenericWertheim final: public FreeEnergyModel {
@@ -42,7 +47,8 @@ public:
 
 private:
 	std::vector<Species> _species;
-	DeltaMap _delta;
+	std::set<int> _unique_patches;
+	std::vector<double> _delta;
 	int _N_patches = 0;
 	double _B2, _B3 = 0;
 
