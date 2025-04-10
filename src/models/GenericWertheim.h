@@ -14,15 +14,23 @@
 
 namespace ch {
 
+struct UniquePatch {
+	int idx;
+	int multiplicity;
+};
+
+struct PatchInteraction {
+	int species = -1;
+	std::vector<UniquePatch> patches;
+};
+
 struct Species {
 	int idx;
 	int N_unique_patches;
 	// all the patches (e.g. [0, 0, 1])
 	std::vector<int> patches;
-	// only unique patches ([0, 1] for the example above)
-	std::vector<int> unique_patches;
-	// the multiplicity of each unique patch ([2, 1] for the example above)
-	std::vector<int> unique_patch_multiplicity;
+	// only unique patches ([0, 1] with multiplicity [2, 1] for the example above)
+	std::vector<UniquePatch> unique_patches;
 };
 
 class GenericWertheim final: public FreeEnergyModel {
@@ -47,9 +55,9 @@ public:
 
 private:
 	std::vector<Species> _species;
-	std::vector<int> _unique_patches;
-	// list of species with which each unique patch can interact
-	std::vector<std::vector<int>> _interacting_species;
+	std::vector<int> _unique_patch_ids;
+	// list of PatchInteractions for each unique patch
+	std::vector<std::vector<PatchInteraction>> _unique_patch_interactions;
 	std::vector<double> _delta;
 	int _N_patches = 0;
 	double _B2, _B3 = 0;

@@ -40,8 +40,10 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 			}
 
 			for (const auto& [key, count] : counter) {
-				new_species.unique_patches.push_back(key);
-				new_species.unique_patch_multiplicity.push_back(count);
+				UniquePatch up {
+					.idx = key, 
+					.multiplicity = count};
+				new_species.unique_patches.push_back(up);
 			}
 			new_species.N_unique_patches = new_species.unique_patches.size();
 
@@ -49,8 +51,8 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 			unique_patches_set.insert(new_species.patches.begin(), new_species.patches.end());
         }
 
-		_unique_patches.assign(unique_patches_set.begin(), unique_patches_set.end());
-		_N_patches = *std::max_element(_unique_patches.begin(), _unique_patches.end()) + 1;
+		_unique_patch_ids.assign(unique_patches_set.begin(), unique_patches_set.end());
+		_N_patches = *std::max_element(_unique_patch_ids.begin(), _unique_patch_ids.end()) + 1;
 		_delta.resize(_N_patches * _N_patches, 0.0);
     }
 	else {
@@ -77,19 +79,24 @@ GenericWertheim::GenericWertheim(toml::table &config) :
         critical("Missing 'generic_wertheim.deltas' array");
     }
 
-	// build the list of species that interact with each unique patch
-	_interacting_species.resize(_N_patches);
-	for(size_t i = 0; i < _unique_patches.size(); i++) {
-		int patch = _unique_patches[i];
-		std::vector<int> patch_interacting_species;
+	// build the list of patch interactions for each unique patch
+	_unique_patch_interactions.resize(_N_patches);
+	for(size_t i = 0; i < _unique_patch_ids.size(); i++) {
+		int patch = _unique_patch_ids[i];
+		std::vector<PatchInteraction> patch_interacting_species;
 		for(const auto& other : _species) {
+			PatchInteraction interaction;
 			for(auto &other_patch : other.unique_patches) {
-				if(_delta[patch * _N_patches +  other_patch] > 0.0) {
-					patch_interacting_species.push_back(other.idx);
+				if(_delta[patch * _N_patches +  other_patch.idx] > 0.0) {
+					interaction.species = other.idx;
+					interaction.patches.push_back(other_patch);
 				}
 			}
+			if(interaction.species != -1) {
+				patch_interacting_species.push_back(interaction);
+			}
 		}
-		_interacting_species[patch] = patch_interacting_species;
+		_unique_patch_interactions[patch] = patch_interacting_species;
 	}
 
 #ifndef NOCUDA
@@ -109,23 +116,19 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 	for(int iter = 0; iter < max_iter; iter++) {
 		double max_delta = 0.0;
 
-		for(size_t j = 0; j < _unique_patches.size(); j++) {
-			int patch = _unique_patches[j];
+		for(auto &patch : _unique_patch_ids) {
 			double sum = 0.0;
-			for(const auto& other_idx : _interacting_species[patch]) {
-				Species &other = _species[other_idx];
-				for(size_t i = 0; i < other.N_unique_patches; i++) {
-					int other_patch = other.unique_patches[i];
-					double delta = _delta[patch * _N_patches +  other_patch];
-					if(delta > 0.0) {
-						int multiplicity = other.unique_patch_multiplicity[i];
-						sum += multiplicity * rhos[other.idx] * Xs[other_patch] * delta;
-					}
+			for(auto &interaction : _unique_patch_interactions[patch]) {
+				double rho = rhos[interaction.species];
+				for(auto &other_patch : interaction.patches) {
+					double delta = _delta[patch * _N_patches +  other_patch.idx];
+					sum += other_patch.multiplicity * rho * Xs[other_patch.idx] * delta;
 				}
+				
 			}
 
 			double new_X = 1.0 / (1.0 + sum);
-			max_delta = std::max(max_delta, std::abs(new_X - Xs[patch]));
+			max_delta = std::max(max_delta, std::fabs(new_X - Xs[patch]));
 			Xs[patch] = new_X;
 		}
 
@@ -142,10 +145,8 @@ double GenericWertheim::bonding_free_energy(const std::vector<double> &rhos) {
 
 	for(auto &species : _species) {
 		double species_fe = 0;
-		for(size_t i = 0; i < species.unique_patches.size(); i++) {
-			int patch = species.unique_patches[i];
-			int multiplicity = species.unique_patch_multiplicity[i];
-			species_fe += multiplicity * (std::log(Xs[patch]) - Xs[patch] / 2.0 + 0.5);
+		for(auto &patch : species.unique_patches) {
+			species_fe += patch.multiplicity * (std::log(Xs[patch.idx]) - Xs[patch.idx] / 2.0 + 0.5);
 		}
 		bonding_fe += rhos[species.idx] * species_fe;
 	}
@@ -186,10 +187,8 @@ void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatr
 				double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho_tot + 3.0 * _B3 * SQR(rho_tot);
 				
 				double der_f_bond = 0;
-				for(size_t i = 0; i < _species[species].unique_patches.size(); i++) {
-					int patch = _species[species].unique_patches[i];
-					int multiplicity = _species[species].unique_patch_multiplicity[i];
-					der_f_bond += multiplicity * std::log(Xs[patch]);
+				for(auto &patch : _species[species].unique_patches) {
+					der_f_bond += patch.multiplicity * std::log(Xs[patch.idx]);
 				}
 				rho_der(idx, species) = der_f_ref + der_f_bond;
 			}
@@ -209,10 +208,8 @@ double GenericWertheim::der_bulk_free_energy(int species, const std::vector<doub
 	std::vector<double> Xs(_N_patches, 0.0);
 	_update_X(rhos, Xs);
 	double der_f_bond = 0;
-	for(size_t i = 0; i < _species[species].N_unique_patches; i++) {
-		int patch = _species[species].unique_patches[i];
-		int multiplicity = _species[species].unique_patch_multiplicity[i];
-		der_f_bond += multiplicity * std::log(Xs[patch]);
+	for(auto &patch : _species[species].unique_patches) {
+		der_f_bond += patch.multiplicity * std::log(Xs[patch.idx]);
 	}
 
 	return der_f_ref + der_f_bond;
