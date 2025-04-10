@@ -24,7 +24,6 @@ public:
 
 	void der_bulk_free_energy(field_type *psi, float *psi_der, int grid_size) override;
 	void der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) override;
-	double der_bulk_free_energy(int species, const std::vector<double> &) override;
 	double bulk_free_energy(const std::vector<double> &) override;
 
 	GET_NAME(Landau free energy model)

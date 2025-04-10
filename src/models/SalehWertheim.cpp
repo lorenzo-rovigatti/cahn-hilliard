@@ -86,32 +86,25 @@ double SalehWertheim::_der_contribution(const std::vector<double> &rhos, int spe
 void SalehWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
         for(int species = 0; species < N_species(); species++) {
-            rho_der(idx, species) = der_bulk_free_energy(species, rho.rho_species(idx));
+			auto rhos = rho.rho_species(idx);
+			if(rhos[species] != 0.) {
+				double rho_tot = std::accumulate(rhos.begin(), rhos.end(), 0.);
+				double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho_tot + 3.0 * _B3 * SQR(rho_tot);
+
+				double der_f_bond;
+				if(species == 0) {
+					der_f_bond = _valence[0] * _der_contribution(rhos, species);
+				}
+				else if(species == 1) {
+					der_f_bond = _valence[1] * _der_contribution(rhos, species);
+				}
+				else {
+					der_f_bond = _linker_half_valence * (_der_contribution(rhos, 0) + _der_contribution(rhos, 1));
+				}
+				rho_der(idx, species) = der_f_ref + der_f_bond;
+			}
         }
     }
-}
-
-double SalehWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
-	// early return if the species has zero density
-	if(rhos[species] == 0.) {
-		return 0.;
-	}
-	
-	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
-	double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho + 3.0 * _B3 * SQR(rho);
-
-	double der_f_bond;
-	if(species == 0) {
-		der_f_bond = _valence[0] * _der_contribution(rhos, species);
-	}
-	else if(species == 1) {
-		der_f_bond = _valence[1] * _der_contribution(rhos, species);
-	}
-	else {
-		der_f_bond = _linker_half_valence * (_der_contribution(rhos, 0) + _der_contribution(rhos, 1));
-	}
-
-	return der_f_ref + der_f_bond;
 }
 
 void SalehWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size) {

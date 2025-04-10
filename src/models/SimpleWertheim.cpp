@@ -40,14 +40,17 @@ SimpleWertheim::~SimpleWertheim() {
 
 void SimpleWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-        for(int species = 0; species < N_species(); species++) {
-            rho_der(idx, species) = der_bulk_free_energy(species, rho.rho_species(idx));
-        }
+        double rho_tot = rho.rho_species(idx)[0];
+        double der_f_ref = (rho_tot < _regularisation_delta) ? rho_tot / _regularisation_delta + _log_delta - 1.0 : std::log(rho_tot);
+        der_f_ref += 2 * _B2 * rho_tot;
+        double X = _X(rho_tot);
+        double der_f_bond = (rho_tot > 0.) ? _valence * std::log(X) : 0.0;
+        rho_der(idx, 0) = der_f_ref + der_f_bond;
     }
 }
 
 double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::vector<double> &rhos) {
-    double rho = rhos[species];
+    double rho = rhos[0];
     double X = _X(rho);
     double der_f_bond = (rho > 0.) ? _valence * std::log(X) : 0.0;
 
@@ -55,21 +58,11 @@ double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::ve
 }
 
 double SimpleWertheim::der_bulk_free_energy_contractive(int species, const std::vector<double> &rhos) {
-    double rho = rhos[species];
+    double rho = rhos[0];
     double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
 	der_f_ref += 2 * _B2 * rho;
 
     return der_f_ref;
-}
-
-double SimpleWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
-    double rho = rhos[species];
-    double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
-	der_f_ref += 2 * _B2 * rho;
-    double X = _X(rho);
-    double der_f_bond = (rho > 0.) ? _valence * std::log(X) : 0.0;
-
-    return (der_f_ref + der_f_bond);
 }
 
 double SimpleWertheim::bulk_free_energy(const std::vector<double> &rhos) {

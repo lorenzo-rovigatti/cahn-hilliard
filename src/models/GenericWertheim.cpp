@@ -179,10 +179,7 @@ void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatr
 		_update_X(rhos, Xs);
         for(int species = 0; species < N_species(); species++) {
 			// early return if the species has zero density
-			if(rhos[species] == 0.) {
-				rho_der(idx, species) = 0.;
-			}
-			else {
+			if(rhos[species] != 0.) {
 				double rho_tot = std::accumulate(rhos.begin(), rhos.end(), 0.);
 				double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho_tot + 3.0 * _B3 * SQR(rho_tot);
 				
@@ -194,25 +191,6 @@ void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatr
 			}
         }
     }
-}
-
-double GenericWertheim::der_bulk_free_energy(int species, const std::vector<double> &rhos) {
-	// early return if the species has zero density
-	if(rhos[species] == 0.) {
-		return 0.;
-	}
-	
-	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
-	double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho + 3.0 * _B3 * SQR(rho);
-
-	std::vector<double> Xs(_N_patches, 0.0);
-	_update_X(rhos, Xs);
-	double der_f_bond = 0;
-	for(auto &patch : _species[species].unique_patches) {
-		der_f_bond += patch.multiplicity * std::log(Xs[patch.idx]);
-	}
-
-	return der_f_ref + der_f_bond;
 }
 
 void GenericWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size) {
