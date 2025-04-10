@@ -16,7 +16,7 @@ namespace ch {
 
 struct Species {
 	int idx;
-	int N_patches;
+	int N_unique_patches;
 	// all the patches (e.g. [0, 0, 1])
 	std::vector<int> patches;
 	// only unique patches ([0, 1] for the example above)
@@ -47,7 +47,9 @@ public:
 
 private:
 	std::vector<Species> _species;
-	std::set<int> _unique_patches;
+	std::vector<int> _unique_patches;
+	// list of species with which each unique patch can interact
+	std::vector<std::vector<int>> _interacting_species;
 	std::vector<double> _delta;
 	int _N_patches = 0;
 	double _B2, _B3 = 0;
