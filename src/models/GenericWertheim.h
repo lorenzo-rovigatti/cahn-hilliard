@@ -58,9 +58,10 @@ private:
 	// list of PatchInteractions for each unique patch
 	std::vector<std::vector<PatchInteraction>> _unique_patch_interactions;
 	std::vector<double> _delta;
+	std::vector<double> _B2;
 	int _N_patches = 0;
-	double _B2, _B3 = 0;
 
+	std::pair<int, int> _parse_interaction(std::string int_string, std::string context);
 	void _update_X(const std::vector<double> &, std::vector<double> &);
 	double _der_contribution(const std::vector<double> &, int);
 };

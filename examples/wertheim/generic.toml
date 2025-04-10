@@ -1,4 +1,4 @@
-steps = 1e3
+steps = 1e5
 print_every = 1e4
 print_trajectory_every = 1e6
 N = 64
@@ -9,12 +9,8 @@ dx = 10
 k = 1e6
 seed = 123456
 
-[mobility]
-type = "regularised"
-rho_min = 1e-5
-
 [generic_wertheim]
-B2 = 2190
+allow_unspecified_B2s = false
 
 [[generic_wertheim.species]]
 patches = [0, 0, 0, 0]
@@ -24,6 +20,30 @@ patches = [1, 1, 1, 1]
 
 [[generic_wertheim.species]]
 patches = [0, 0, 1, 1]
+
+[[generic_wertheim.B2s]]
+interaction = "0-0"
+value = 2190
+
+[[generic_wertheim.B2s]]
+interaction = "1-1"
+value = 2190
+
+[[generic_wertheim.B2s]]
+interaction = "2-2"
+value = 2190
+
+[[generic_wertheim.B2s]]
+interaction = "0-1"
+value = 2190
+
+[[generic_wertheim.B2s]]
+interaction = "0-2"
+value = 2190
+
+[[generic_wertheim.B2s]]
+interaction = "1-2"
+value = 2190
 
 [[generic_wertheim.deltas]]
 interaction = "0-0"

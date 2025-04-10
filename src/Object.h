@@ -96,6 +96,12 @@ public:
 	}
 
 	template<typename FormatString, typename... Args>
+	void warning(const FormatString &fmt, Args&&...args) const {
+		auto format_final = fmt::format("{} (source: {{}})", fmt);
+		spdlog::warn(format_final, std::forward<Args>(args)..., name());
+	}
+
+	template<typename FormatString, typename... Args>
 	void critical(const FormatString &fmt, Args&&...args) const {
 		auto format_final = fmt::format("{} (error source: {{}})", fmt);
 		spdlog::critical(format_final, std::forward<Args>(args)..., name());
