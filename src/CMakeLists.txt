@@ -52,6 +52,7 @@ IF(CUDA)
 		CUDA/integrators/EulerCUDA.cu
 		CUDA/integrators/EulerMobilityCUDA.cu
 		CUDA/integrators/PseudospectralCUDA.cu
+		CUDA/models/GenericWertheim.cu
 		CUDA/models/Landau.cu
 		CUDA/models/SalehWertheim.cu
 		CUDA/models/SimpleWertheim.cu

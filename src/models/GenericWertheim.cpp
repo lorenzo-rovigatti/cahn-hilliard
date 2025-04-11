@@ -10,7 +10,7 @@
 #include "../utils/strings.h"
 
 #ifndef NOCUDA
-// #include "../CUDA/models/GenericWertheim.cuh"
+#include "../CUDA/models/GenericWertheim.cuh"
 #endif
 
 #include <numeric>
@@ -119,9 +119,37 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 	}
 
 #ifndef NOCUDA
-	// if(_config_optional_value<bool>(config, "use_CUDA", false)) {
-	// 	init_Generic_symbols(_valence, _linker_half_valence, _delta_AA, _delta_BB);
-	// }
+	if(_config_optional_value<bool>(config, "use_CUDA", false)) {
+		// convert between CPU and CUDA data structures
+
+		// each ushort2 stores a unique patch and its associated multiplicity (as the x and y components, respectively)
+		std::vector<ushort2> species_patches(_N_patches * N_species(), {0, 0});
+		for(auto &species : _species) {
+			for(int i = 0; i < species.N_unique_patches; i++) {
+				auto &patch = species.unique_patches[i];
+				ushort2 p({(ushort) patch.idx, (ushort) patch.multiplicity});
+				species_patches[species.idx * _N_patches + i] = p;
+			}
+		}
+
+		// N_patches x m_max, stores the interacting species for each unique patch
+		std::vector<int> interacting_species(_N_patches * MAX_PATCH_INTERACTIONS, -1);
+		// N_patches x m_max x N_patches , stores the unique patches interacting with each unique patch
+		std::vector<ushort2> interacting_patches(_N_patches * _N_patches * MAX_PATCH_INTERACTIONS);
+		for(auto &patch : _unique_patch_ids) {
+			for(int j = 0; j < _unique_patch_interactions[patch].size(); j++) {
+				auto &interaction = _unique_patch_interactions[patch][j];
+				interacting_species[patch * MAX_PATCH_INTERACTIONS + j] = interaction.species;
+				for(int k = 0; k < interaction.patches.size(); k++) {
+					auto &other_patch = interaction.patches[k];
+					ushort2 p({(ushort) other_patch.idx, (ushort) other_patch.multiplicity});
+					interacting_patches[patch * _N_patches * MAX_PATCH_INTERACTIONS + j * _N_patches + k] = p;
+				}
+			}
+		}
+
+		init_generic_wertheim_symbols(N_species(), _N_patches, _unique_patch_ids, species_patches, interacting_species, interacting_patches, _B2, _delta);
+	}
 #endif
 }
 
@@ -153,7 +181,8 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 			for(auto &interaction : _unique_patch_interactions[patch]) {
 				double rho = rhos[interaction.species];
 				for(auto &other_patch : interaction.patches) {
-					double delta = _delta[patch * _N_patches +  other_patch.idx];
+					double delta = _delta[patch * _N_patches + other_patch.idx];
+					// printf("%d %d %d %d %lf\n", patch, interaction.species, other_patch.idx, other_patch.multiplicity, delta);
 					sum += other_patch.multiplicity * rho * Xs[other_patch.idx] * delta;
 				}
 				
@@ -166,7 +195,7 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 
 		if(max_delta < tolerance) {
 			return;
-		};
+		}
 	}
 }
 
@@ -217,8 +246,6 @@ void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatr
 				for(int other_species = 0; other_species < N_species(); other_species++) {
 					B2_contrib += 2.0 * rhos[other_species] * _B2[species * N_species() + other_species];
 				}
-
-				double rho_tot = std::accumulate(rhos.begin(), rhos.end(), 0.);
 				double der_f_ref = std::log(rhos[species]) + B2_contrib;
 				
 				double der_f_bond = 0.0;
@@ -233,7 +260,7 @@ void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatr
 
 void GenericWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size) {
 #ifndef NOCUDA
-	// Generic_wertheim_der_bulk_free_energy(rho, rho_der, vec_size, _B2, _B3);
+	generic_wertheim_der_bulk_free_energy(rho, rho_der, vec_size);
 #endif
 }
 
