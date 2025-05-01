@@ -16,7 +16,7 @@ namespace ch {
 
 template <int dims>
 struct CUDAVector {
-    field_type values[dims];
+    std::array<field_type, dims> values;
 
     __host__ __device__ field_type& operator[](int i) { return values[i]; }
     __host__ __device__ const field_type& operator[](int i) const { return values[i]; }
@@ -55,7 +55,7 @@ struct CUDAVector {
 template <int dims, typename DataType>
 class CUDAGrid {
 public:
-    int sizes[dims];
+    std::array<int, dims> sizes;
     int bins;
     int species;
     int species_size;
@@ -109,6 +109,7 @@ public:
 
 protected:
     float _rho_min;
+    CUDAGrid<dims, CUDAVector<dims>> *_h_flux = nullptr;
     CUDAGrid<dims, CUDAVector<dims>> *_d_flux = nullptr;
 };
 

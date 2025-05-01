@@ -182,7 +182,6 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 				double rho = rhos[interaction.species];
 				for(auto &other_patch : interaction.patches) {
 					double delta = _delta[patch * _N_patches + other_patch.idx];
-					// printf("%d %d %d %d %lf\n", patch, interaction.species, other_patch.idx, other_patch.multiplicity, delta);
 					sum += other_patch.multiplicity * rho * Xs[other_patch.idx] * delta;
 				}
 				

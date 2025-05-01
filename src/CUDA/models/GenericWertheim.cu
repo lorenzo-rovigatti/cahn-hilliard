@@ -8,7 +8,6 @@ __constant__ int c_N_unique_patches[1];
 
 __global__ void _generic_wertheim_update_X(field_type *rho, int grid_size, int *unique_patch_ids, 
 	int *interacting_species, ushort2 *interacting_patches, float *delta, float *X) {
-
 	if(IND >= grid_size) return;
 
 	float tolerance = 1e-6f;
@@ -27,7 +26,6 @@ __global__ void _generic_wertheim_update_X(field_type *rho, int grid_size, int *
 					for(int k = 0; k < c_N_patches[0]; k++) {
 						ushort2 other_patch = interacting_patches[patch * c_N_patches[0] * MAX_PATCH_INTERACTIONS + j * c_N_patches[0] + k];
 						float int_delta = delta[patch * c_N_patches[0] + other_patch.x];
-						// printf("%d %d %d %d %lf\n", patch, species, other_patch.x, other_patch.y, int_delta);
 						float patch_X = X[other_patch.x * grid_size + IND];
 						sum += other_patch.y * rho_species * patch_X * int_delta;
 					}
@@ -121,7 +119,7 @@ namespace ch {
 		if(d_X == nullptr) {
 			int X_size = grid_size * h_N_patches;
 			CUDA_SAFE_CALL(cudaMalloc((void **) &d_X, X_size * sizeof(float)));
-			CUDA_SAFE_CALL(cudaMemset(d_X, 0, X_size));
+			CUDA_SAFE_CALL(cudaMemset(d_X, 0, X_size * sizeof(float)));
 		}
 
 		// one thread for each spatial bin of the X grid, which has dimensions "bins * N_patches

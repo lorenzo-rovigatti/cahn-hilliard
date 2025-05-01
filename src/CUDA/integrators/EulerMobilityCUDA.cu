@@ -88,9 +88,9 @@ EulerMobilityCUDA<dims>::EulerMobilityCUDA(FreeEnergyModel *model, toml::table &
     _rho_min = this->template _config_value<float>(config, "mobility.rho_min");
 
     int N_species = model->N_species();
-    CUDAGrid<dims, CUDAVector<dims>> h_flux(this->_N_per_dim, N_species);
+    _h_flux = new CUDAGrid<dims, CUDAVector<dims>>(this->_N_per_dim, N_species);
     CUDA_SAFE_CALL(cudaMalloc((CUDAGrid<dims, CUDAVector<dims>> **) &_d_flux, sizeof(CUDAGrid<dims, CUDAVector<dims>>)));
-    CUDA_SAFE_CALL(cudaMemcpy(_d_flux, &h_flux, sizeof(CUDAGrid<dims, CUDAVector<dims>>), cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMemcpy(_d_flux, _h_flux, sizeof(CUDAGrid<dims, CUDAVector<dims>>), cudaMemcpyHostToDevice));
 
 	this->_h_rho = RhoMatrix<field_type>(this->_N_bins, N_species);
 	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));

@@ -31,8 +31,6 @@ __global__ void _Euler_integrate_kernel(field_type *rho, float *rho_der, float d
 
 namespace ch {
 
-
-
 template<int dims>
 EulerCUDA<dims>::EulerCUDA(FreeEnergyModel *model, toml::table &config) : CUDAIntegrator<dims>(model, config) {
     this->_d_vec_size = this->_N_bins * model->N_species() * sizeof(field_type);
