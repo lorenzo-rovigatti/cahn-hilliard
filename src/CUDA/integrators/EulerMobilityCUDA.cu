@@ -7,6 +7,8 @@
 
 #include "EulerMobilityCUDA.h"
 
+#include "../grid_utils.cuh"
+
 __constant__ int c_N[1]; // number of bins along each direction
 __constant__ int c_size[1]; // size of the grid of a single species (N**d)
 __constant__ int c_N_species[1];
@@ -14,75 +16,10 @@ __constant__ int c_grid_size[1]; // size of the arrays, size * N_species
 __constant__ int c_bits[1];
 
 template<int dims> 
-__device__ void _fill_coords(int coords[dims], int idx) {
-    for(int d = 0; d < dims; d++) {
-		coords[d] = idx & (c_N[0] - 1);
-		idx >>= c_bits[0]; // divide by N
-	}
-}
-
-template<int dims>
-__device__ int _cell_idx(int coords[dims]) {
-	int idx = 0;
-	int multiply_by = 1;
-	for(int d = 0; d < dims; d++) {
-		idx += coords[d] * multiply_by;
-		multiply_by <<= c_bits[0]; // multiply by N
-	}
-	return idx;
-}
-
-template<int dims, typename number> 
-__device__ float _cell_laplacian(number *field, int idx, float dx) {
-    int base_idx = (idx / c_size[0]) * c_size[0];
-    int rel_idx = idx % c_size[0];
-    int N_minus_one = c_N[0] - 1;
-
-    if(dims == 1) {
-        int rel_idx_m = (rel_idx - 1 + c_N[0]) & N_minus_one;
-        int rel_idx_p = (rel_idx + 1) & N_minus_one;
-
-        return ((float) field[base_idx + rel_idx_m] + (float) field[base_idx + rel_idx_p] - 2.f * (float) field[idx]) / (dx * dx);
-    }
-    else if(dims == 2) {
-        int coords_xy[2];
-        _fill_coords<2>(coords_xy, rel_idx);
-
-        int coords_xmy[2] = {
-                (coords_xy[0] - 1 + c_N[0]) & N_minus_one,
-                coords_xy[1]
-        };
-
-        int coords_xym[2] = {
-                coords_xy[0],
-                (coords_xy[1] - 1 + c_N[0]) & N_minus_one
-        };
-
-        int coords_xpy[2] = {
-                (coords_xy[0] + 1) & N_minus_one,
-                coords_xy[1]
-        };
-
-        int coords_xyp[2] = {
-                coords_xy[0],
-                (coords_xy[1] + 1) & N_minus_one
-        };
-
-        return (
-                (float) field[base_idx + _cell_idx<2>(coords_xmy)] +
-                (float) field[base_idx + _cell_idx<2>(coords_xpy)] +
-                (float) field[base_idx + _cell_idx<2>(coords_xym)] +
-                (float) field[base_idx + _cell_idx<2>(coords_xyp)] -
-                4.f * (float) field[idx])
-                / (dx * dx);
-    }
-}
-
-template<int dims> 
 __global__ void _EulerMobility_add_surface_term_kernel(field_type *rho, float *rho_der, float dx, float k_laplacian) {
     if(IND >= c_grid_size[0]) return;
     
-    rho_der[IND] -= 2.f * k_laplacian * _cell_laplacian<dims>(rho, IND, dx);
+    rho_der[IND] -= 2.f * k_laplacian * _cell_laplacian<dims>(c_size[0], c_N[0], c_bits[0], rho, IND, dx);
 }
 
 template<int dims>
@@ -106,7 +43,7 @@ __global__ void _EulerMobility_compute_flux_kernel(ch::CUDAGrid<dims, ch::CUDAVe
 
         field_type M_idx = M * rho[IND] / (rho[IND] + rho_min);
         field_type M_p = M * rho[idx_p] / (rho[idx_p] + rho_min);
-        field_type M_flux = 0.5 * (M_idx + M_p);
+        field_type M_flux = 0.5f * (M_idx + M_p);
 
         grad[d] = M_flux * (rho_der[idx_p] - rho_der[IND]) / dx;
     }

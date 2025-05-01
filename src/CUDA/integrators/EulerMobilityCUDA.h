@@ -73,16 +73,16 @@ public:
             species_size *= sizes[i];
         }
         total_size = species_size * species;
-        cudaMalloc(&d_data, total_size * sizeof(DataType));
+        CUDA_SAFE_CALL(cudaMalloc(&d_data, total_size * sizeof(DataType)));
     }
 
     // Destructor
     ~CUDAGrid() {
-        cudaFree(d_data);
+        CUDA_SAFE_CALL(cudaFree(d_data));
     }
 
     // Convert N-dimensional indices to 1D index (with periodic boundary conditions)
-    __host__ __device__ int index(const std::array<int, dims>& indices, int species) const {
+    __host__ __device__ int index(const std::array<int, dims> &indices, int species) const {
         int idx = 0, stride = 1;
         for (int i = 0; i < dims; i++) {
             idx += ((indices[i] + sizes[i]) % sizes[i]) * stride;
