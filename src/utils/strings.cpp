@@ -17,7 +17,6 @@ namespace utils {
 
 std::vector<std::string> split(const std::string &str, const std::string &delims) {
 	std::vector<std::string> output;
-	// this is the number of fields in an oxDNA configuration. The other common formats (LAMMPS, for instance) have even fewer, so this should be fine
 	output.reserve(15);
 
 	const char *ptr = str.c_str();

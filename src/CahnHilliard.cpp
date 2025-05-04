@@ -13,6 +13,7 @@
 #include "integrators/PseudospectralCPU.h"
 
 #include "utils/utility_functions.h"
+#include "utils/strings.h"
 
 #ifndef NOCUDA
 #include "CUDA/integrators/EulerCUDA.h"
@@ -76,27 +77,46 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 			critical("The initial conditions file '{}' is not readable", filename);
 		}
 
+		std::string line;
+		int lines = 0;
 		for(int s = 0; s < model->N_species(); s++) {
-			switch(dims) {
-			case 1:
-				for(int idx = 0; idx < N; idx++) {
-					load_from >> rho(idx, s);
-				}
-				break;
-			case 2:
-				int coords[2];
-				for(coords[1] = 0; coords[1] < N; coords[1]++) {
-					for(coords[0] = 0; coords[0] < N; coords[0]++) {
-						int idx = cell_idx(coords);
-						load_from >> rho(idx, s);
-					}
-				}
+			int OK_lines = 0;
+			while(OK_lines < N && load_from.good()) {
+				std::getline(load_from, line);
+				utils::trim(line);
+				auto spl = utils::split(line);
 
-				break;
-			default:
-				critical("Unsupported number of dimensions {}", dims);
+				if(line.size() > 0 && line[0] != '#') {
+					if(dims == 1) {
+						if(spl.size() != 1) {
+							critical("Line n. {} in the initial configuration file contains {} fields, should be 1", lines, spl.size());
+						}
+						rho(OK_lines, s) = std::stod(line);
+					}
+					else if(dims == 2) {
+						if(spl.size() != N) {
+							critical("Line n. {} in the initial configuration file contains only {} fields, should be {}", lines, spl.size(), N);
+						}
+						int coords[2] = {0, OK_lines};
+						for(coords[0] = 0; coords[0] < N; coords[0]++) {
+							int idx = cell_idx(coords);
+							rho(idx, s) = std::stod(line);
+						}
+					}
+					else {
+						static_assert(dims == 1 || dims == 2, "Unsupported dims for the initial configuration");
+					}
+					OK_lines++;
+				}
+				lines++;
+			}
+
+			if(OK_lines != N) {
+				critical("The initial configuration file contains only {} valid lines for species {}, should be {}", OK_lines, s, N);
 			}
 		}
+
+		info("Initial configuration parsed: found {} lines, of which {} with data", lines, model->N_species() * N);
 
 		load_from.close();
 	}
