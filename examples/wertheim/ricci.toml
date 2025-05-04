@@ -2,11 +2,11 @@ use_CUDA = true
 steps = 1e9
 print_every = 1e4
 print_trajectory_every = 1e6
-N = 128
+N = 64
 dt = 6e-6
 distance_scaling_factor = 10
 initial_density = 2e-6
-free_energy = "generic_wertheim"
+free_energy = "ricci"
 dx = 10
 k = 1e6
 seed = 12346
@@ -15,37 +15,17 @@ seed = 12346
 type = "regularised"
 rho_min = 1e-7
 
-[generic_wertheim]
-allow_unspecified_B2s = false
+[ricci]
+B2 = 2190
 
-[[generic_wertheim.species]]
-patches = [0, 0, 0, 1]
-
-[[generic_wertheim.species]]
-patches = [2, 2]
-
-[[generic_wertheim.B2s]]
-interaction = "0-0"
-value = 2190
-
-[[generic_wertheim.B2s]]
-interaction = "1-1"
-value = 2190
-
-[[generic_wertheim.B2s]]
-interaction = "0-1"
-value = 2190
-
-[[generic_wertheim.deltas]]
-interaction = "0-0"
+[ricci.delta_00]
 T = 296
 deltaH = -42200
 deltaS = -119.1
 salt = 0.5
 sticky_size = 6
 
-[[generic_wertheim.deltas]]
-interaction = "1-2"
+[ricci.delta_12]
 T = 296
 deltaH = -26000
 deltaS = -43.6

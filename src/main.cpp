@@ -1,6 +1,7 @@
 #include "CahnHilliard.h"
 #include "models/Landau.h"
 #include "models/GenericWertheim.h"
+#include "models/RicciWertheim.h"
 #include "models/SalehWertheim.h"
 #include "models/SimpleWertheim.h"
 
@@ -51,6 +52,9 @@ public:
 		}
 		else if(model_name == "generic_wertheim") {
 			_model = std::make_unique<ch::GenericWertheim>(config);
+		}
+		else if(model_name == "ricci") {
+			_model = std::make_unique<ch::RicciWertheim>(config);
 		}
 		else {
 			critical("Unsupported free energy model '{}'", model_name);

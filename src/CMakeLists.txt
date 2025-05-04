@@ -8,6 +8,7 @@ set(common_files
 	integrators/PseudospectralCPU.cpp
 	models/Landau.cpp
 	models/GenericWertheim.cpp
+	models/RicciWertheim.cpp
 	models/SalehWertheim.cpp
 	models/SimpleWertheim.cpp
 	utils/Delta.cpp
@@ -54,6 +55,7 @@ IF(CUDA)
 		CUDA/integrators/PseudospectralCUDA.cu
 		CUDA/models/GenericWertheim.cu
 		CUDA/models/Landau.cu
+		CUDA/models/RicciWertheim.cu
 		CUDA/models/SalehWertheim.cu
 		CUDA/models/SimpleWertheim.cu
 	)
