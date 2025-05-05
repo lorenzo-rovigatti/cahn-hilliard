@@ -100,7 +100,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 						int coords[2] = {0, OK_lines};
 						for(coords[0] = 0; coords[0] < N; coords[0]++) {
 							int idx = cell_idx(coords);
-							rho(idx, s) = std::stod(line);
+							rho(idx, s) = std::stod(spl[coords[0]]);
 						}
 					}
 					else {
