@@ -1,5 +1,7 @@
 #include "EulerMobilityCPU.h"
 
+#include "../utils/utility_functions.h"
+
 namespace ch {
 
 template<int dims>
@@ -10,6 +12,19 @@ EulerMobilityCPU<dims>::EulerMobilityCPU(FreeEnergyModel *model, toml::table &co
 	}
 
 	_rho_min = this->template _config_value<double>(config, "mobility.rho_min");
+	_with_noise = this->template _config_optional_value<bool>(config, "mobility.with_noise", false);
+	
+	if(_with_noise) {
+		double noise_rescale_factor = this->template _config_optional_value<double>(config, "mobility.noise_rescale_factor", 1.0);
+		_noise_factor = std::sqrt(2.0 / (pow_dims<dims>(this->_dx) * this->_dt)) * noise_rescale_factor;
+		this->info("Integrating the Cahn-Hilliard equation with non-constant mobility and noise (noise_factor = {})", _noise_factor);
+
+		long long int seed = this->template _config_optional_value<long long int>(config, "seed", std::time(NULL));
+		_generator.seed(seed);
+	}
+	else {
+		this->info("Integrating the Cahn-Hilliard equation with non-constant mobility and without noise");
+	}
 }
 
 template<int dims>
@@ -21,6 +36,8 @@ template<int dims>
 void EulerMobilityCPU<dims>::evolve() {
     static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
 	static RhoMatrix<Gradient<dims>> flux(this->_rho.bins(), this->_model->N_species());
+	static RhoMatrix<Gradient<dims>> stochastic_flux(this->_rho.bins(), this->_model->N_species());
+	static std::normal_distribution<double> normal_dist(0.0, 1.0);
 
     // we first evaluate the time derivative for all the fields
     this->_model->der_bulk_free_energy(this->_rho, rho_der);
@@ -38,13 +55,21 @@ void EulerMobilityCPU<dims>::evolve() {
 			double M_p = this->_M * this->_rho(idx_p, species) / (this->_rho(idx_p, species) + _rho_min);
 			double M_flux = 0.5 * (M_idx + M_p);
 			flux(idx, species) = M_flux * _cell_gradient(rho_der, species, idx);
+
+			if(_with_noise) {
+				double noise_amplitude = std::sqrt(M_flux) * _noise_factor;
+				for (std::size_t d = 0; d < dims; ++d) {
+					stochastic_flux(idx, species)[d] = noise_amplitude * normal_dist(_generator);
+				}
+			}
         }
     }
 
 	for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
 		int idx_m = (idx - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
         for(int species = 0; species < this->_model->N_species(); species++) {
-			this->_rho(idx, species) += _divergence(flux, species, idx) * this->_dt;
+			this->_rho(idx, species) += (_divergence(flux, species, idx) + _divergence(stochastic_flux, species, idx)) * this->_dt;
+			// printf("%lf %lf\n", _divergence(flux, species, idx), _divergence(stochastic_flux, species, idx));
         }
     }
 }

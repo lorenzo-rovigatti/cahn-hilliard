@@ -7,7 +7,6 @@
 
 #include "SimpleWertheim.h"
 
-#include "../utils/utility_functions.h"
 #include "../utils/Delta.h"
 
 #ifndef NOCUDA

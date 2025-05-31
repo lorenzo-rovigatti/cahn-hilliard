@@ -17,3 +17,10 @@ inline bool safe_isnan(double val) noexcept {
     const auto x = cpp11_bit_cast<std::uint64_t>(val);
     return (x & 0x7FFFFFFFFFFFFFFFu) >= 0x7FF0000000000001u;
 }
+
+template<int dims>
+constexpr double pow_dims(double dx) {
+    double result = 1.0;
+    for (int i = 0; i < dims; ++i) result *= dx;
+    return result;
+}

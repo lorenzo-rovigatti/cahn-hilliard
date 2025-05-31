@@ -10,6 +10,8 @@
 
 #include "../../defs_CUDA.h"
 
+#include <curand_kernel.h>
+
 #include "CUDAIntegrator.h"
 
 namespace ch {
@@ -109,8 +111,10 @@ public:
 
 protected:
     float _rho_min;
+    bool _with_noise = false;
     CUDAGrid<dims, CUDAVector<dims>> *_h_flux = nullptr;
     CUDAGrid<dims, CUDAVector<dims>> *_d_flux = nullptr;
+    curandState *_d_rand_states = nullptr;
 };
 
 } /* namespace ch */

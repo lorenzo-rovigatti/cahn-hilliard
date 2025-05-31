@@ -3,6 +3,8 @@
 
 #include "EulerCPU.h"
 
+#include <random>
+
 namespace ch {
 
 // Templated class to store a staggered gradient at a single point in D-dimensional space
@@ -53,6 +55,22 @@ public:
         return result;
     }
 
+    // In-place addition
+    Gradient& operator+=(const Gradient& other) {
+        for (std::size_t i = 0; i < dims; ++i) {
+            components[i] += other.components[i];
+        }
+        return *this;
+    }
+
+    // In-place subtraction
+    Gradient& operator-=(const Gradient& other) {
+        for (std::size_t i = 0; i < dims; ++i) {
+            components[i] -= other.components[i];
+        }
+        return *this;
+    }
+
     Gradient operator/(double scalar) const {
         Gradient result;
         for (std::size_t i = 0; i < dims; i++) {
@@ -93,6 +111,9 @@ protected:
 
 private:
     double _rho_min;
+    bool _with_noise = false;
+    double _noise_factor = 0.0;
+    std::mt19937 _generator;
 };
 
 } /* namespace ch */
