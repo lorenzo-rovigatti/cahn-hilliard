@@ -8,7 +8,7 @@ if len(sys.argv) < 3:
     print("Usage is N file", file=sys.stderr)
     exit(1)
     
-N = int(sys.argv[1])
+N = int(sys.argv[1]) + 1
 file = sys.argv[2]
 
 fig, ax = plt.subplots()
@@ -25,7 +25,9 @@ with open(file) as input_file:
 
 
 # make sure that the color bar handles the values found at the end of the simulation
-norm = colors.Normalize(vmin=frames[-1].min(), vmax=frames[-1].max())
+vmin = min(frame.min() for frame in frames)
+vmax = max(frame.max() for frame in frames)
+norm = colors.Normalize(vmin=vmin, vmax=vmax)
 image = plt.imshow(frames[0], norm=norm)
 cbar = fig.colorbar(image, label="$\psi$")
 
