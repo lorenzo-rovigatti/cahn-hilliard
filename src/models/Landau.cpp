@@ -53,4 +53,11 @@ void Landau::der_bulk_free_energy(field_type *psi, float *psi_der, int grid_size
 #endif
 }
 
+double Landau::pressure(const std::vector<double> &rhos) {
+	double op = rhos[0];
+	double mu = -_epsilon * op + op * op * op;
+	double f = bulk_free_energy(rhos);
+	return op * mu - f;
+}
+
 } /* namespace ch */

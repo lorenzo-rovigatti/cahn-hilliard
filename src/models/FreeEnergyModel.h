@@ -42,6 +42,11 @@ public:
 	virtual void der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) = 0;
 	virtual double bulk_free_energy(const std::vector<double> &) = 0;
 
+	virtual double pressure(const std::vector<double> &) {
+		critical("this model does not support the pressure coupling");
+		return 0.;
+	}
+
 protected:
 	double _user_to_internal;
 	double _density_conversion_factor;

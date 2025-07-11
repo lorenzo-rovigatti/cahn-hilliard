@@ -54,7 +54,7 @@ void EulerMobilityCPU<dims>::evolve() {
 			double M_idx = this->_M * this->_rho(idx, species) / (this->_rho(idx, species) + _rho_min);
 			double M_p = this->_M * this->_rho(idx_p, species) / (this->_rho(idx_p, species) + _rho_min);
 			double M_flux = 0.5 * (M_idx + M_p);
-			flux(idx, species) = M_flux * _cell_gradient(rho_der, species, idx);
+			flux(idx, species) = M_flux * this->_cell_gradient(rho_der, species, idx);
 
 			if(_with_noise) {
 				double noise_amplitude = std::sqrt(M_flux) * _noise_factor;
@@ -68,61 +68,9 @@ void EulerMobilityCPU<dims>::evolve() {
 	for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
 		int idx_m = (idx - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
         for(int species = 0; species < this->_model->N_species(); species++) {
-			this->_rho(idx, species) += (_divergence(flux, species, idx) + _divergence(stochastic_flux, species, idx)) * this->_dt;
-			// printf("%lf %lf\n", _divergence(flux, species, idx), _divergence(stochastic_flux, species, idx));
+			this->_rho(idx, species) += (this->_divergence(flux, species, idx) + this->_divergence(stochastic_flux, species, idx)) * this->_dt;
         }
     }
-}
-
-template<>
-Gradient<1> EulerMobilityCPU<1>::_cell_gradient(RhoMatrix<double> &field, int species, int idx) {
-	int idx_p = (idx + 1) & _N_per_dim_minus_one;
-
-	return Gradient<1>({(field(idx_p, species) - field(idx, species)) / _dx});
-}
-
-template<>
-Gradient<2> EulerMobilityCPU<2>::_cell_gradient(RhoMatrix<double> &field, int species, int idx) {
-	int coords_xy[2];
-	_fill_coords(coords_xy, idx);
-
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & _N_per_dim_minus_one
-	};
-
-	return Gradient<2>({
-		(field(_cell_idx(coords_xpy), species) - field(_cell_idx(coords_xy), species)) / this->_dx, 
-		(field(_cell_idx(coords_xyp), species) - field(_cell_idx(coords_xy), species)) / this->_dx
-	});
-}
-
-template<>
-double EulerMobilityCPU<1>::_divergence(RhoMatrix<Gradient<1>> &flux, int species, int idx) {
-	int idx_m = (idx - 1 + _N_bins) & _N_per_dim_minus_one;
-	return (flux(idx, species)[0] - flux(idx_m, species)[0]) / this->_dx;
-}
-
-template<int dims>
-double EulerMobilityCPU<dims>::_divergence(RhoMatrix<Gradient<dims>> &flux, int species, int idx) {
-	double res = 0;
-	int coords[dims], coords_m[dims];
-	this->_fill_coords(coords, idx);
-	memcpy(coords_m, coords, sizeof(int) * dims);
-
-	for(int d = 0; d < dims; d++) {
-		coords_m[d] = (coords[d] - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
-		int idx_m = this->_cell_idx(coords_m);
-		res += (flux(idx, species)[d] - flux(idx_m, species)[d]) / this->_dx;
-		coords_m[d] = coords[d];
-	}
-
-	return res;
 }
 
 template class EulerMobilityCPU<1>;
