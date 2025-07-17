@@ -24,6 +24,12 @@ public:
 
 		_print_mass_every = _config_optional_value<long long int>(config, "print_every", 0);
 
+		_print_average_pressure = _config_optional_value<bool>(config, "print_average_pressure", false);
+		_print_pressure_every = _config_optional_value<long long int>(config, "print_pressure_every", 0);
+		if(_print_pressure_every > 0) {
+			_print_average_pressure = true;
+		}
+
 		_print_traj_strategy = _config_optional_value<std::string>(config, "print_trajectory_strategy", "linear");
 		
 		if(_print_traj_strategy == "linear") {
@@ -120,6 +126,9 @@ public:
 			}
 			if(_print_mass_every > 0 && _t % _print_mass_every == 0) {
 				std::string output_line = fmt::format("{:.5} {:.8} {:.5} {:L}", _t * _system->dt, _system->average_free_energy(), _system->average_mass(), _t);
+				if(_print_average_pressure) {
+					output_line += fmt::format(" {:.5}", _system->average_pressure());
+				}
 				mass_output << output_line << std::endl;
 				std::cout << output_line << std::endl;
 			}
@@ -156,10 +165,11 @@ private:
 		return false;
 	}
 
+	bool _print_average_pressure;
 	std::string _print_traj_strategy;
 	long long int _initial_t = 0;
 	long long int _t;
-	long long int _steps, _print_mass_every, _print_trajectory_every, _print_last_every;
+	long long int _steps, _print_mass_every, _print_trajectory_every, _print_last_every, _print_pressure_every;
 	int _traj_printed = 0;
 	int _log_n0 = 0;
 	double _log_fact = 0;

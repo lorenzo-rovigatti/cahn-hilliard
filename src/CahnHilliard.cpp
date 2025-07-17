@@ -284,6 +284,23 @@ double CahnHilliard<dims>::average_free_energy() {
 }
 
 template<int dims>
+double CahnHilliard<dims>::average_pressure() {
+	double pressure = 0.;
+	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
+		double interfacial_contrib = 0.;
+		for(int species = 0; species < model->N_species(); species++) {
+			auto rho_grad = gradient(integrator->rho(), species, i);
+			for(int d = 0; d < dims; d++) {
+				interfacial_contrib -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
+			}
+		}
+		pressure += model->pressure(integrator->rho().rho_species(i)) + interfacial_contrib;
+	}
+
+	return pressure / integrator->rho().bins();
+}
+
+template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, const std::string &filename, long long int t) {
 	std::ofstream output(filename);
 	print_species_density(species, output, t);

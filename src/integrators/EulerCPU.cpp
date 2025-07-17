@@ -30,22 +30,16 @@ void EulerCPU<dims>::evolve() {
         }
     }
 
-	for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
-        for(int species = 0; species < this->_model->N_species(); species++) {
-            rho_der(idx, species) = this->_M * _cell_laplacian(rho_der, species, idx);
-
-			if(_couple_pressure) {
-				Gradient<dims> rho_grad = this->_cell_gradient(this->_rho, species, idx);
-				double tot_pressure = this->_model->pressure(this->_rho.rho_species(idx)) - 0.5 * this->_k_laplacian * (rho_grad * rho_grad);
-				rho_der(idx, species) += _pressure_lambda * (tot_pressure - _pressure_target);
-			}
-        }
-    }
-
     // and then we integrate them
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
         for(int species = 0; species < this->_model->N_species(); species++) {
-            this->_rho(idx, species) += rho_der(idx, species) * this->_dt;
+			double total_derivative = this->_M * _cell_laplacian(rho_der, species, idx);
+			if(_couple_pressure) {
+				Gradient<dims> rho_grad = this->_cell_gradient(this->_rho, species, idx);
+				double tot_pressure = this->_model->pressure(this->_rho.rho_species(idx)) - 0.5 * this->_k_laplacian * (rho_grad * rho_grad);
+				total_derivative += _pressure_lambda * (tot_pressure - _pressure_target);
+			}
+            this->_rho(idx, species) += total_derivative * this->_dt;
         }
     }
 }
