@@ -113,6 +113,10 @@ public:
 		_print_current_state("init_", 0);
 
 		std::ofstream mass_output("energy.dat", _openmode);
+		std::ofstream pressure_output;
+		if(_print_pressure_every > 0) {
+			pressure_output.open("pressure.dat", _openmode);
+		}
 
 		for(_t = _initial_t; _t < _initial_t + _steps; _t++) {
 			if(_should_print_last(_t)) {
@@ -123,6 +127,9 @@ public:
 					_system->print_species_density(i, _trajectories[i], _t);
 				}
 				_traj_printed++;
+			}
+			if(_should_print_pressure(_t)) {
+				_system->print_pressure(pressure_output, _t);
 			}
 			if(_print_mass_every > 0 && _t % _print_mass_every == 0) {
 				std::string output_line = fmt::format("{:.5} {:.8} {:.5} {:L}", _t * _system->dt, _system->average_free_energy(), _system->average_mass(), _t);
@@ -136,6 +143,9 @@ public:
 		}
 
 		mass_output.close();
+		if(pressure_output.is_open()) {
+			pressure_output.close();
+		}
 
 		_print_current_state("last_", _steps);
 	}
@@ -148,6 +158,9 @@ private:
 			_system->print_species_density(i, fmt::format("{}{}.dat", prefix, i), t);
 		}
 		_system->print_total_density(fmt::format("{}density.dat", prefix), t);
+		if(_print_average_pressure) {
+			_system->print_pressure(fmt::format("{}pressure.dat", prefix), t);
+		}
 	}
 
 	bool _should_print_last(long long int t) {
@@ -163,6 +176,10 @@ private:
 			return (next_t == t);
 		}
 		return false;
+	}
+
+	bool _should_print_pressure(long long int t) {
+		return (_print_pressure_every > 0 && t % _print_pressure_every == 0);
 	}
 
 	bool _print_average_pressure;

@@ -36,7 +36,7 @@ void EulerCPU<dims>::evolve() {
 			double total_derivative = this->_M * _cell_laplacian(rho_der, species, idx);
 			if(_couple_pressure) {
 				Gradient<dims> rho_grad = this->_cell_gradient(this->_rho, species, idx);
-				double tot_pressure = this->_model->pressure(this->_rho.rho_species(idx)) - 0.5 * this->_k_laplacian * (rho_grad * rho_grad);
+				double tot_pressure = this->_model->pressure(species, this->_rho.rho_species(idx)) - 0.5 * this->_k_laplacian * (rho_grad * rho_grad);
 				total_derivative += _pressure_lambda * (tot_pressure - _pressure_target);
 			}
             this->_rho(idx, species) += total_derivative * this->_dt;

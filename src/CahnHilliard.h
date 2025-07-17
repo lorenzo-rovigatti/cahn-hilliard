@@ -51,6 +51,8 @@ public:
 	void print_species_density(int species, const std::string &filename, long long int t);
 	void print_species_density(int species, std::ofstream &output, long long int t);
 	void print_total_density(const std::string &filename, long long int t);
+	void print_pressure(const std::string &filename, long long int t);
+	void print_pressure(std::ofstream &output, long long int t);
 
 	GET_NAME(Simulation manager)
 
