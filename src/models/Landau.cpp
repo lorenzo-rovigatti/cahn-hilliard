@@ -16,7 +16,17 @@ namespace ch {
 Landau::Landau(toml::table &config) :
 				FreeEnergyModel(config) {
 
-	_epsilon = _config_value<double>(config, "landau.epsilon");
+	
+	if(config["landau"]["epsilon"]) {
+		_epsilon = _config_value<double>(config, "landau.epsilon");
+	}
+	else if(config["landau"]["T"]) {
+		double T = _config_value<double>(config, "landau.T");
+		_epsilon = 1 - T;
+	}
+	else {
+		critical("The Landau free energy requires either 'epsilon' or 'T' to be set");
+	}
 
 	if(_user_to_internal != 1.0) {
 		critical("The Landau free energy does not support distance_scaling_factor values different from 1.0");

@@ -10,6 +10,7 @@
 #include "integrators/BailoFiniteVolume.h"
 #include "integrators/EulerCPU.h"
 #include "integrators/EulerMobilityCPU.h"
+#include "integrators/GelMobilityCPU.h"
 #include "integrators/PseudospectralCPU.h"
 
 #include "utils/utility_functions.h"
@@ -130,7 +131,12 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 			for(int i = 0; i < model->N_species(); i++) {
 				double random_factor = (initial_N_peaks == 0) ? (drand48() - 0.5) : 1.0 + 0.02 * (drand48() - 0.5);
 				double average_rho = densities[i];
-				rho(bin, i) = average_rho * (1.0 + 2.0 * modulation * random_factor);
+				if(average_rho != 0.0) {
+					rho(bin, i) = average_rho * (1.0 + 2.0 * modulation * random_factor);
+				}
+				else {
+					rho(bin, i) = 2.0 * modulation * random_factor;
+				}
 			}
 		}
 	}
@@ -161,6 +167,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		else {
 			if(mobility == "constant") {
 				integrator = new EulerCPU<dims>(m, config);
+			}
+			else if(mobility == "gel") {
+				integrator = new GelMobilityCPU<dims>(m, config);
 			}
 			else {
 				integrator = new EulerMobilityCPU<dims>(m, config);
