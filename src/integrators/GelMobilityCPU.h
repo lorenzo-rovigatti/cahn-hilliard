@@ -25,9 +25,9 @@ private:
     double _noise_factor = 0.0;
     std::mt19937 _generator;
 
-    double _phi_critical = 0.5;
-    double _c_0 = 0.01;
-    double _M_c = 0.02;
+    double _phi_critical;
+    double _c_0;
+    double _M_c;
     double _p_gel;
 
     RhoMatrix<double> _gel_OP;

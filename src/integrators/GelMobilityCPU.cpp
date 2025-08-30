@@ -20,6 +20,10 @@ GelMobilityCPU<dims>::GelMobilityCPU(FreeEnergyModel *model, toml::table &config
 		this->info("Integrating the Cahn-Hilliard equation with gel-like mobility and without noise");
 	}
 
+	_phi_critical = this->template _config_optional_value<double>(config, "mobility.phi_critical", 0.5);
+	_c_0 = this->template _config_value<double>(config, "mobility.c_0");
+	_M_c = this->template _config_value<double>(config, "mobility.M_c");
+
 	double epsilon = this->template _config_value<double>(config, "landau.epsilon");
 	double beta_delta_F = 10.0 / (1 - epsilon) - std::log(24000.0);
 	_p_gel = exp(beta_delta_F) / (1.0 + exp(beta_delta_F));
@@ -65,14 +69,7 @@ void GelMobilityCPU<dims>::evolve() {
 		double g = (_p_gel * phi - _phi_critical) / (1.0 - _phi_critical);
 		double c_der = _M_c * (g * c - c * c);
 
-		// if(idx == 0) {
-		// 	printf("%lf %lf %lf %lf %lf %lf\n", c, phi, g, c_der, _p_gel, (1.0 - _phi_critical));
-		// }
-
 		_gel_OP(idx, 0) += c_der * this->_dt;
-		// if(_gel_OP(idx, 0) < 0.) {
-		// 	_gel_OP(idx, 0) = 0.;
-		// }
     }
 
 	// here we use a staggered grid discretisation to avoid numerical artifacts when computing the gradients
@@ -81,9 +78,6 @@ void GelMobilityCPU<dims>::evolve() {
         for(int species = 0; species < this->_model->N_species(); species++) {
 			double M_idx = std::exp(-_gel_OP(idx, 0) / _c_0);
 			double M_p = std::exp(-_gel_OP(idx_p, 0) / _c_0);
-			// if(idx == 0) {
-			// 	printf("%lf, %lf\n", _gel_OP(idx, 0), M_idx);
-			// }
 			double M_flux = 0.5 * (M_idx + M_p);
 			flux(idx, species) = M_flux * this->_cell_gradient(rho_der, species, idx);
 
