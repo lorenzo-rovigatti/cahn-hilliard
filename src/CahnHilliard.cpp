@@ -10,6 +10,7 @@
 #include "integrators/BailoFiniteVolume.h"
 #include "integrators/EulerCPU.h"
 #include "integrators/EulerMobilityCPU.h"
+#include "integrators/GelMobilityCPU.h"
 #include "integrators/PseudospectralCPU.h"
 
 #include "utils/utility_functions.h"
@@ -130,7 +131,12 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 			for(int i = 0; i < model->N_species(); i++) {
 				double random_factor = (initial_N_peaks == 0) ? (drand48() - 0.5) : 1.0 + 0.02 * (drand48() - 0.5);
 				double average_rho = densities[i];
-				rho(bin, i) = average_rho * (1.0 + 2.0 * modulation * random_factor);
+				if(average_rho != 0.0) {
+					rho(bin, i) = average_rho * (1.0 + 2.0 * modulation * random_factor);
+				}
+				else {
+					rho(bin, i) = 2.0 * modulation * random_factor;
+				}
 			}
 		}
 	}
@@ -161,6 +167,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		else {
 			if(mobility == "constant") {
 				integrator = new EulerCPU<dims>(m, config);
+			}
+			else if(mobility == "gel") {
+				integrator = new GelMobilityCPU<dims>(m, config);
 			}
 			else {
 				integrator = new EulerMobilityCPU<dims>(m, config);
@@ -284,33 +293,36 @@ double CahnHilliard<dims>::average_free_energy() {
 }
 
 template<int dims>
+double CahnHilliard<dims>::average_pressure() {
+	double pressure = 0.;
+	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
+		double interfacial_contrib = 0.;
+		for(int species = 0; species < model->N_species(); species++) {
+			pressure += model->pressure(species, integrator->rho().rho_species(i));
+			auto rho_grad = gradient(integrator->rho(), species, i);
+			for(int d = 0; d < dims; d++) {
+				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
+			}
+		}
+	}
+
+	return pressure / integrator->rho().bins();
+}
+
+template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, const std::string &filename, long long int t) {
 	std::ofstream output(filename);
 	print_species_density(species, output, t);
 	output.close();
 }
 
-template<>
-void CahnHilliard<1>::print_species_density(int species, std::ofstream &output, long long int t) {
-	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
-	for(int idx = 0; idx < grid_size; idx++) {
-		output << _density_to_user(integrator->rho()(idx, species)) << " " << std::endl;
-	}
-	output << std::endl;
-}
-
 template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output, long long int t) {
 	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
+	int newline_every = (dims == 1) ? 1 : N;
 	for(int idx = 0; idx < grid_size; idx++) {
-		if(idx > 0) {
-			int modulo = N;
-			for(int d = 1; d < dims; d++) {
-				if(idx % modulo == 0) {
-					output << std::endl;
-				}
-				modulo <<= bits;
-			}
+		if(idx > 0 && idx % newline_every == 0) {
+			output << std::endl;
 		}
 		output << _density_to_user(integrator->rho()(idx, species)) << " ";
 	}
@@ -322,22 +334,46 @@ void CahnHilliard<dims>::print_total_density(const std::string &filename, long l
 	std::ofstream output(filename.c_str());
 
 	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
+	int newline_every = (dims == 1) ? 1 : N;
 	for(int idx = 0; idx < grid_size; idx++) {
-		if(idx > 0) {
-			int modulo = N;
-			for(int d = 1; d < dims; d++) {
-				if(idx % modulo == 0) {
-					output << std::endl;
-				}
-				modulo <<= bits;
-			}
+		if(idx > 0 && idx % newline_every == 0) {
+			output << std::endl;
 		}
-		output << _density_to_user(integrator->rho().rho_tot(idx)) << std::endl;
+		output << _density_to_user(integrator->rho().rho_tot(idx)) << " ";
 	}
+	output << std::endl;
 
 	output.close();
 }
 
+template<int dims>
+void CahnHilliard<dims>::print_pressure(const std::string &filename, long long int t) {
+	std::ofstream output(filename);
+	print_pressure(output, t);
+	output.close();
+}
+
+template<int dims>
+void CahnHilliard<dims>::print_pressure(std::ofstream &output, long long int t) {
+	output << fmt::format("# pressure @ step = {} t = {:.5} size = {}", t, t * dt, _grid_size_str) << std::endl;
+	int newline_every = (dims == 1) ? 1 : N;
+	for(int idx = 0; idx < grid_size; idx++) {
+		if(idx > 0 && idx % newline_every == 0) {
+			output << std::endl;
+		}
+		
+		double pressure = 0.;
+		for(int species = 0; species < model->N_species(); species++) {
+			pressure += model->pressure(species, integrator->rho().rho_species(idx));
+			auto rho_grad = gradient(integrator->rho(), species, idx);
+			for(int d = 0; d < dims; d++) {
+				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
+			}
+		}
+		output << pressure << " ";
+	}
+	output << std::endl;
+}
 
 template<int dims>
 double CahnHilliard<dims>::_density_to_user(double v) {

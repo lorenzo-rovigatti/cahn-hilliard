@@ -21,8 +21,12 @@ public:
         return _data[species * _bins + idx];
     }
 
-    T operator()(int idx, int species) const{
+    T operator()(int idx, int species) const {
         return _data[species * _bins + idx];
+    }
+
+    void fill(const T &v) {
+        std::fill(_data.begin(), _data.end(), v);
     }
 
     T *data() {

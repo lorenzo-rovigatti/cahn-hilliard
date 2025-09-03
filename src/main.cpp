@@ -24,6 +24,12 @@ public:
 
 		_print_mass_every = _config_optional_value<long long int>(config, "print_every", 0);
 
+		_print_average_pressure = _config_optional_value<bool>(config, "print_average_pressure", false);
+		_print_pressure_every = _config_optional_value<long long int>(config, "print_pressure_every", 0);
+		if(_print_pressure_every > 0) {
+			_print_average_pressure = true;
+		}
+
 		_print_traj_strategy = _config_optional_value<std::string>(config, "print_trajectory_strategy", "linear");
 		
 		if(_print_traj_strategy == "linear") {
@@ -107,6 +113,10 @@ public:
 		_print_current_state("init_", 0);
 
 		std::ofstream mass_output("energy.dat", _openmode);
+		std::ofstream pressure_output;
+		if(_print_pressure_every > 0) {
+			pressure_output.open("pressure.dat", _openmode);
+		}
 
 		for(_t = _initial_t; _t < _initial_t + _steps; _t++) {
 			if(_should_print_last(_t)) {
@@ -118,8 +128,14 @@ public:
 				}
 				_traj_printed++;
 			}
+			if(_should_print_pressure(_t)) {
+				_system->print_pressure(pressure_output, _t);
+			}
 			if(_print_mass_every > 0 && _t % _print_mass_every == 0) {
 				std::string output_line = fmt::format("{:.5} {:.8} {:.5} {:L}", _t * _system->dt, _system->average_free_energy(), _system->average_mass(), _t);
+				if(_print_average_pressure) {
+					output_line += fmt::format(" {:.5}", _system->average_pressure());
+				}
 				mass_output << output_line << std::endl;
 				std::cout << output_line << std::endl;
 			}
@@ -127,6 +143,9 @@ public:
 		}
 
 		mass_output.close();
+		if(pressure_output.is_open()) {
+			pressure_output.close();
+		}
 
 		_print_current_state("last_", _steps);
 	}
@@ -139,6 +158,9 @@ private:
 			_system->print_species_density(i, fmt::format("{}{}.dat", prefix, i), t);
 		}
 		_system->print_total_density(fmt::format("{}density.dat", prefix), t);
+		if(_print_average_pressure) {
+			_system->print_pressure(fmt::format("{}pressure.dat", prefix), t);
+		}
 	}
 
 	bool _should_print_last(long long int t) {
@@ -156,10 +178,15 @@ private:
 		return false;
 	}
 
+	bool _should_print_pressure(long long int t) {
+		return (_print_pressure_every > 0 && t % _print_pressure_every == 0);
+	}
+
+	bool _print_average_pressure;
 	std::string _print_traj_strategy;
 	long long int _initial_t = 0;
 	long long int _t;
-	long long int _steps, _print_mass_every, _print_trajectory_every, _print_last_every;
+	long long int _steps, _print_mass_every, _print_trajectory_every, _print_last_every, _print_pressure_every;
 	int _traj_printed = 0;
 	int _log_n0 = 0;
 	double _log_fact = 0;

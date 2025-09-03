@@ -1,39 +1,54 @@
-#include "EulerMobilityCPU.h"
+#include "GelMobilityCPU.h"
 
 #include "../utils/utility_functions.h"
 
 namespace ch {
 
 template<int dims>
-EulerMobilityCPU<dims>::EulerMobilityCPU(FreeEnergyModel *model, toml::table &config) : EulerCPU<dims>(model, config) {
-	std::string mobility = this->template _config_value<std::string>(config, "mobility.type");
-	if(mobility != "regularised") {
-		this->critical("The only supported non-constant mobility is 'regularised'");
-	}
-
-	_rho_min = this->template _config_value<double>(config, "mobility.rho_min");
+GelMobilityCPU<dims>::GelMobilityCPU(FreeEnergyModel *model, toml::table &config) : EulerCPU<dims>(model, config) {
 	_with_noise = this->template _config_optional_value<bool>(config, "mobility.with_noise", false);
 	
 	if(_with_noise) {
 		double noise_rescale_factor = this->template _config_optional_value<double>(config, "mobility.noise_rescale_factor", 1.0);
 		_noise_factor = std::sqrt(2.0 / (pow_dims<dims>(this->_dx) * this->_dt)) * noise_rescale_factor;
-		this->info("Integrating the Cahn-Hilliard equation with non-constant mobility and noise (noise_factor = {})", _noise_factor);
+		this->info("Integrating the Cahn-Hilliard equation with gel-like mobility and noise (noise_factor = {})", _noise_factor);
 
 		long long int seed = this->template _config_optional_value<long long int>(config, "seed", std::time(NULL));
 		_generator.seed(seed);
 	}
 	else {
-		this->info("Integrating the Cahn-Hilliard equation with non-constant mobility and without noise");
+		this->info("Integrating the Cahn-Hilliard equation with gel-like mobility and without noise");
+	}
+
+	_phi_critical = this->template _config_optional_value<double>(config, "mobility.phi_critical", 0.5);
+	_c_0 = this->template _config_value<double>(config, "mobility.c_0");
+	_M_c = this->template _config_value<double>(config, "mobility.M_c");
+
+	double epsilon = this->template _config_value<double>(config, "landau.epsilon");
+	double beta_delta_F = 10.0 / (1 - epsilon) - std::log(24000.0);
+	_p_gel = exp(beta_delta_F) / (1.0 + exp(beta_delta_F));
+
+	this->info("p_gel = {}, phi_critical = {}, c_0 = {}, M_c = {}", _p_gel, _phi_critical, _c_0, _M_c);
+}
+
+template<int dims>
+GelMobilityCPU<dims>::~GelMobilityCPU() {
+
+}
+
+template<int dims>
+void GelMobilityCPU<dims>::set_initial_rho(RhoMatrix<double> &r) {
+	EulerCPU<dims>::set_initial_rho(r);
+	_gel_OP = RhoMatrix<double>(this->_rho.bins(), 1);
+
+	std::uniform_real_distribution<double> dist(0.0, 1.0);
+	for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
+		_gel_OP(idx, 0) = dist(_generator) * 1e-4;
 	}
 }
 
 template<int dims>
-EulerMobilityCPU<dims>::~EulerMobilityCPU() {
-
-}
-
-template<int dims>
-void EulerMobilityCPU<dims>::evolve() {
+void GelMobilityCPU<dims>::evolve() {
     static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
 	static RhoMatrix<Gradient<dims>> flux(this->_rho.bins(), this->_model->N_species());
 	static RhoMatrix<Gradient<dims>> stochastic_flux(this->_rho.bins(), this->_model->N_species());
@@ -42,17 +57,27 @@ void EulerMobilityCPU<dims>::evolve() {
     // we first evaluate the time derivative for all the fields
     this->_model->der_bulk_free_energy(this->_rho, rho_der);
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
+		double rho_tot = 0.;
         for(int species = 0; species < this->_model->N_species(); species++) {
             rho_der(idx, species) -= 2 * this->_k_laplacian * this->_cell_laplacian(this->_rho, species, idx);
+			rho_tot += this->_rho(idx, species);
         }
+
+		// update the gel OP
+		double c = _gel_OP(idx, 0);
+		double phi = (rho_tot + 1.0) / 2.0;
+		double g = (_p_gel * phi - _phi_critical) / (1.0 - _phi_critical);
+		double c_der = _M_c * (g * c - c * c);
+
+		_gel_OP(idx, 0) += c_der * this->_dt;
     }
 
 	// here we use a staggered grid discretisation to avoid numerical artifacts when computing the gradients
 	for(unsigned int idx = 0; idx < this->_N_bins - 1; idx++) {
 		int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
         for(int species = 0; species < this->_model->N_species(); species++) {
-			double M_idx = this->_M * this->_rho(idx, species) / (this->_rho(idx, species) + _rho_min);
-			double M_p = this->_M * this->_rho(idx_p, species) / (this->_rho(idx_p, species) + _rho_min);
+			double M_idx = std::exp(-_gel_OP(idx, 0) / _c_0);
+			double M_p = std::exp(-_gel_OP(idx_p, 0) / _c_0);
 			double M_flux = 0.5 * (M_idx + M_p);
 			flux(idx, species) = M_flux * this->_cell_gradient(rho_der, species, idx);
 
@@ -73,7 +98,7 @@ void EulerMobilityCPU<dims>::evolve() {
     }
 }
 
-template class EulerMobilityCPU<1>;
-template class EulerMobilityCPU<2>;
+template class GelMobilityCPU<1>;
+template class GelMobilityCPU<2>;
 
 } /* namespace ch */
