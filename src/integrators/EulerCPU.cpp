@@ -6,12 +6,6 @@ template<int dims>
 EulerCPU<dims>::EulerCPU(FreeEnergyModel *model, toml::table &config) : Integrator<dims>(model, config) {
     _N_per_dim_minus_one = this->_N_per_dim - 1;
 	_log2_N_per_dim = (int) std::log2(this->_N_per_dim);
-
-	_couple_pressure = this->template _config_optional_value<bool>(config, "couple_pressure", false);
-	if(_couple_pressure) {
-		_pressure_lambda = this->template _config_value<double>(config, "pressure_lambda");
-		_pressure_target = this->template _config_value<double>(config, "pressure_target");
-	}
 }
 
 template<int dims>
@@ -34,11 +28,6 @@ void EulerCPU<dims>::evolve() {
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
         for(int species = 0; species < this->_model->N_species(); species++) {
 			double total_derivative = this->_M * _cell_laplacian(rho_der, species, idx);
-			if(_couple_pressure) {
-				Gradient<dims> rho_grad = this->_cell_gradient(this->_rho, species, idx);
-				double tot_pressure = this->_model->pressure(species, this->_rho.rho_species(idx)) - 0.5 * this->_k_laplacian * (rho_grad * rho_grad);
-				total_derivative -= _pressure_lambda * (tot_pressure - _pressure_target);
-			}
             this->_rho(idx, species) += total_derivative * this->_dt;
         }
     }

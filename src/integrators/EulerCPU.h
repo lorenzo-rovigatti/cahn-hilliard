@@ -22,9 +22,6 @@ protected:
     int _N_per_dim_minus_one;
     int _log2_N_per_dim;
 
-    bool _couple_pressure;
-    double _pressure_lambda, _pressure_target;
-
     void _fill_coords(int coords[dims], int idx);
     int _cell_idx(int coords[dims]);
     double _cell_laplacian(RhoMatrix<double> &field, int species, int idx);
