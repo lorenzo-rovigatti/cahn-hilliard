@@ -46,3 +46,13 @@ set_target_properties(spdlog PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 include_directories(extern extern/spdlog/include)
 add_subdirectory(src)
+
+# add tests
+include(CTest)
+enable_testing()
+
+add_test(
+    NAME python_tests
+    COMMAND pytest -q
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
