@@ -1,0 +1,15 @@
+steps = 100
+print_every = 1000
+print_trajectory_every = 100000
+N = 64
+dt = 0.01
+dx = 1.0
+K = 1.0
+M = 1.0
+initial_density = 0.01
+free_energy = "landau"
+seed = 123456
+use_CUDA = false
+
+[landau]
+epsilon = 0.9
