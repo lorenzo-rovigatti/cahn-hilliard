@@ -15,7 +15,7 @@ EulerCPU<dims>::~EulerCPU() {
 
 template<int dims>
 void EulerCPU<dims>::evolve() {
-    static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
+    static MultiField<double> rho_der(this->_rho.bins(), this->_model->N_species());
     // we first evaluate the time derivative for all the fields
 	this->_model->der_bulk_free_energy(this->_rho, rho_der);
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
@@ -53,7 +53,7 @@ int EulerCPU<dims>::_cell_idx(int coords[dims]) {
 }
 
 template<>
-double EulerCPU<1>::_cell_laplacian(RhoMatrix<double> &field, int species, int idx) {
+double EulerCPU<1>::_cell_laplacian(MultiField<double> &field, int species, int idx) {
 	int idx_m = (idx - 1 + this->_N_bins) & _N_per_dim_minus_one;
 	int idx_p = (idx + 1) & _N_per_dim_minus_one;
 
@@ -61,7 +61,7 @@ double EulerCPU<1>::_cell_laplacian(RhoMatrix<double> &field, int species, int i
 }
 
 template<>
-double EulerCPU<2>::_cell_laplacian(RhoMatrix<double> &field, int species, int idx) {
+double EulerCPU<2>::_cell_laplacian(MultiField<double> &field, int species, int idx) {
 	int coords_xy[2];
 	_fill_coords(coords_xy, idx);
 
@@ -95,14 +95,14 @@ double EulerCPU<2>::_cell_laplacian(RhoMatrix<double> &field, int species, int i
 }
 
 template<>
-Gradient<1> EulerCPU<1>::_cell_gradient(RhoMatrix<double> &field, int species, int idx) {
+Gradient<1> EulerCPU<1>::_cell_gradient(MultiField<double> &field, int species, int idx) {
 	int idx_p = (idx + 1) & _N_per_dim_minus_one;
 
 	return Gradient<1>({(field(idx_p, species) - field(idx, species)) / _dx});
 }
 
 template<>
-Gradient<2> EulerCPU<2>::_cell_gradient(RhoMatrix<double> &field, int species, int idx) {
+Gradient<2> EulerCPU<2>::_cell_gradient(MultiField<double> &field, int species, int idx) {
 	int coords_xy[2];
 	_fill_coords(coords_xy, idx);
 
@@ -123,13 +123,13 @@ Gradient<2> EulerCPU<2>::_cell_gradient(RhoMatrix<double> &field, int species, i
 }
 
 template<>
-double EulerCPU<1>::_divergence(RhoMatrix<Gradient<1>> &flux, int species, int idx) {
+double EulerCPU<1>::_divergence(MultiField<Gradient<1>> &flux, int species, int idx) {
 	int idx_m = (idx - 1 + _N_bins) & _N_per_dim_minus_one;
 	return (flux(idx, species)[0] - flux(idx_m, species)[0]) / this->_dx;
 }
 
 template<int dims>
-double EulerCPU<dims>::_divergence(RhoMatrix<Gradient<dims>> &flux, int species, int idx) {
+double EulerCPU<dims>::_divergence(MultiField<Gradient<dims>> &flux, int species, int idx) {
 	double res = 0;
 	int coords[dims], coords_m[dims];
 	this->_fill_coords(coords, idx);

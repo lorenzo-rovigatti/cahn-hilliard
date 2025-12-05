@@ -64,10 +64,10 @@ PseudospectralCPU<dims>::~PseudospectralCPU() {
 }
 
 template<int dims>
-void PseudospectralCPU<dims>::set_initial_rho(RhoMatrix<double> &r) {
+void PseudospectralCPU<dims>::set_initial_rho(MultiField<double> &r) {
     Integrator<dims>::set_initial_rho(r);
 
-    f_der = RhoMatrix<double>(this->_rho.bins(), this->_model->N_species());
+    f_der = MultiField<double>(this->_rho.bins(), this->_model->N_species());
     f_der_hat.resize(hat_vector_size);
     
     int idist = this->_N_bins;

@@ -51,7 +51,7 @@ PseudospectralCUDA<dims>::PseudospectralCUDA(FreeEnergyModel *model, toml::table
 
 	this->info("Size of the CUDA direct-space vectors: {} ({} bytes)", this->_N_bins * model->N_species(), this->_d_vec_size);
 
-	this->_h_rho = RhoMatrix<field_type>(this->_N_bins, model->N_species());
+	this->_h_rho = MultiField<field_type>(this->_N_bins, model->N_species());
 	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));
 	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho_der, d_der_vec_size)); // always float
 
@@ -148,7 +148,7 @@ PseudospectralCUDA<dims>::~PseudospectralCUDA() {
 }
 
 template<int dims>
-void PseudospectralCUDA<dims>::set_initial_rho(RhoMatrix<double> &r) {
+void PseudospectralCUDA<dims>::set_initial_rho(MultiField<double> &r) {
     CUDAIntegrator<dims>::set_initial_rho(r);
 
     std::array<int, dims> reciprocal_n;

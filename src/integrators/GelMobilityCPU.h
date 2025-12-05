@@ -14,7 +14,7 @@ public:
 
     ~GelMobilityCPU();
 
-    void set_initial_rho(RhoMatrix<double> &r) override;
+    void set_initial_rho(MultiField<double> &r) override;
 
     void evolve() override;
 
@@ -30,7 +30,7 @@ private:
     double _M_c;
     double _p_gel;
 
-    RhoMatrix<double> _gel_OP;
+    MultiField<double> _gel_OP;
 };
 
 } /* namespace ch */

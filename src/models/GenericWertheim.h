@@ -44,11 +44,11 @@ public:
 		return _species.size();
 	}
 
-	double bonding_free_energy(const std::vector<double> &);
-	double bulk_free_energy(const std::vector<double> &) override;
+	double bonding_free_energy(const SpeciesView<double> &);
+	double bulk_free_energy(const SpeciesView<double> &) override;
 
 	void der_bulk_free_energy(field_type *rho, float *rho_der, int vec_size) override;
-	void der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) override;
+	void der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) override;
 
 	GET_NAME("Generic Wertheim free energy")
 
@@ -62,7 +62,7 @@ private:
 	int _N_patches = 0;
 
 	std::pair<int, int> _parse_interaction(std::string int_string, std::string context);
-	void _update_X(const std::vector<double> &, std::vector<double> &);
+	void _update_X(const SpeciesView<double> &, std::vector<double> &);
 	double _der_contribution(const std::vector<double> &, int);
 };
 

@@ -21,9 +21,9 @@ public:
 
     ~CUDAIntegrator();
 
-    void set_initial_rho(RhoMatrix<double> &r) override;
+    void set_initial_rho(MultiField<double> &r) override;
 
-    RhoMatrix<double> &rho() override;
+    MultiField<double> &rho() override;
 
     GET_NAME(CUDAIntegrator)
 
@@ -31,7 +31,7 @@ protected:
     void _CPU_GPU();
 
     int _d_vec_size;
-	RhoMatrix<field_type> _h_rho;
+	MultiField<field_type> _h_rho;
 	field_type *_d_rho = nullptr;
 	float *_d_rho_der = nullptr;
     int _grid_size;

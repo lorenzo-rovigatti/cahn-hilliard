@@ -169,7 +169,7 @@ std::pair<int, int> GenericWertheim::_parse_interaction(std::string int_string, 
 	return {part_A, part_B};
 }
 
-void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<double> &Xs) {
+void GenericWertheim::_update_X(const SpeciesView<double> &rhos, std::vector<double> &Xs) {
 	double tolerance = 1e-8;
 	int max_iter = 10000;
 
@@ -198,7 +198,7 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 	}
 }
 
-double GenericWertheim::bonding_free_energy(const std::vector<double> &rhos) {
+double GenericWertheim::bonding_free_energy(const SpeciesView<double> &rhos) {
 	double bonding_fe = 0;
 	std::vector<double> Xs(_N_patches, 0.0);
 	_update_X(rhos, Xs);
@@ -214,7 +214,7 @@ double GenericWertheim::bonding_free_energy(const std::vector<double> &rhos) {
 	return bonding_fe;
 }
 
-double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
+double GenericWertheim::bulk_free_energy(const SpeciesView<double> &rhos) {
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 
 	double mixing_S = 0.;
@@ -231,11 +231,11 @@ double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	return f_ref + bonding_free_energy(rhos);
 }
 
-void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+void GenericWertheim::der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) {
 	static std::vector<std::vector<double>> all_Xs(rho.bins(), std::vector<double>(_N_patches, 0.0));
 
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-		std::vector<double> rhos = rho.rho_species(idx);
+		auto rhos = rho.species_view(idx);
 		std::vector<double> &Xs = all_Xs[idx];
 		_update_X(rhos, Xs);
         for(int species = 0; species < N_species(); species++) {

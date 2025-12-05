@@ -43,16 +43,16 @@ int Landau::N_species() {
 	return 1;
 }
 
-void Landau::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+void Landau::der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) {
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
         for(int species = 0; species < N_species(); species++) {
-			double op = rho.rho_species(idx)[0];
+			double op = rho.species_view(idx)[0];
             rho_der(idx, species) = -_epsilon * op + op * op * op;
         }
     }
 }
 
-double Landau::bulk_free_energy(const std::vector<double> &rhos) {
+double Landau::bulk_free_energy(const SpeciesView<double> &rhos) {
 	double op = rhos[0];
 	return -0.5 * _epsilon * SQR(op) + 0.25 * SQR(SQR(op));
 }
@@ -63,7 +63,7 @@ void Landau::der_bulk_free_energy(field_type *psi, float *psi_der, int grid_size
 #endif
 }
 
-double Landau::pressure(int species, const std::vector<double> &rhos) {
+double Landau::pressure(int species, const SpeciesView<double> &rhos) {
 	double op = rhos[species];
 	double mu = -_epsilon * op + op * op * op;
 	double f = bulk_free_energy(rhos);

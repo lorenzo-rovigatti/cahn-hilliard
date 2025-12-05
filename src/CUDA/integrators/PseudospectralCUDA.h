@@ -21,7 +21,7 @@ public:
 
     ~PseudospectralCUDA();
 
-    void set_initial_rho(RhoMatrix<double> &r) override;
+    void set_initial_rho(MultiField<double> &r) override;
 
     void evolve() override;
 

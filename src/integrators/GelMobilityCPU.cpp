@@ -37,9 +37,9 @@ GelMobilityCPU<dims>::~GelMobilityCPU() {
 }
 
 template<int dims>
-void GelMobilityCPU<dims>::set_initial_rho(RhoMatrix<double> &r) {
+void GelMobilityCPU<dims>::set_initial_rho(MultiField<double> &r) {
 	EulerCPU<dims>::set_initial_rho(r);
-	_gel_OP = RhoMatrix<double>(this->_rho.bins(), 1);
+	_gel_OP = MultiField<double>(this->_rho.bins(), 1);
 
 	std::uniform_real_distribution<double> dist(0.0, 1.0);
 	for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
@@ -49,9 +49,9 @@ void GelMobilityCPU<dims>::set_initial_rho(RhoMatrix<double> &r) {
 
 template<int dims>
 void GelMobilityCPU<dims>::evolve() {
-    static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
-	static RhoMatrix<Gradient<dims>> flux(this->_rho.bins(), this->_model->N_species());
-	static RhoMatrix<Gradient<dims>> stochastic_flux(this->_rho.bins(), this->_model->N_species());
+    static MultiField<double> rho_der(this->_rho.bins(), this->_model->N_species());
+	static MultiField<Gradient<dims>> flux(this->_rho.bins(), this->_model->N_species());
+	static MultiField<Gradient<dims>> stochastic_flux(this->_rho.bins(), this->_model->N_species());
 	static std::normal_distribution<double> normal_dist(0.0, 1.0);
 
     // we first evaluate the time derivative for all the fields

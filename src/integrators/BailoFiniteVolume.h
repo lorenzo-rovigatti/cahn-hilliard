@@ -19,7 +19,7 @@ public:
 
     ~BailoFiniteVolume();
 
-    double cell_laplacian(RhoMatrix<double> &field, int species, int idx);
+    double cell_laplacian(MultiField<double> &field, int species, int idx);
     void evolve() override;
 
     GET_NAME(Bailo integrator)

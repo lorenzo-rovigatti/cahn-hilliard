@@ -24,9 +24,9 @@ protected:
 
     void _fill_coords(int coords[dims], int idx);
     int _cell_idx(int coords[dims]);
-    double _cell_laplacian(RhoMatrix<double> &field, int species, int idx);
-    Gradient<dims> _cell_gradient(RhoMatrix<double> &field, int species, int idx);
-    double _divergence(RhoMatrix<Gradient<dims>> &gradients, int species, int idx);
+    double _cell_laplacian(MultiField<double> &field, int species, int idx);
+    Gradient<dims> _cell_gradient(MultiField<double> &field, int species, int idx);
+    double _divergence(MultiField<Gradient<dims>> &gradients, int species, int idx);
 };
 
 } /* namespace ch */

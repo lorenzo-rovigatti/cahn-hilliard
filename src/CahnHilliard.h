@@ -9,7 +9,7 @@
 #define SRC_CAHNHILLIARD_H_
 
 #include "defs.h"
-#include "utils/RhoMatrix.h"
+#include "utils/MultiField.h"
 #include "models/FreeEnergyModel.h"
 #include "integrators/Integrator.h"
 
@@ -41,7 +41,7 @@ public:
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);
 
-	std::array<double, dims> gradient(RhoMatrix<double> &field, int species, int idx);
+	std::array<double, dims> gradient(MultiField<double> &field, int species, int idx);
 
 	void evolve();
 

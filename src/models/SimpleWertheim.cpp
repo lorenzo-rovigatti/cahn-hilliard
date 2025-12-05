@@ -37,9 +37,9 @@ SimpleWertheim::~SimpleWertheim() {
 
 }
 
-void SimpleWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+void SimpleWertheim::der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) {
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-        double rho_tot = rho.rho_species(idx)[0];
+        double rho_tot = rho.species_view(idx)[0];
         double der_f_ref = (rho_tot < _regularisation_delta) ? rho_tot / _regularisation_delta + _log_delta - 1.0 : std::log(rho_tot);
         der_f_ref += 2 * _B2 * rho_tot;
         double X = _X(rho_tot);
@@ -48,7 +48,7 @@ void SimpleWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatri
     }
 }
 
-double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::vector<double> &rhos) {
+double SimpleWertheim::der_bulk_free_energy_expansive(int species, const SpeciesView<double> &rhos) {
     double rho = rhos[0];
     double X = _X(rho);
     double der_f_bond = (rho > 0.) ? _valence * std::log(X) : 0.0;
@@ -56,7 +56,7 @@ double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::ve
     return der_f_bond;
 }
 
-double SimpleWertheim::der_bulk_free_energy_contractive(int species, const std::vector<double> &rhos) {
+double SimpleWertheim::der_bulk_free_energy_contractive(int species, const SpeciesView<double> &rhos) {
     double rho = rhos[0];
     double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
 	der_f_ref += 2 * _B2 * rho;
@@ -64,7 +64,7 @@ double SimpleWertheim::der_bulk_free_energy_contractive(int species, const std::
     return der_f_ref;
 }
 
-double SimpleWertheim::bulk_free_energy(const std::vector<double> &rhos) {
+double SimpleWertheim::bulk_free_energy(const SpeciesView<double> &rhos) {
     double rho = rhos[0];
     double f_ref = (rho < _regularisation_delta) ? SQR(rho) / (2.0 * _regularisation_delta) + rho * _log_delta - _regularisation_delta / 2.0 : rho * std::log(rho * _density_conversion_factor);
     f_ref += -rho + _B2 * SQR(rho);

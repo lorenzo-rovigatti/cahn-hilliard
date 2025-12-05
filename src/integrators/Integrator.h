@@ -13,18 +13,18 @@ public:
 
     virtual ~Integrator();
 
-    virtual void set_initial_rho(RhoMatrix<double> &r);
+    virtual void set_initial_rho(MultiField<double> &r);
 
     virtual void evolve() = 0;
 
-    virtual RhoMatrix<double> &rho() {
+    virtual MultiField<double> &rho() {
         return _rho;
     }
 
     GET_NAME(Integrator)
 
 protected:
-    RhoMatrix<double> _rho;
+    MultiField<double> _rho;
     int _N_per_dim = 0;
     int _N_bins = 0;
     double _dt = 0.0;

@@ -20,7 +20,7 @@ CUDAIntegrator<dims>::~CUDAIntegrator() {
 }
 
 template<int dims>
-void CUDAIntegrator<dims>::set_initial_rho(RhoMatrix<double> &r) {
+void CUDAIntegrator<dims>::set_initial_rho(MultiField<double> &r) {
     Integrator<dims>::set_initial_rho(r);
     _CPU_GPU();
 }
@@ -37,7 +37,7 @@ void CUDAIntegrator<dims>::_CPU_GPU() {
 }
 
 template<int dims>
-RhoMatrix<double> &CUDAIntegrator<dims>::rho() {
+MultiField<double> &CUDAIntegrator<dims>::rho() {
     if(!_output_ready) {
         CUDA_SAFE_CALL(cudaMemcpy(_h_rho.data(), _d_rho, _d_vec_size, cudaMemcpyDeviceToHost));
 

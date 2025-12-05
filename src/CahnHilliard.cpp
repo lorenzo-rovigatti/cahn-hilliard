@@ -61,7 +61,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		grid_size *= N;
 	}
 
-	RhoMatrix<double> rho(grid_size, model->N_species());
+	MultiField<double> rho(grid_size, model->N_species());
 
 	if(!config["initial_density"] && !config["load_from"]) {
 		critical("Either 'initial_density' or 'load_from' should be specified");
@@ -230,14 +230,14 @@ int CahnHilliard<dims>::cell_idx(int coords[dims]) {
 }
 
 template<>
-std::array<double, 1> CahnHilliard<1>::gradient(RhoMatrix<double> &field, int species, int idx) {
+std::array<double, 1> CahnHilliard<1>::gradient(MultiField<double> &field, int species, int idx) {
 	int idx_p = (idx + 1) & N_minus_one;
 
 	return {(field(idx_p, species) - field(idx, species)) / dx};
 }
 
 template<>
-std::array<double, 2> CahnHilliard<2>::gradient(RhoMatrix<double> &field, int species, int idx) {
+std::array<double, 2> CahnHilliard<2>::gradient(MultiField<double> &field, int species, int idx) {
 	int coords_xy[2];
 	fill_coords(coords_xy, idx);
 
@@ -266,7 +266,7 @@ template<int dims>
 double CahnHilliard<dims>::average_mass() {
 	double mass = 0.;
 	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
-		mass += integrator->rho().rho_tot(i);
+		mass += integrator->rho().field_sum(i);
 		if(safe_isnan(mass)) {
 			critical("Encountered a nan while computing the total mass (bin {})", i);
 		}
@@ -286,7 +286,7 @@ double CahnHilliard<dims>::average_free_energy() {
 				interfacial_contrib += k_laplacian * rho_grad[d] * rho_grad[d];
 			}
 		}
-		fe += model->bulk_free_energy(integrator->rho().rho_species(i)) + interfacial_contrib;
+		fe += model->bulk_free_energy(integrator->rho().species_view(i)) + interfacial_contrib;
 	}
 
 	return fe * V_bin / integrator->rho().bins();
@@ -298,7 +298,7 @@ double CahnHilliard<dims>::average_pressure() {
 	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
 		double interfacial_contrib = 0.;
 		for(int species = 0; species < model->N_species(); species++) {
-			pressure += model->pressure(species, integrator->rho().rho_species(i));
+			pressure += model->pressure(species, integrator->rho().species_view(i));
 			auto rho_grad = gradient(integrator->rho(), species, i);
 			for(int d = 0; d < dims; d++) {
 				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
@@ -339,7 +339,7 @@ void CahnHilliard<dims>::print_total_density(const std::string &filename, long l
 		if(idx > 0 && idx % newline_every == 0) {
 			output << std::endl;
 		}
-		output << _density_to_user(integrator->rho().rho_tot(idx)) << " ";
+		output << _density_to_user(integrator->rho().field_sum(idx)) << " ";
 	}
 	output << std::endl;
 
@@ -364,7 +364,7 @@ void CahnHilliard<dims>::print_pressure(std::ofstream &output, long long int t) 
 		
 		double pressure = 0.;
 		for(int species = 0; species < model->N_species(); species++) {
-			pressure += model->pressure(species, integrator->rho().rho_species(idx));
+			pressure += model->pressure(species, integrator->rho().species_view(idx));
 			auto rho_grad = gradient(integrator->rho(), species, idx);
 			for(int d = 0; d < dims; d++) {
 				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];

@@ -23,7 +23,7 @@ public:
 
     ~PseudospectralCPU();
 
-    void set_initial_rho(RhoMatrix<double> &r) override;
+    void set_initial_rho(MultiField<double> &r) override;
 
     void evolve() override;
 
@@ -34,7 +34,7 @@ private:
 	int hat_grid_size; // n1 x n2 x ... x (n_d / 2 + 1)
 	int hat_vector_size; // hat_grid_size * N_species
 	std::vector<std::complex<double>> rho_hat, rho_hat_copy, f_der_hat;
-	RhoMatrix<double> f_der;
+	MultiField<double> f_der;
 	std::vector<double> sqr_wave_vectors, dealiaser;
 
 	fftw_plan rho_inverse_plan, f_der_plan;

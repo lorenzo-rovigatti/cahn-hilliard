@@ -29,7 +29,7 @@ Integrator<dims>::~Integrator() {
 }
 
 template<int dims>
-void Integrator<dims>::set_initial_rho(RhoMatrix<double> &r) {
+void Integrator<dims>::set_initial_rho(MultiField<double> &r) {
     if(r.bins() != _N_bins) {
         critical("The size of the grid of the initial density ({}) differs from the expected value {}", r.bins(), _N_bins);
     }

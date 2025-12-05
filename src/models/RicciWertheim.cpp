@@ -39,7 +39,7 @@
  RicciWertheim::~RicciWertheim() {
  }
  
- double RicciWertheim::bonding_free_energy(const std::vector<double> &rhos) {
+ double RicciWertheim::bonding_free_energy(const SpeciesView<double> &rhos) {
 	 double X_0 = (-1 + std::sqrt((1 + 12 * rhos[0] * _delta_00))) / (6 * rhos[0] * _delta_00);
 	 double A = rhos[1] * _delta_12;
 	 double B = rhos[0] * _delta_12;
@@ -52,7 +52,7 @@
 	 return bonding_fe;
  }
  
- double RicciWertheim::bulk_free_energy(const std::vector<double> &rhos) {
+ double RicciWertheim::bulk_free_energy(const SpeciesView<double> &rhos) {
 	 double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
  
 	 double mixing_S = 0.;
@@ -67,10 +67,10 @@
 	 return f_ref + bonding_free_energy(rhos);
  }
  
- void RicciWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+ void RicciWertheim::der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) {
 	 for(unsigned int idx = 0; idx < rho.bins(); idx++) {
 		 for(int species = 0; species < N_species(); species++) {
-			auto rhos = rho.rho_species(idx);
+			auto rhos = rho.species_view(idx);
 			if(rhos[species] != 0.) {
 				double rho_tot = std::accumulate(rhos.begin(), rhos.end(), 0.);
 				double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho_tot;

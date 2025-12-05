@@ -34,9 +34,9 @@ EulerMobilityCPU<dims>::~EulerMobilityCPU() {
 
 template<int dims>
 void EulerMobilityCPU<dims>::evolve() {
-    static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
-	static RhoMatrix<Gradient<dims>> flux(this->_rho.bins(), this->_model->N_species());
-	static RhoMatrix<Gradient<dims>> stochastic_flux(this->_rho.bins(), this->_model->N_species());
+    static MultiField<double> rho_der(this->_rho.bins(), this->_model->N_species());
+	static MultiField<Gradient<dims>> flux(this->_rho.bins(), this->_model->N_species());
+	static MultiField<Gradient<dims>> stochastic_flux(this->_rho.bins(), this->_model->N_species());
 	static std::normal_distribution<double> normal_dist(0.0, 1.0);
 
     // we first evaluate the time derivative for all the fields
