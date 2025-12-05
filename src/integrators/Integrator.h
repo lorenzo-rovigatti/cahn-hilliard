@@ -27,6 +27,7 @@ protected:
     MultiField<double> _rho;
     int _N_per_dim = 0;
     int _N_bins = 0;
+    int _N_species = 0;
     double _dt = 0.0;
 	double _k_laplacian = 0.0;
 	double _M = 0.0;

@@ -21,6 +21,9 @@ Integrator<dims>::Integrator(FreeEnergyModel *model, toml::table &config) : _mod
 	for(int i = 1; i < dims; i++) {
 		_N_bins *= _N_per_dim;
 	}
+    _N_species = model->N_species();
+
+    info("Integrator initialized with dt = {}, dx = {}, k = {}, M = {}", _dt, _dx, _k_laplacian, _M);
 }
 
 template<int dims>
