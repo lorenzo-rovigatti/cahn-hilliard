@@ -17,11 +17,9 @@ namespace ch {
 template<int dims>
 class PseudospectralCUDA : public CUDAIntegrator<dims> {
 public:
-    PseudospectralCUDA(FreeEnergyModel *model, toml::table &config);
+    PseudospectralCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config);
 
     ~PseudospectralCUDA();
-
-    void set_initial_rho(MultiField<double> &r) override;
 
     void evolve() override;
 

@@ -10,7 +10,7 @@ namespace ch {
 template<int dims>
 class EulerCPU : public Integrator<dims> {
 public:
-    EulerCPU(FreeEnergyModel *model, toml::table &config);
+    EulerCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~EulerCPU();
 

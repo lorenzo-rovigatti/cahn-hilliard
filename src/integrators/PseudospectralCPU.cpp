@@ -10,7 +10,8 @@
 namespace ch {
 
 template<int dims>
-PseudospectralCPU<dims>::PseudospectralCPU(FreeEnergyModel *model, toml::table &config) : Integrator<dims>(model, config) {
+PseudospectralCPU<dims>::PseudospectralCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+        Integrator<dims>(sim_state, model, config) {
     _reciprocal_n.fill(this->_N_per_dim);
     hat_grid_size = _reciprocal_n[dims - 1] / 2 + 1; 
     for(int i = 0; i < dims - 1; i++) {
@@ -54,18 +55,6 @@ PseudospectralCPU<dims>::PseudospectralCPU(FreeEnergyModel *model, toml::table &
     else {
         this->critical("Unsupported number of dimensions {}", dims);
     }
-}
-
-template<int dims>
-PseudospectralCPU<dims>::~PseudospectralCPU() {
-    fftw_destroy_plan(rho_inverse_plan);
-    fftw_destroy_plan(f_der_plan);
-    fftw_cleanup();
-}
-
-template<int dims>
-void PseudospectralCPU<dims>::set_initial_rho(MultiField<double> &r) {
-    Integrator<dims>::set_initial_rho(r);
 
     f_der = MultiField<double>(this->_rho.bins(), this->_model->N_species());
     f_der_hat.resize(hat_vector_size);
@@ -81,6 +70,13 @@ void PseudospectralCPU<dims>::set_initial_rho(MultiField<double> &r) {
     fftw_execute(rho_plan);
     rho_hat_copy = rho_hat;
     fftw_destroy_plan(rho_plan);
+}
+
+template<int dims>
+PseudospectralCPU<dims>::~PseudospectralCPU() {
+    fftw_destroy_plan(rho_inverse_plan);
+    fftw_destroy_plan(f_der_plan);
+    fftw_cleanup();
 }
 
 template<int dims>

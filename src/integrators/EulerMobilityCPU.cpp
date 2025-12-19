@@ -5,7 +5,8 @@
 namespace ch {
 
 template<int dims>
-EulerMobilityCPU<dims>::EulerMobilityCPU(FreeEnergyModel *model, toml::table &config) : EulerCPU<dims>(model, config) {
+EulerMobilityCPU<dims>::EulerMobilityCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+		EulerCPU<dims>(sim_state, model, config) {
 	std::string mobility = this->template _config_value<std::string>(config, "mobility.type");
 	if(mobility != "regularised") {
 		this->critical("The only supported non-constant mobility is 'regularised'");

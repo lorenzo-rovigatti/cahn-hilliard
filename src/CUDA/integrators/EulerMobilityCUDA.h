@@ -101,7 +101,7 @@ public:
 template<int dims>
 class EulerMobilityCUDA : public CUDAIntegrator<dims> {
 public:
-    EulerMobilityCUDA(FreeEnergyModel *model, toml::table &config);
+    EulerMobilityCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config);
 
     ~EulerMobilityCUDA();
 

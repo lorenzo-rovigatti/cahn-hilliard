@@ -10,7 +10,7 @@ namespace ch {
 template<int dims>
 class EulerMobilityCPU : public EulerCPU<dims> {
 public:
-    EulerMobilityCPU(FreeEnergyModel *model, toml::table &config);
+    EulerMobilityCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~EulerMobilityCPU();
 

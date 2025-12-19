@@ -2,6 +2,7 @@
 #define SRC_INTEGRATORS_INTEGRATOR_H_
 
 #include "../Object.h"
+#include "../SimulationState.h"
 #include "../models/FreeEnergyModel.h"
 
 namespace ch {
@@ -9,22 +10,17 @@ namespace ch {
 template<int dims>
 class Integrator : public Object {
 public:
-    Integrator(FreeEnergyModel *model, toml::table &config);
+    Integrator(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     virtual ~Integrator();
 
-    virtual void set_initial_rho(MultiField<double> &r);
-
     virtual void evolve() = 0;
-
-    virtual MultiField<double> &rho() {
-        return _rho;
-    }
 
     GET_NAME(Integrator)
 
 protected:
-    MultiField<double> _rho;
+    SimulationState &_sim_state;
+    MultiField<double> &_rho;
     int _N_per_dim = 0;
     int _N_bins = 0;
     int _N_species = 0;

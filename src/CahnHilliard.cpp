@@ -31,7 +31,8 @@
 namespace ch {
 
 template<int dims>
-CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
+CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m, toml::table &config) :
+				_sim_state(sim_state),
 				model(m) {
 
 	N = _config_value<int>(config, "N");
@@ -61,7 +62,8 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		grid_size *= N;
 	}
 
-	MultiField<double> rho(grid_size, model->N_species());
+
+	_sim_state.rho = MultiField<double>(grid_size, model->N_species());
 
 	if(!config["initial_density"] && !config["load_from"]) {
 		critical("Either 'initial_density' or 'load_from' should be specified");
@@ -92,7 +94,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 						if(spl.size() != 1) {
 							critical("Line n. {} in the initial configuration file contains {} fields, should be 1", lines, spl.size());
 						}
-						rho(OK_lines, s) = std::stod(line);
+						_sim_state.rho(OK_lines, s) = std::stod(line);
 					}
 					else if(dims == 2) {
 						if(spl.size() != N) {
@@ -101,7 +103,7 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 						int coords[2] = {0, OK_lines};
 						for(coords[0] = 0; coords[0] < N; coords[0]++) {
 							int idx = cell_idx(coords);
-							rho(idx, s) = std::stod(spl[coords[0]]);
+							_sim_state.rho(idx, s) = std::stod(spl[coords[0]]);
 						}
 					}
 					else {
@@ -132,10 +134,10 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 				double random_factor = (initial_N_peaks == 0) ? (drand48() - 0.5) : 1.0 + 0.02 * (drand48() - 0.5);
 				double average_rho = densities[i];
 				if(average_rho != 0.0) {
-					rho(bin, i) = average_rho * (1.0 + 2.0 * modulation * random_factor);
+					_sim_state.rho(bin, i) = average_rho * (1.0 + 2.0 * modulation * random_factor);
 				}
 				else {
-					rho(bin, i) = 2.0 * modulation * random_factor;
+					_sim_state.rho(bin, i) = 2.0 * modulation * random_factor;
 				}
 			}
 		}
@@ -143,9 +145,9 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 
 	dx *= _user_to_internal; // proportional to m
 	k_laplacian *= std::pow(_user_to_internal, 5); // proportional to m^5
-	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+	for(unsigned int idx = 0; idx < _sim_state.rho.bins(); idx++) {
 		for(int species = 0; species < model->N_species(); species++) {
-			rho(idx, species) /= CUB(_user_to_internal); // proportional to m^-3
+			_sim_state.rho(idx, species) /= CUB(_user_to_internal); // proportional to m^-3
 		}
 	}
 
@@ -157,33 +159,33 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 		if(use_CUDA) {
 #ifndef NOCUDA
 			if(mobility != "constant") {
-				integrator = new EulerMobilityCUDA<dims>(m, config);
+				integrator = new EulerMobilityCUDA<dims>(_sim_state, m, config);
 			}
 			else {
-				integrator = new EulerCUDA<dims>(m, config);
+				integrator = new EulerCUDA<dims>(_sim_state, m, config);
 			}
 #endif
 		}
 		else {
 			if(mobility == "constant") {
-				integrator = new EulerCPU<dims>(m, config);
+				integrator = new EulerCPU<dims>(_sim_state, m, config);
 			}
 			else if(mobility == "gel") {
-				integrator = new GelMobilityCPU<dims>(m, config);
+				integrator = new GelMobilityCPU<dims>(_sim_state, m, config);
 			}
 			else {
-				integrator = new EulerMobilityCPU<dims>(m, config);
+				integrator = new EulerMobilityCPU<dims>(_sim_state, m, config);
 			}
 		}
 	}
 	else if(user_integrator == "pseudospectral") {
 		if(use_CUDA) {
 #ifndef NOCUDA
-			integrator = new PseudospectralCUDA<dims>(m, config);
+			integrator = new PseudospectralCUDA<dims>(_sim_state, m, config);
 #endif
 		}
 		else {
-			integrator = new PseudospectralCPU<dims>(m, config);
+			integrator = new PseudospectralCPU<dims>(_sim_state, m, config);
 		}
 	}
 	else if(user_integrator == "bailo") {
@@ -193,14 +195,12 @@ CahnHilliard<dims>::CahnHilliard(FreeEnergyModel *m, toml::table &config) :
 #endif
 		}
 		else {
-			integrator = new BailoFiniteVolume<dims>(m, config);
+			integrator = new BailoFiniteVolume<dims>(_sim_state, m, config);
 		}
 	}
 	else {
 		critical("Unsupported integrator {}", user_integrator);
 	}
-	
-	integrator->set_initial_rho(rho);
 }
 
 template<int dims>
@@ -265,48 +265,48 @@ void CahnHilliard<dims>::evolve() {
 template<int dims>
 double CahnHilliard<dims>::average_mass() {
 	double mass = 0.;
-	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
-		mass += integrator->rho().field_sum(i);
+	for(unsigned int i = 0; i < _sim_state.rho.bins(); i++) {
+		mass += _sim_state.rho.field_sum(i);
 		if(safe_isnan(mass)) {
 			critical("Encountered a nan while computing the total mass (bin {})", i);
 		}
 	}
 
-	return mass * V_bin / integrator->rho().bins();
+	return mass * V_bin / _sim_state.rho.bins();
 }
 
 template<int dims>
 double CahnHilliard<dims>::average_free_energy() {
 	double fe = 0.;
-	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
+	for(unsigned int i = 0; i < _sim_state.rho.bins(); i++) {
 		double interfacial_contrib = 0.;
 		for(int species = 0; species < model->N_species(); species++) {
-			auto rho_grad = gradient(integrator->rho(), species, i);
+			auto rho_grad = gradient(_sim_state.rho, species, i);
 			for(int d = 0; d < dims; d++) {
 				interfacial_contrib += k_laplacian * rho_grad[d] * rho_grad[d];
 			}
 		}
-		fe += model->bulk_free_energy(integrator->rho().species_view(i)) + interfacial_contrib;
+		fe += model->bulk_free_energy(_sim_state.rho.species_view(i)) + interfacial_contrib;
 	}
 
-	return fe * V_bin / integrator->rho().bins();
+	return fe * V_bin / _sim_state.rho.bins();
 }
 
 template<int dims>
 double CahnHilliard<dims>::average_pressure() {
 	double pressure = 0.;
-	for(unsigned int i = 0; i < integrator->rho().bins(); i++) {
+	for(unsigned int i = 0; i < _sim_state.rho.bins(); i++) {
 		double interfacial_contrib = 0.;
 		for(int species = 0; species < model->N_species(); species++) {
-			pressure += model->pressure(species, integrator->rho().species_view(i));
-			auto rho_grad = gradient(integrator->rho(), species, i);
+			pressure += model->pressure(species, _sim_state.rho.species_view(i));
+			auto rho_grad = gradient(_sim_state.rho, species, i);
 			for(int d = 0; d < dims; d++) {
 				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
 			}
 		}
 	}
 
-	return pressure / integrator->rho().bins();
+	return pressure / _sim_state.rho.bins();
 }
 
 template<int dims>
@@ -324,7 +324,7 @@ void CahnHilliard<dims>::print_species_density(int species, std::ofstream &outpu
 		if(idx > 0 && idx % newline_every == 0) {
 			output << std::endl;
 		}
-		output << _density_to_user(integrator->rho()(idx, species)) << " ";
+		output << _density_to_user(_sim_state.rho(idx, species)) << " ";
 	}
 	output << std::endl;
 }
@@ -339,7 +339,7 @@ void CahnHilliard<dims>::print_total_density(const std::string &filename, long l
 		if(idx > 0 && idx % newline_every == 0) {
 			output << std::endl;
 		}
-		output << _density_to_user(integrator->rho().field_sum(idx)) << " ";
+		output << _density_to_user(_sim_state.rho.field_sum(idx)) << " ";
 	}
 	output << std::endl;
 
@@ -364,8 +364,8 @@ void CahnHilliard<dims>::print_pressure(std::ofstream &output, long long int t) 
 		
 		double pressure = 0.;
 		for(int species = 0; species < model->N_species(); species++) {
-			pressure += model->pressure(species, integrator->rho().species_view(idx));
-			auto rho_grad = gradient(integrator->rho(), species, idx);
+			pressure += model->pressure(species, _sim_state.rho.species_view(idx));
+			auto rho_grad = gradient(_sim_state.rho, species, idx);
 			for(int d = 0; d < dims; d++) {
 				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
 			}

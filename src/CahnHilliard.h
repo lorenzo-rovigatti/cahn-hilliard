@@ -9,6 +9,7 @@
 #define SRC_CAHNHILLIARD_H_
 
 #include "defs.h"
+#include "SimulationState.h"
 #include "utils/MultiField.h"
 #include "models/FreeEnergyModel.h"
 #include "integrators/Integrator.h"
@@ -35,7 +36,7 @@ public:
 	FreeEnergyModel *model = nullptr;
 	Integrator<dims> *integrator = nullptr;
 
-	CahnHilliard(FreeEnergyModel *m, toml::table &config);
+	CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();
 
 	void fill_coords(int coords[dims], int idx);
@@ -57,6 +58,7 @@ public:
 	GET_NAME(Simulation manager)
 
 private:
+	SimulationState &_sim_state;
 	double _user_to_internal, _internal_to_user;
 	bool _output_ready = false;
 	int _d_vec_size;

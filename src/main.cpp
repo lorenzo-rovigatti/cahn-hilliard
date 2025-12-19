@@ -1,4 +1,5 @@
 #include "CahnHilliard.h"
+#include "SimulationState.h"
 #include "models/Landau.h"
 #include "models/GenericWertheim.h"
 #include "models/RicciWertheim.h"
@@ -67,7 +68,7 @@ public:
 			critical("Unsupported free energy model '{}'", model_name);
 		}
 
-		_system = std::make_unique<ch::CahnHilliard<DIM>>(_model.get(), config);
+		_system = std::make_unique<ch::CahnHilliard<DIM>>(_sim_state, _model.get(), config);
 
 		if(config["load_from"]) {
 			_openmode = std::ios_base::app;
@@ -181,6 +182,8 @@ private:
 	bool _should_print_pressure(long long int t) {
 		return (_print_pressure_every > 0 && t % _print_pressure_every == 0);
 	}
+
+	SimulationState _sim_state;
 
 	bool _print_average_pressure;
 	std::string _print_traj_strategy;

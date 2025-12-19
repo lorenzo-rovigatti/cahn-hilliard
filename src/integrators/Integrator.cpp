@@ -3,7 +3,10 @@
 namespace ch {
 
 template<int dims>
-Integrator<dims>::Integrator(FreeEnergyModel *model, toml::table &config) : _model(model) {
+Integrator<dims>::Integrator(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+                _sim_state(sim_state),
+                _rho(sim_state.rho),
+                _model(model) {
     _k_laplacian = _config_optional_value<double>(config, "k", 1.0);
     _dt = _config_value<double>(config, "dt");
     _M = _config_optional_value<double>(config, "M", 1.0);
@@ -29,15 +32,6 @@ Integrator<dims>::Integrator(FreeEnergyModel *model, toml::table &config) : _mod
 template<int dims>
 Integrator<dims>::~Integrator() {
 
-}
-
-template<int dims>
-void Integrator<dims>::set_initial_rho(MultiField<double> &r) {
-    if(r.bins() != _N_bins) {
-        critical("The size of the grid of the initial density ({}) differs from the expected value {}", r.bins(), _N_bins);
-    }
-
-    _rho = r;
 }
 
 template class Integrator<1>;

@@ -17,13 +17,11 @@ namespace ch {
 template<int dims>
 class CUDAIntegrator : public Integrator<dims> {
 public:
-    CUDAIntegrator(FreeEnergyModel *model, toml::table &config);
+    CUDAIntegrator(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~CUDAIntegrator();
 
-    void set_initial_rho(MultiField<double> &r) override;
-
-    MultiField<double> &rho() override;
+    MultiField<double> &rho();
 
     GET_NAME(CUDAIntegrator)
 

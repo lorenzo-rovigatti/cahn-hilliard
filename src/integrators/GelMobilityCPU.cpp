@@ -5,7 +5,8 @@
 namespace ch {
 
 template<int dims>
-GelMobilityCPU<dims>::GelMobilityCPU(FreeEnergyModel *model, toml::table &config) : EulerCPU<dims>(model, config) {
+GelMobilityCPU<dims>::GelMobilityCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+		EulerCPU<dims>(sim_state, model, config) {
 	_with_noise = this->template _config_optional_value<bool>(config, "mobility.with_noise", false);
 	
 	if(_with_noise) {
@@ -28,23 +29,19 @@ GelMobilityCPU<dims>::GelMobilityCPU(FreeEnergyModel *model, toml::table &config
 	double beta_delta_F = 10.0 / (1 - epsilon) - std::log(24000.0);
 	_p_gel = exp(beta_delta_F) / (1.0 + exp(beta_delta_F));
 
-	this->info("p_gel = {}, phi_critical = {}, c_0 = {}, M_c = {}", _p_gel, _phi_critical, _c_0, _M_c);
-}
-
-template<int dims>
-GelMobilityCPU<dims>::~GelMobilityCPU() {
-
-}
-
-template<int dims>
-void GelMobilityCPU<dims>::set_initial_rho(MultiField<double> &r) {
-	EulerCPU<dims>::set_initial_rho(r);
 	_gel_OP = MultiField<double>(this->_rho.bins(), 1);
 
 	std::uniform_real_distribution<double> dist(0.0, 1.0);
 	for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
 		_gel_OP(idx, 0) = dist(_generator) * 1e-4;
 	}
+
+	this->info("p_gel = {}, phi_critical = {}, c_0 = {}, M_c = {}", _p_gel, _phi_critical, _c_0, _M_c);
+}
+
+template<int dims>
+GelMobilityCPU<dims>::~GelMobilityCPU() {
+
 }
 
 template<int dims>

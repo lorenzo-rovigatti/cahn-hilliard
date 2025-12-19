@@ -10,19 +10,25 @@
 namespace ch {
 
 template<int dims>
-CUDAIntegrator<dims>::CUDAIntegrator(FreeEnergyModel *model, toml::table &config) : Integrator<dims>(model, config) {
+CUDAIntegrator<dims>::CUDAIntegrator(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config) : 
+        Integrator<dims>(sim_state, model, config) {
     _grid_size = this->_N_bins * model->N_species();
+
+    this->_d_vec_size = this->_N_bins * model->N_species() * sizeof(field_type);
+	int d_der_vec_size = this->_N_bins * model->N_species() * sizeof(float);
+
+	this->info("Size of the CUDA direct-space vectors: {} ({} bytes)", this->_N_bins * model->N_species(), this->_d_vec_size);
+
+	this->_h_rho = MultiField<field_type>(this->_N_bins, model->N_species());
+	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));
+	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho_der, d_der_vec_size)); // always float
+
+    _CPU_GPU();
 }
 
 template<int dims>
 CUDAIntegrator<dims>::~CUDAIntegrator() {
 
-}
-
-template<int dims>
-void CUDAIntegrator<dims>::set_initial_rho(MultiField<double> &r) {
-    Integrator<dims>::set_initial_rho(r);
-    _CPU_GPU();
 }
 
 template<int dims>

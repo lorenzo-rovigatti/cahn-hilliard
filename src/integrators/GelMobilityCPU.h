@@ -10,11 +10,9 @@ namespace ch {
 template<int dims>
 class GelMobilityCPU : public EulerCPU<dims> {
 public:
-    GelMobilityCPU(FreeEnergyModel *model, toml::table &config);
+    GelMobilityCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~GelMobilityCPU();
-
-    void set_initial_rho(MultiField<double> &r) override;
 
     void evolve() override;
 

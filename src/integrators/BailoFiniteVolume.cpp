@@ -60,7 +60,8 @@ void to_solve(int n, double *rho, double *fvec) {
 }
 
 template<int dims>
-BailoFiniteVolume<dims>::BailoFiniteVolume(FreeEnergyModel *model, toml::table &config) : Integrator<dims>(model, config) {
+BailoFiniteVolume<dims>::BailoFiniteVolume(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+		Integrator<dims>(sim_state, model, config) {
     _N_per_dim_minus_one = this->_N_per_dim - 1;
 	_log2_N_per_dim = (int) std::log2(this->_N_per_dim);
 

@@ -115,22 +115,14 @@ __global__ void init_rand_states(curandState *states, unsigned long seed, int to
 namespace ch {
 
 template<int dims>
-EulerMobilityCUDA<dims>::EulerMobilityCUDA(FreeEnergyModel *model, toml::table &config) : CUDAIntegrator<dims>(model, config) {
-    this->_d_vec_size = this->_N_bins * model->N_species() * sizeof(field_type);
-	int d_der_vec_size = this->_N_bins * model->N_species() * sizeof(float);
-
-	this->info("Size of the CUDA direct-space vectors: {} ({} bytes)", this->_N_bins * model->N_species(), this->_d_vec_size);
-
+EulerMobilityCUDA<dims>::EulerMobilityCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config) : 
+        CUDAIntegrator<dims>(sim_state, model, config) {
     _rho_min = this->template _config_value<float>(config, "mobility.rho_min");
 
     int N_species = model->N_species();
     _h_flux = new CUDAGrid<dims, CUDAVector<dims>>(this->_N_per_dim, N_species);
     CUDA_SAFE_CALL(cudaMalloc((CUDAGrid<dims, CUDAVector<dims>> **) &_d_flux, sizeof(CUDAGrid<dims, CUDAVector<dims>>)));
     CUDA_SAFE_CALL(cudaMemcpy(_d_flux, _h_flux, sizeof(CUDAGrid<dims, CUDAVector<dims>>), cudaMemcpyHostToDevice));
-
-	this->_h_rho = MultiField<field_type>(this->_N_bins, N_species);
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho_der, d_der_vec_size)); // always float
 
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_N, &this->_N_per_dim, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_size, &this->_N_bins, sizeof(int)));

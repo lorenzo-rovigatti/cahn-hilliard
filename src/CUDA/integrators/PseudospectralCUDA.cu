@@ -45,16 +45,9 @@ namespace ch {
 
 
 template<int dims>
-PseudospectralCUDA<dims>::PseudospectralCUDA(FreeEnergyModel *model, toml::table &config) : CUDAIntegrator<dims>(model, config) {
-    this->_d_vec_size = this->_N_bins * model->N_species() * sizeof(field_type);
-	int d_der_vec_size = this->_N_bins * model->N_species() * sizeof(float);
-
-	this->info("Size of the CUDA direct-space vectors: {} ({} bytes)", this->_N_bins * model->N_species(), this->_d_vec_size);
-
+PseudospectralCUDA<dims>::PseudospectralCUDA(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+        CUDAIntegrator<dims>(sim_state, model, config) {
 	this->_h_rho = MultiField<field_type>(this->_N_bins, model->N_species());
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho_der, d_der_vec_size)); // always float
-
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_N, &this->_N_per_dim, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_size, &this->_N_bins, sizeof(int)));
     int N_species = model->N_species();
@@ -126,6 +119,16 @@ PseudospectralCUDA<dims>::PseudospectralCUDA(FreeEnergyModel *model, toml::table
     CUFFT_CALL(cufftPlanMany(&_d_rho_inverse_plan, dims, reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_Z2D, model->N_species()));
 #endif 
     CUFFT_CALL(cufftPlanMany(&_d_f_der_plan, dims, reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_R2C, model->N_species()));
+
+    // Prepare the plan for the forward transform of rho and perform it once
+    cufftHandle d_rho_plan;
+#ifdef CUDA_FIELD_FLOAT
+    CUFFT_CALL(cufftPlanMany(&d_rho_plan, dims, reciprocal_n.data(), nullptr, 1, odist, nullptr, 1, idist, CUFFT_R2C, this->_model->N_species()));
+    CUFFT_CALL(cufftExecR2C(d_rho_plan, this->_d_rho, _d_rho_hat));
+#else
+    CUFFT_CALL(cufftPlanMany(&d_rho_plan, dims, reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_D2Z, this->_model->N_species()));
+    CUFFT_CALL(cufftExecD2Z(d_rho_plan, this->_d_rho, _d_rho_hat));
+#endif
 }
 
 template<int dims>
@@ -145,22 +148,6 @@ PseudospectralCUDA<dims>::~PseudospectralCUDA() {
 	if(_d_dealiaser != nullptr) {
 		CUDA_SAFE_CALL(cudaFree(_d_dealiaser));
 	}
-}
-
-template<int dims>
-void PseudospectralCUDA<dims>::set_initial_rho(MultiField<double> &r) {
-    CUDAIntegrator<dims>::set_initial_rho(r);
-
-    std::array<int, dims> reciprocal_n;
-    reciprocal_n.fill(this->_N_per_dim);
-    cufftHandle d_rho_plan;
-#ifdef CUDA_FIELD_FLOAT
-    CUFFT_CALL(cufftPlanMany(&d_rho_plan, dims, reciprocal_n.data(), nullptr, 1, odist, nullptr, 1, idist, CUFFT_R2C, this->_model->N_species()));
-    CUFFT_CALL(cufftExecR2C(d_rho_plan, this->_d_rho, _d_rho_hat));
-#else
-    CUFFT_CALL(cufftPlanMany(&d_rho_plan, dims, reciprocal_n.data(), nullptr, 1, 0, nullptr, 1, 0, CUFFT_D2Z, this->_model->N_species()));
-    CUFFT_CALL(cufftExecD2Z(d_rho_plan, this->_d_rho, _d_rho_hat));
-#endif
 }
 
 template<int dims>

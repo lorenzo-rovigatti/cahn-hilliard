@@ -19,11 +19,9 @@ namespace ch {
 template<int dims>
 class PseudospectralCPU : public Integrator<dims> {
 public:
-    PseudospectralCPU(FreeEnergyModel *model, toml::table &config);
+    PseudospectralCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~PseudospectralCPU();
-
-    void set_initial_rho(MultiField<double> &r) override;
 
     void evolve() override;
 
