@@ -21,7 +21,7 @@ public:
 
     ~CUDAIntegrator();
 
-    MultiField<double> &rho();
+    void sync() override;
 
     GET_NAME(CUDAIntegrator)
 

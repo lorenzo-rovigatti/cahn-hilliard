@@ -43,7 +43,7 @@ void CUDAIntegrator<dims>::_CPU_GPU() {
 }
 
 template<int dims>
-MultiField<double> &CUDAIntegrator<dims>::rho() {
+void CUDAIntegrator<dims>::sync() {
     if(!_output_ready) {
         CUDA_SAFE_CALL(cudaMemcpy(_h_rho.data(), _d_rho, _d_vec_size, cudaMemcpyDeviceToHost));
 
@@ -55,8 +55,6 @@ MultiField<double> &CUDAIntegrator<dims>::rho() {
 
         _output_ready = true;
     }
-
-    return this->_rho;
 }
 
 template class CUDAIntegrator<1>;

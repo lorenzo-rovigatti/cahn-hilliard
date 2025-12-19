@@ -16,6 +16,8 @@ public:
 
     virtual void evolve() = 0;
 
+    virtual void sync() {}
+
     GET_NAME(Integrator)
 
 protected:

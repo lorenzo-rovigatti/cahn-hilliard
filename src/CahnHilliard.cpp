@@ -264,6 +264,8 @@ void CahnHilliard<dims>::evolve() {
 
 template<int dims>
 double CahnHilliard<dims>::average_mass() {
+	integrator->sync();
+
 	double mass = 0.;
 	for(unsigned int i = 0; i < _sim_state.rho.bins(); i++) {
 		mass += _sim_state.rho.field_sum(i);
@@ -277,6 +279,8 @@ double CahnHilliard<dims>::average_mass() {
 
 template<int dims>
 double CahnHilliard<dims>::average_free_energy() {
+	integrator->sync();
+
 	double fe = 0.;
 	for(unsigned int i = 0; i < _sim_state.rho.bins(); i++) {
 		double interfacial_contrib = 0.;
@@ -294,6 +298,8 @@ double CahnHilliard<dims>::average_free_energy() {
 
 template<int dims>
 double CahnHilliard<dims>::average_pressure() {
+	integrator->sync();
+
 	double pressure = 0.;
 	for(unsigned int i = 0; i < _sim_state.rho.bins(); i++) {
 		double interfacial_contrib = 0.;
@@ -318,6 +324,8 @@ void CahnHilliard<dims>::print_species_density(int species, const std::string &f
 
 template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output, long long int t) {
+	integrator->sync();
+
 	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
 	int newline_every = (dims == 1) ? 1 : N;
 	for(int idx = 0; idx < grid_size; idx++) {
@@ -331,6 +339,8 @@ void CahnHilliard<dims>::print_species_density(int species, std::ofstream &outpu
 
 template<int dims>
 void CahnHilliard<dims>::print_total_density(const std::string &filename, long long int t) {
+	integrator->sync();
+
 	std::ofstream output(filename.c_str());
 
 	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
@@ -355,6 +365,8 @@ void CahnHilliard<dims>::print_pressure(const std::string &filename, long long i
 
 template<int dims>
 void CahnHilliard<dims>::print_pressure(std::ofstream &output, long long int t) {
+	integrator->sync();
+	
 	output << fmt::format("# pressure @ step = {} t = {:.5} size = {}", t, t * dt, _grid_size_str) << std::endl;
 	int newline_every = (dims == 1) ? 1 : N;
 	for(int idx = 0; idx < grid_size; idx++) {
