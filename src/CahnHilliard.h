@@ -13,6 +13,7 @@
 #include "utils/MultiField.h"
 #include "models/FreeEnergyModel.h"
 #include "integrators/Integrator.h"
+#include "mobility/IMobility.h"
 
 #include <vector>
 #include <string>
@@ -35,6 +36,7 @@ public:
 	double V_bin;
 	FreeEnergyModel *model = nullptr;
 	Integrator<dims> *integrator = nullptr;
+	IMobility *mobility = nullptr;
 
 	CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();

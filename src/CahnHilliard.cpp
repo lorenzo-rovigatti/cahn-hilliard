@@ -62,8 +62,8 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 		grid_size *= N;
 	}
 
-
 	_sim_state.rho = MultiField<double>(grid_size, model->N_species());
+	_sim_state.mobility = MultiField<double>(grid_size, model->N_species());
 
 	if(!config["initial_density"] && !config["load_from"]) {
 		critical("Either 'initial_density' or 'load_from' should be specified");
@@ -259,6 +259,7 @@ std::array<double, 2> CahnHilliard<2>::gradient(MultiField<double> &field, int s
 
 template<int dims>
 void CahnHilliard<dims>::evolve() {
+	mobility->update_mobility();
 	integrator->evolve();
 }
 
