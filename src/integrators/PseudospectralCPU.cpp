@@ -12,6 +12,7 @@ namespace ch {
 template<int dims>
 PseudospectralCPU<dims>::PseudospectralCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
         Integrator<dims>(sim_state, model, config) {
+
     _reciprocal_n.fill(this->_N_per_dim);
     hat_grid_size = _reciprocal_n[dims - 1] / 2 + 1; 
     for(int i = 0; i < dims - 1; i++) {
@@ -81,13 +82,15 @@ PseudospectralCPU<dims>::~PseudospectralCPU() {
 
 template<int dims>
 void PseudospectralCPU<dims>::evolve() {
+    static double M = this->_sim_state.mobility(0, 0); // constant mobility
+
     this->_model->der_bulk_free_energy(this->_rho, f_der);
 
     fftw_execute(f_der_plan); // transform f_der into f_der_hat
 
     for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
         // f_der_hat[k_idx] *= dealiaser[k_idx];
-        rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * this->_M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + this->_dt * this->_M * 2.0 * this->_k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+        rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + this->_dt * M * 2.0 * this->_k_laplacian * SQR(sqr_wave_vectors[k_idx]));
         rho_hat_copy[k_idx] /= this->_N_bins;
     }
 

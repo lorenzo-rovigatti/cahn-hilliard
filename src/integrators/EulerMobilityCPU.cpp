@@ -52,8 +52,10 @@ void EulerMobilityCPU<dims>::evolve() {
 	for(unsigned int idx = 0; idx < this->_N_bins - 1; idx++) {
 		int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
         for(int species = 0; species < this->_model->N_species(); species++) {
-			double M_idx = this->_M * this->_rho(idx, species) / (this->_rho(idx, species) + _rho_min);
-			double M_p = this->_M * this->_rho(idx_p, species) / (this->_rho(idx_p, species) + _rho_min);
+			double M_idx = this->_sim_state.mobility(idx, species);
+			double M_p = this->_sim_state.mobility(idx_p, species);
+			// double M_idx = this->_M * this->_rho(idx, species) / (this->_rho(idx, species) + _rho_min);
+			// double M_p = this->_M * this->_rho(idx_p, species) / (this->_rho(idx_p, species) + _rho_min);
 			double M_flux = 0.5 * (M_idx + M_p);
 			flux(idx, species) = M_flux * this->_cell_gradient(rho_der, species, idx);
 

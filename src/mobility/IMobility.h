@@ -8,6 +8,7 @@
 #ifndef IMOBILITY_H
 #define IMOBILITY_H
 
+#include "../defs.h"
 #include "../SimulationState.h"
 
 namespace ch {

@@ -23,6 +23,9 @@ public:
 			critical("steps should be a number larger than 0");
 		}
 
+		_sim_state.internal_to_user = _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
+    	_sim_state.user_to_internal = 1.0 / _sim_state.internal_to_user;
+
 		_print_mass_every = _config_optional_value<long long int>(config, "print_every", 0);
 
 		_print_average_pressure = _config_optional_value<bool>(config, "print_average_pressure", false);

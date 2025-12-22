@@ -14,6 +14,8 @@ public:
 
     virtual ~Integrator();
 
+    virtual void validate();
+
     virtual void evolve() = 0;
 
     virtual void sync() {}
@@ -28,11 +30,14 @@ protected:
     int _N_species = 0;
     double _dt = 0.0;
 	double _k_laplacian = 0.0;
-	double _M = 0.0;
 	double _dx = 0.0;
-    double _user_to_internal, _internal_to_user;
+    std::string _mobility_type;
 
     FreeEnergyModel *_model;
+
+    virtual bool _supports_nonconstant_mobility() const {
+        return false;
+    }
 };
 
 } /* namespace ch */

@@ -19,12 +19,16 @@ public:
     GET_NAME(EulerMobilityCPU)
 
 protected:
+    bool _supports_nonconstant_mobility() const override {
+        return true;
+    }
 
 private:
     double _rho_min;
     bool _with_noise = false;
     double _noise_factor = 0.0;
     std::mt19937 _generator;
+    
 };
 
 } /* namespace ch */

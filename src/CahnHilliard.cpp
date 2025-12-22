@@ -154,28 +154,28 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 	V_bin = CUB(dx);
 
 	if(user_integrator == "euler") {
-		std::string mobility = _config_optional_value<std::string>(config, "mobility.type", "constant");
-
 		if(use_CUDA) {
 #ifndef NOCUDA
-			if(mobility != "constant") {
-				integrator = new EulerMobilityCUDA<dims>(_sim_state, m, config);
-			}
-			else {
-				integrator = new EulerCUDA<dims>(_sim_state, m, config);
-			}
+			integrator = new EulerCUDA<dims>(_sim_state, m, config);
 #endif
 		}
 		else {
-			if(mobility == "constant") {
-				integrator = new EulerCPU<dims>(_sim_state, m, config);
-			}
-			else if(mobility == "gel") {
-				integrator = new GelMobilityCPU<dims>(_sim_state, m, config);
-			}
-			else {
-				integrator = new EulerMobilityCPU<dims>(_sim_state, m, config);
-			}
+			integrator = new EulerCPU<dims>(_sim_state, m, config);
+		}
+	}
+	else if(user_integrator == "euler_mobility") {
+		if(use_CUDA) {
+#ifndef NOCUDA
+			integrator = new EulerMobilityCUDA<dims>(_sim_state, m, config);
+#endif
+		}
+		else {
+			integrator = new EulerMobilityCPU<dims>(_sim_state, m, config);
+		}
+	}
+	else if(user_integrator == "gel_mobility") {
+		if(!use_CUDA) {
+			integrator = new GelMobilityCPU<dims>(_sim_state, m, config);
 		}
 	}
 	else if(user_integrator == "pseudospectral") {
@@ -201,6 +201,9 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 	else {
 		critical("Unsupported integrator {}", user_integrator);
 	}
+	integrator->validate();
+
+	mobility = std::unique_ptr<IMobility>(build_mobility(config, _sim_state));
 }
 
 template<int dims>

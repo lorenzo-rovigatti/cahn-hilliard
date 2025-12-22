@@ -16,6 +16,7 @@ class ConstantMobility: public IMobility {
 public:
     ConstantMobility(SimulationState& state, double M) : 
             IMobility(state) {
+        M /= state.user_to_internal; // proportional to m^-1
         state.mobility.fill(M);
     }
 

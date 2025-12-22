@@ -16,6 +16,9 @@ struct SimulationState {
     MultiField<double> rho;
     MultiField<double> mobility;
 
+    double user_to_internal;
+    double internal_to_user;
+
     long long int time_step;
 };
 

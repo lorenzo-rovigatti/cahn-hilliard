@@ -28,7 +28,7 @@ void EulerCPU<dims>::evolve() {
     // and then we integrate them
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
         for(int species = 0; species < this->_N_species; species++) {
-			double total_derivative = this->_M * _cell_laplacian(rho_der, species, idx);
+			double total_derivative = this->_sim_state.mobility(idx, species) * _cell_laplacian(rho_der, species, idx);
             this->_rho(idx, species) += total_derivative * this->_dt;
         }
     }

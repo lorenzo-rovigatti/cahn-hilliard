@@ -36,7 +36,7 @@ public:
 	double V_bin;
 	FreeEnergyModel *model = nullptr;
 	Integrator<dims> *integrator = nullptr;
-	IMobility *mobility = nullptr;
+	std::unique_ptr<IMobility> mobility = nullptr;
 
 	CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();
