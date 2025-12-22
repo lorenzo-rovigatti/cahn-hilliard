@@ -8,6 +8,8 @@
 #include "IMobility.h"
 
 #include "ConstantMobility.h"
+#include "RegularisedMobility.h"
+
 namespace ch {
 
 IMobility *build_mobility(toml::table &config, SimulationState &state) {
@@ -16,6 +18,11 @@ IMobility *build_mobility(toml::table &config, SimulationState &state) {
     if(mobility_type == "constant") {
         double M = config["mobility"]["M"].value_or(1.0);
         return new ConstantMobility(state, M);
+    }
+    else if(mobility_type == "regularised") {
+        double M = config["mobility"]["M"].value_or(1.0);
+        double rho_min = config["mobility"]["rho_min"].value<double>().value();
+        return new RegularisedMobility(state, M, rho_min);
     }
 
     throw std::runtime_error("Unknown mobility type: " + mobility_type);

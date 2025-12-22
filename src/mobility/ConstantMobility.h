@@ -23,8 +23,10 @@ public:
     ~ConstantMobility() {}
 
     void update_mobility() override {
-        // Constant mobility: do nothing, since we set it once at the beginning
+        // we don't need to do anything, since the mobility is set once at the beginning
     }
+
+    GET_NAME(ConstantMobility)
 };
 
 } /* namespace ch */

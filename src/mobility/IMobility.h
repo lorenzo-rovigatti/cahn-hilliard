@@ -9,11 +9,12 @@
 #define IMOBILITY_H
 
 #include "../defs.h"
+#include "../Object.h"
 #include "../SimulationState.h"
 
 namespace ch {
 
-class IMobility {
+class IMobility : public Object {
 public:
     IMobility(SimulationState& state) : _sim_state(state) {};
 
@@ -21,7 +22,9 @@ public:
 
     virtual ~IMobility() {}
 
-private:
+    GET_NAME(IMobility)
+
+protected:
     SimulationState &_sim_state;
 };
 

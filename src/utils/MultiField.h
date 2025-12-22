@@ -85,7 +85,7 @@ public:
         return tot;
     }
 
-    // Zero-allocation species view at index `idx`
+    // zero-allocation species view
     SpeciesView<T> species_view(int idx) const {
         assert(idx >= 0 && idx < _bins);
         return SpeciesView<T>(_data.data() + idx, _bins, _species);
@@ -93,6 +93,10 @@ public:
 
     int bins() const {
         return _bins;
+    }
+
+    int species() const {
+        return _species;
     }
 };
 
