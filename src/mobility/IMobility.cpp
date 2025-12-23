@@ -13,15 +13,20 @@
 namespace ch {
 
 IMobility *build_mobility(toml::table &config, SimulationState &state) {
+    const std::string error_source = "build_mobility";
     std::string mobility_type = config["mobility"]["type"].value_or("constant");
+    double M = config["mobility"]["M"].value_or(1.0);
 
     if(mobility_type == "constant") {
-        double M = config["mobility"]["M"].value_or(1.0);
         return new ConstantMobility(state, M);
     }
     else if(mobility_type == "regularised") {
-        double M = config["mobility"]["M"].value_or(1.0);
-        double rho_min = config["mobility"]["rho_min"].value<double>().value();
+        auto rho_opt = config["mobility"]["rho_min"].value<double>();
+        if(rho_opt == std::nullopt) {
+            spdlog::critical("For 'regularised' mobility, 'rho_min' must be specified (error source: {})", error_source);
+            exit(1);
+        }
+        double rho_min = rho_opt.value();
         return new RegularisedMobility(state, M, rho_min);
     }
 
