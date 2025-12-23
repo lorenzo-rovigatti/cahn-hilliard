@@ -47,6 +47,10 @@ public:
 		return 0.;
 	}
 
+	virtual void set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) {
+		critical("this model does not support mobility coupling");
+	}
+
 protected:
 	double _user_to_internal;
 	double _density_conversion_factor;

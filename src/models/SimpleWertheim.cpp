@@ -83,4 +83,13 @@ void SimpleWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int g
 #endif
 }
 
+void SimpleWertheim::set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) {
+    for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+        double rho_tot = rho.species_view(idx)[0];
+        double my_X = _X(rho_tot);
+        double D = M0 * pow(my_X, _valence);
+        mobility(idx, 0) = rho_tot * D; // See Dhont 1996, eq 9.32 (page 577)
+    }
+}
+
 } /* namespace ch */

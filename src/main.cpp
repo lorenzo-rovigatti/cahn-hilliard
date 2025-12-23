@@ -53,25 +53,25 @@ public:
 
 		std::string model_name = _config_value<std::string>(config, "free_energy");
 		if(model_name == "landau") {
-			_model = std::make_unique<ch::Landau>(config);
+			_sim_state.model = std::make_unique<ch::Landau>(config);
 		}
 		else if(model_name == "simple_wertheim") {
-			_model = std::make_unique<ch::SimpleWertheim>(config);
+			_sim_state.model = std::make_unique<ch::SimpleWertheim>(config);
 		}
 		else if(model_name == "saleh") {
-			_model = std::make_unique<ch::SalehWertheim>(config);
+			_sim_state.model = std::make_unique<ch::SalehWertheim>(config);
 		}
 		else if(model_name == "generic_wertheim") {
-			_model = std::make_unique<ch::GenericWertheim>(config);
+			_sim_state.model = std::make_unique<ch::GenericWertheim>(config);
 		}
 		else if(model_name == "ricci") {
-			_model = std::make_unique<ch::RicciWertheim>(config);
+			_sim_state.model = std::make_unique<ch::RicciWertheim>(config);
 		}
 		else {
 			critical("Unsupported free energy model '{}'", model_name);
 		}
 
-		_system = std::make_unique<ch::CahnHilliard<DIM>>(_sim_state, _model.get(), config);
+		_system = std::make_unique<ch::CahnHilliard<DIM>>(_sim_state, _sim_state.model.get(), config);
 
 		if(config["load_from"]) {
 			_openmode = std::ios_base::app;
@@ -97,9 +97,9 @@ public:
 			load_from.close();
 		}
 
-		_trajectories.resize(_model->N_species());
+		_trajectories.resize(_sim_state.model->N_species());
 		if(_print_trajectory_every > 0 || _log_n0 > 0) {
-			for(int i = 0; i < _model->N_species(); i++) {
+			for(int i = 0; i < _sim_state.model->N_species(); i++) {
 				_trajectories[i].open(fmt::format("trajectory_{}.dat", i), _openmode);
 			}
 		}
@@ -127,7 +127,7 @@ public:
 				_print_current_state("last_", _t);
 			}
 			if(_should_print_traj(_t)) {
-				for(int i = 0; i < _model->N_species(); i++) {
+				for(int i = 0; i < _sim_state.model->N_species(); i++) {
 					_system->print_species_density(i, _trajectories[i], _t);
 				}
 				_traj_printed++;
@@ -158,7 +158,7 @@ public:
 
 private:
 	void _print_current_state(std::string_view prefix, long long int t) {
-		for(int i = 0; i < _model->N_species(); i++) {
+		for(int i = 0; i < _sim_state.model->N_species(); i++) {
 			_system->print_species_density(i, fmt::format("{}{}.dat", prefix, i), t);
 		}
 		_system->print_total_density(fmt::format("{}density.dat", prefix), t);
@@ -199,7 +199,6 @@ private:
 	std::ios_base::openmode _openmode = std::ios_base::out;
 
 	std::vector<std::ofstream> _trajectories;
-	std::unique_ptr<ch::FreeEnergyModel> _model;
 	std::unique_ptr<ch::CahnHilliard<DIM>> _system;
 };
 

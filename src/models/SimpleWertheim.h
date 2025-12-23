@@ -29,6 +29,8 @@ public:
 	double der_bulk_free_energy_contractive(int species, const SpeciesView<double> &) override;
 	double bulk_free_energy(const SpeciesView<double> &) override;
 
+	void set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) override;
+
 	GET_NAME(Simple Wertheim free energy model)
 
 private:

@@ -204,6 +204,11 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 	integrator->validate();
 
 	mobility = std::unique_ptr<IMobility>(build_mobility(config, _sim_state));
+
+	// the "free_energy" mobility model requires some of the model's internals to be initialised
+	// and since mobility is computed before the first evolve() call, we need to set it up now
+	MultiField<double> dummy_rho_der(grid_size, model->N_species());
+	model->der_bulk_free_energy(_sim_state.rho, dummy_rho_der); // dummy call to initialise the model
 }
 
 template<int dims>

@@ -8,6 +8,7 @@
 #include "IMobility.h"
 
 #include "ConstantMobility.h"
+#include "FreeEnergyMobility.h"
 #include "RegularisedMobility.h"
 
 namespace ch {
@@ -28,6 +29,9 @@ IMobility *build_mobility(toml::table &config, SimulationState &state) {
         }
         double rho_min = rho_opt.value();
         return new RegularisedMobility(state, M, rho_min);
+    }
+    else if(mobility_type == "free_energy") {
+        return new FreeEnergyMobility(state, M);
     }
 
     throw std::runtime_error("Unknown mobility type: " + mobility_type);
