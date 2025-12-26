@@ -7,6 +7,7 @@ set(common_files
 	integrators/GelMobilityCPU.cpp
 	integrators/Integrator.cpp
 	integrators/PseudospectralCPU.cpp
+	integrators/SemiImplicitMobilityCPU.cpp
 	mobility/IMobility.cpp
 	models/Landau.cpp
 	models/GenericWertheim.cpp

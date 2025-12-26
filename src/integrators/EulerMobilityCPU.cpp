@@ -53,7 +53,7 @@ void EulerMobilityCPU<dims>::evolve() {
 
 			if(_with_noise) {
 				double noise_amplitude = std::sqrt(M_flux) * _noise_factor;
-				for (std::size_t d = 0; d < dims; ++d) {
+				for(std::size_t d = 0; d < dims; ++d) {
 					stochastic_flux(idx, species)[d] = noise_amplitude * normal_dist(_generator);
 				}
 			}
