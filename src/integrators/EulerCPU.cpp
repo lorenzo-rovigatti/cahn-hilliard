@@ -53,80 +53,61 @@ int EulerCPU<dims>::_cell_idx(int coords[dims]) {
 	return idx;
 }
 
-template<>
-double EulerCPU<1>::_cell_laplacian(MultiField<double> &field, int species, int idx) {
-	int idx_m = (idx - 1 + this->_N_bins) & _N_per_dim_minus_one;
-	int idx_p = (idx + 1) & _N_per_dim_minus_one;
+template<int dims>
+double EulerCPU<dims>::_cell_laplacian(MultiField<double> &field, int species, int idx) {
+    if constexpr (dims == 1) {
+        int idx_m = (idx - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
+        int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
 
-	return (field(idx_m, species) + field(idx_p, species) - 2.0 * field(idx, species)) / SQR(this->_dx);
+        return (field(idx_m, species)
+              + field(idx_p, species)
+              - 2.0 * field(idx, species)) / SQR(this->_dx);
+    } 
+	else {
+        int coords[dims];
+        int coords_n[dims];
+        this->_fill_coords(coords, idx);
+
+        double sum = 0.0;
+
+        for(int d = 0; d < dims; d++) {
+            // minus direction
+            memcpy(coords_n, coords, sizeof(coords));
+            coords_n[d] = (coords[d] - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
+            sum += field(this->_cell_idx(coords_n), species);
+
+            // plus direction
+            memcpy(coords_n, coords, sizeof(coords));
+            coords_n[d] = (coords[d] + 1) & this->_N_per_dim_minus_one;
+            sum += field(this->_cell_idx(coords_n), species);
+        }
+
+        return (sum - 2.0 * dims * field(idx, species)) / SQR(this->_dx);
+    }
 }
 
-template<>
-double EulerCPU<2>::_cell_laplacian(MultiField<double> &field, int species, int idx) {
-	int coords_xy[2];
-	_fill_coords(coords_xy, idx);
+template<int dims>
+Gradient<dims>
+EulerCPU<dims>::_cell_gradient(MultiField<double> &field, int species, int idx) {
+    Gradient<dims> grad{};
 
-	int coords_xmy[2] = {
-			(coords_xy[0] - 1 + this->_N_bins) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
+    if constexpr (dims == 1) {
+        int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
+        grad[0] = (field(idx_p, species) - field(idx, species)) / this->_dx;
+    } 
+	else {
+        int coords[dims];
+        int coords_p[dims];
+        this->_fill_coords(coords, idx);
 
-	int coords_xym[2] = {
-			coords_xy[0],
-			(coords_xy[1] - 1 + this->_N_bins) & _N_per_dim_minus_one
-	};
+        for(int d = 0; d < dims; d++) {
+            memcpy(coords_p, coords, sizeof(coords));
+            coords_p[d] = (coords[d] + 1) & this->_N_per_dim_minus_one;
+            grad[d] = (field(this->_cell_idx(coords_p), species) - field(idx, species)) / this->_dx;
+        }
+    }
 
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & _N_per_dim_minus_one
-	};
-
-	return (
-			field(_cell_idx(coords_xmy), species) +
-			field(_cell_idx(coords_xpy), species) +
-			field(_cell_idx(coords_xym), species) +
-			field(_cell_idx(coords_xyp), species) -
-			4 * field(idx, species))
-			/ SQR(this->_dx);
-}
-
-template<>
-Gradient<1> EulerCPU<1>::_cell_gradient(MultiField<double> &field, int species, int idx) {
-	int idx_p = (idx + 1) & _N_per_dim_minus_one;
-
-	return Gradient<1>({(field(idx_p, species) - field(idx, species)) / _dx});
-}
-
-template<>
-Gradient<2> EulerCPU<2>::_cell_gradient(MultiField<double> &field, int species, int idx) {
-	int coords_xy[2];
-	_fill_coords(coords_xy, idx);
-
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & _N_per_dim_minus_one
-	};
-
-	return Gradient<2>({
-		(field(_cell_idx(coords_xpy), species) - field(_cell_idx(coords_xy), species)) / this->_dx, 
-		(field(_cell_idx(coords_xyp), species) - field(_cell_idx(coords_xy), species)) / this->_dx
-	});
-}
-
-template<>
-double EulerCPU<1>::_divergence(MultiField<Gradient<1>> &flux, int species, int idx) {
-	int idx_m = (idx - 1 + _N_bins) & _N_per_dim_minus_one;
-	return (flux(idx, species)[0] - flux(idx_m, species)[0]) / this->_dx;
+    return grad;
 }
 
 template<int dims>
@@ -134,7 +115,7 @@ double EulerCPU<dims>::_divergence(MultiField<Gradient<dims>> &flux, int species
 	double res = 0;
 	int coords[dims], coords_m[dims];
 	this->_fill_coords(coords, idx);
-	memcpy(coords_m, coords, sizeof(int) * dims);
+	memcpy(coords_m, coords, sizeof(coords));
 
 	for(int d = 0; d < dims; d++) {
 		coords_m[d] = (coords[d] - 1 + this->_N_bins) & this->_N_per_dim_minus_one;

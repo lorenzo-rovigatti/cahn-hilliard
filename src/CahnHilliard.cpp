@@ -12,7 +12,7 @@
 #include "integrators/EulerMobilityCPU.h"
 #include "integrators/GelMobilityCPU.h"
 #include "integrators/PseudospectralCPU.h"
-#include "integrators/SemiImplicitMobilityCPU.h"
+#include "integrators/PseudospectralMobilityCPU.h"
 
 #include "utils/utility_functions.h"
 #include "utils/strings.h"
@@ -199,14 +199,14 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 			integrator = new BailoFiniteVolume<dims>(_sim_state, m, config);
 		}
 	}
-	else if(user_integrator == "semi_implicit_mobility") {
+	else if(user_integrator == "pseudospectral_mobility") {
 		if(use_CUDA) {
 #ifndef NOCUDA
 			critical("Unsupported CUDA integrator {}", user_integrator);
 #endif
 		}
 		else {
-			integrator = new SemiImplicitMobilityCPU<dims>(_sim_state, m, config);
+			integrator = new PseudospectralMobilityCPU<dims>(_sim_state, m, config);
 		}
 	}
 	else {

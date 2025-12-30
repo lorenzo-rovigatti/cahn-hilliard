@@ -52,6 +52,7 @@ protected:
 	std::vector<std::complex<double>> rho_hat, rho_hat_copy, f_der_hat;
 	MultiField<double> f_der;
 	std::vector<double> sqr_wave_vectors, dealiaser;
+	bool use_dealias = false;
 	double _splitting_S;
 
 	fftw_plan rho_inverse_plan, f_der_plan;

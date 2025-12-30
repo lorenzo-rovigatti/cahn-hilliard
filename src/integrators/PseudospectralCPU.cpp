@@ -21,8 +21,9 @@ PseudospectralCPU<dims>::PseudospectralCPU(SimulationState &sim_state, FreeEnerg
     hat_vector_size = hat_grid_size * model->N_species();
 
     _splitting_S = this->template _config_optional_value<double>(config, "pseudospectral.S", 0.0);
+    use_dealias = this->template _config_optional_value<bool>(config, "pseudospectral.use_dealias", false);
 
-    this->info("Size of the reciprocal vectors: {}, S = {}", hat_vector_size, _splitting_S);
+    this->info("Size of the reciprocal vectors: {}, S = {}, use_dealias = {}", hat_vector_size, _splitting_S, use_dealias);
 
     rho_hat.resize(hat_vector_size);
     rho_hat_copy.resize(hat_vector_size);
@@ -91,9 +92,9 @@ void PseudospectralCPU<dims>::evolve() {
     fftw_execute(f_der_plan); // transform f_der into f_der_hat
 
     for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
-        // f_der_hat[k_idx] *= dealiaser[k_idx];
-        // rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + this->_dt * M * 2.0 * this->_k_laplacian * SQR(sqr_wave_vectors[k_idx]));
-        // rho_hat_copy[k_idx] /= this->_N_bins;
+        if(use_dealias) {
+            f_der_hat[k_idx] *= dealiaser[k_idx];
+        }
 
         double k2 = sqr_wave_vectors[k_idx];
         double k4 = SQR(k2);
