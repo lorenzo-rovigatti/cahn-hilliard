@@ -13,24 +13,17 @@ SemiImplicitMobilityCPU<dims>::SemiImplicitMobilityCPU(SimulationState &sim_stat
         PseudospectralCPU<dims>(sim_state, model, config) {
     _N_per_dim_minus_one = this->_N_per_dim - 1;
     // reference mobility
-    _M0 = this->template _config_optional_value<double>(
-        config, "mobility.M0", this->_sim_state.mobility(0,0)
-    );
+    _M0 = this->template _config_optional_value<double>(config, "mobility.M0", this->_sim_state.mobility(0,0));
 
-    _rho_floor = this->template _config_optional_value<double>(
-        config, "semi_implicit.rho_floor", 0.0
-    );
+    _rho_floor = this->template _config_optional_value<double>(config, "semi_implicit.rho_floor", 0.0);
 
-    use_dealias = this->template _config_optional_value<bool>(
-        config, "semi_implicit.dealias", false
-    );
+    use_dealias = this->template _config_optional_value<bool>(config, "semi_implicit.dealias", false);
 
-    mu_real   = MultiField<double>(this->_rho.bins(), model->N_species());
+    mu_real = MultiField<double>(this->_rho.bins(), model->N_species());
     corr_real = MultiField<double>(this->_rho.bins(), model->N_species());
     corr_hat.resize(this->hat_vector_size);
 
-    this->info("PSSemiImplicitMobilityCPU: M0={}, rho_floor={}, dealias={}",
-               _M0, _rho_floor, use_dealias);
+    this->info("SemiImplicitMobilityCPU: M0={}, rho_floor={}, dealias={}", _M0, _rho_floor, use_dealias);
 }
 
 template<int dims>

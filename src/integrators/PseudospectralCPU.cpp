@@ -20,7 +20,9 @@ PseudospectralCPU<dims>::PseudospectralCPU(SimulationState &sim_state, FreeEnerg
     }
     hat_vector_size = hat_grid_size * model->N_species();
 
-    this->info("Size of the reciprocal vectors: {}", hat_vector_size);
+    _splitting_S = this->template _config_optional_value<double>(config, "pseudospectral.S", 0.0);
+
+    this->info("Size of the reciprocal vectors: {}, S = {}", hat_vector_size, _splitting_S);
 
     rho_hat.resize(hat_vector_size);
     rho_hat_copy.resize(hat_vector_size);
@@ -90,8 +92,17 @@ void PseudospectralCPU<dims>::evolve() {
 
     for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
         // f_der_hat[k_idx] *= dealiaser[k_idx];
-        rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + this->_dt * M * 2.0 * this->_k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+        // rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + this->_dt * M * 2.0 * this->_k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+        // rho_hat_copy[k_idx] /= this->_N_bins;
+
+        double k2 = sqr_wave_vectors[k_idx];
+        double k4 = SQR(k2);
+
+        double denom = 1.0 + this->_dt * M * (_splitting_S * k2 + 2.0 * this->_k_laplacian * k4);
+        rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * M * k2 * (f_der_hat[k_idx] - _splitting_S * rho_hat[k_idx])) / denom;
+
         rho_hat_copy[k_idx] /= this->_N_bins;
+
     }
 
     fftw_execute(rho_inverse_plan);

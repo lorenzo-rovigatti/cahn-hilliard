@@ -311,6 +311,9 @@ double CahnHilliard<dims>::average_free_energy() {
 			}
 		}
 		fe += model->bulk_free_energy(_sim_state.rho.species_view(i)) + interfacial_contrib;
+		if(safe_isnan(fe)) {
+			critical("Encountered a nan while computing the total free energy (bin {})", i);
+		}
 	}
 
 	return fe * V_bin / _sim_state.rho.bins();
