@@ -30,26 +30,26 @@ PseudospectralCPU<dims>::PseudospectralCPU(SimulationState &sim_state, FreeEnerg
     sqr_wave_vectors.resize(hat_vector_size);
     dealiaser.resize(hat_vector_size);
 
-    double nyquist_mode = this->_N_per_dim * M_PI / (this->_N_per_dim * this->_dx) * 2.0 / 3.0;
-    if(dims == 1) {
+    double k_cut = this->_N_per_dim * M_PI / (this->_N_per_dim * this->_dx) * 2.0 / 3.0;
+    if constexpr (dims == 1) {
         int k_idx = 0;
         for(int species = 0; species < model->N_species(); species++) {
             for(unsigned int i = 0; i < hat_grid_size; i++) {
                 double k = 2.0 * M_PI * i / (this->_N_per_dim * this->_dx);
-                dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
+                dealiaser[k_idx] = (k <= k_cut) ? 1.0 : 0.0;
                 sqr_wave_vectors[k_idx] = SQR(k);
                 k_idx++;
             }
         }
     }
-    else if(dims == 2) {
+    else if constexpr (dims == 2) {
         int k_idx = 0;
         for(int species = 0; species < model->N_species(); species++) {
             for(int kx_idx = 0; kx_idx < _reciprocal_n[0]; kx_idx++) {
                 int kx = (kx_idx < _reciprocal_n[0] / 2) ? kx_idx : _reciprocal_n[0] - kx_idx;
                 for(int ky = 0; ky < (_reciprocal_n[1] / 2 + 1); ky++) {
                     double k = 2.0 * M_PI * std::sqrt(SQR(kx) + SQR(ky)) / (this->_N_per_dim * this->_dx);
-                    dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
+                    dealiaser[k_idx] = (k < k_cut) ? 1.0 : 0.0;
                     sqr_wave_vectors[k_idx] = SQR(k);
                     k_idx++;
                 }

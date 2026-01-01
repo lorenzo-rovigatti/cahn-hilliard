@@ -53,18 +53,18 @@ PseudospectralMobilityCPU<dims>::PseudospectralMobilityCPU(SimulationState &sim_
     }
 
     // Build wavevectors and dealiaser
-    double nyquist_mode = this->_N_per_dim * M_PI / (this->_N_per_dim * this->_dx) * 2.0 / 3.0;
+    double k_cut = this->_N_per_dim * M_PI / (this->_N_per_dim * this->_dx) * 2.0 / 3.0;
 
     if constexpr (dims == 1) {
         int k_idx = 0;
         for(int species = 0; species < model->N_species(); species++) {
             for(unsigned int i = 0; i < _hat_grid_size; i++) {
                 double kx = 2.0 * M_PI * i / (this->_N_per_dim * this->_dx);
-                double k  = std::abs(kx);
-                dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
+                double k = std::abs(kx);
+                dealiaser[k_idx] = (k <= k_cut) ? 1.0 : 0.0;
 
                 kcomp[0][k_idx] = kx;
-                sqr_wave_vectors[k_idx] = kx * kx;
+                sqr_wave_vectors[k_idx] = SQR(kx);
                 k_idx++;
             }
         }
@@ -79,12 +79,13 @@ PseudospectralMobilityCPU<dims>::PseudospectralMobilityCPU(SimulationState &sim_
                 for(int ky_idx = 0; ky_idx < (_reciprocal_n[1] / 2 + 1); ky_idx++) {
                     double ky = 2.0 * M_PI * ky_idx / (this->_N_per_dim * this->_dx);
 
-                    double k = std::sqrt(kx*kx + ky*ky);
-                    dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
+                    double k2 = SQR(kx) + SQR(ky);
+                    double k = std::sqrt(k2);
+                    dealiaser[k_idx] = (k <= k_cut) ? 1.0 : 0.0;
 
                     kcomp[0][k_idx] = kx;
                     kcomp[1][k_idx] = ky;
-                    sqr_wave_vectors[k_idx] = SQR(kx) + SQR(ky);
+                    sqr_wave_vectors[k_idx] = k2;
                     k_idx++;
                 }
             }
@@ -186,6 +187,9 @@ void PseudospectralMobilityCPU<dims>::evolve() {
     for(int d = 0; d < dims; d++) {
         for(int k = 0; k < _hat_vector_size; k++) {
             grad_mu_hat[d][k] = std::complex<double>(0.0, kcomp[d][k]) * mu_hat[k];
+            if(use_dealias) {
+                grad_mu_hat[d][k] *= dealiaser[k];
+            }
         }
 
         fftw_execute(grad_mu_inverse_plan[d]);
@@ -213,6 +217,9 @@ void PseudospectralMobilityCPU<dims>::evolve() {
     for(int d = 0; d < dims; d++) {
         fftw_execute(flux_plan[d]);
         for(int k = 0; k < _hat_vector_size; k++) {
+            if(use_dealias) {
+                flux_hat[d][k] *= dealiaser[k];
+            }
             divJ_hat[k] += std::complex<double>(0.0, kcomp[d][k]) * flux_hat[d][k];
         }
     }
