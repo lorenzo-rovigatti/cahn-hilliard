@@ -49,8 +49,6 @@ private:
 
     // stabilization parameter
     double _S = 0.0;
-    double _M0 = 0.0;
-    bool use_dealias = false;
 
     // spectral buffers
     std::vector<std::complex<double>> rho_hat, rho_hat_copy;
@@ -58,6 +56,7 @@ private:
     std::vector<std::complex<double>> mu_hat;
     std::vector<std::complex<double>> divJ_hat;
 
+    bool use_dealias = false;
     std::vector<double> sqr_wave_vectors, dealiaser;
     std::array<std::vector<double>, dims> kcomp;
 
@@ -85,7 +84,7 @@ private:
     fftw_plan tmp_r2c_plan = nullptr;                  // tmp_real -> tmp_hat
     fftw_plan tmp_c2r_plan = nullptr;                  // tmp_hat -> tmp_real (overwrites tmp_hat)
 
-    // per-species reference mobility (preconditioner)
+    // per-species reference mobility
     std::vector<double> M0_species;
 
     // GMRES params

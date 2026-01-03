@@ -207,13 +207,8 @@ void PseudospectralMobilityCPU<dims>::evolve() {
 
 template<int dims>
 void PseudospectralMobilityCPU<dims>::_evolve_simple() {
-    // calculate reference mobility M0 (max over space/species is safest)
-    _M0 = 0.0;
-    for(int idx = 0; idx < this->_N_bins; idx++) {
-        for(int s = 0; s < this->_model->N_species(); s++) {
-            _M0 = std::max(_M0, this->_sim_state.mobility(idx, s));
-        }
-    }
+    // calculate reference mobility M0 per species
+    _compute_M0_species();
 
     // 1) bulk chemical potential in real space
     this->_model->der_bulk_free_energy(this->_rho, f_der);
@@ -250,7 +245,7 @@ void PseudospectralMobilityCPU<dims>::_evolve_simple() {
     // 5) real-space flux: J = (M - M0) grad(mu)
     for(int i = 0; i < this->_N_bins; i++) {
         for(int s = 0; s < this->_N_species; s++) {
-            double dM = this->_sim_state.mobility(i, s) - _M0;
+            double dM = this->_sim_state.mobility(i, s) - M0_species[s];
             for(int d = 0; d < dims; d++) {
                 flux[d](i, s) = dM * grad_mu[d](i, s);
             }
@@ -272,12 +267,12 @@ void PseudospectralMobilityCPU<dims>::_evolve_simple() {
 
     // 7) stabilized semi-implicit update
     for(int k = 0; k < _hat_vector_size; k++) {
+        int s = k / _hat_grid_size;
         double k2 = sqr_wave_vectors[k];
         double k4 = SQR(k2);
 
-        double denom = 1.0 + this->_dt * _M0 * (_S * k2 + 2.0 * this->_k_laplacian * k4);
-
-        rho_hat[k] = rho_hat_copy[k] = (rho_hat[k] + this->_dt * divJ_hat[k] - this->_dt * _M0 * k2 * (f_der_hat[k] - _S * rho_hat[k])) / denom;
+        double denom = 1.0 + this->_dt * M0_species[s] * (_S * k2 + 2.0 * this->_k_laplacian * k4);
+        rho_hat[k] = rho_hat_copy[k] = (rho_hat[k] + this->_dt * divJ_hat[k] - this->_dt * M0_species[s] * k2 * (f_der_hat[k] - _S * rho_hat[k])) / denom;
 
         rho_hat_copy[k] /= this->_N_bins;
     }
@@ -370,9 +365,11 @@ void PseudospectralMobilityCPU<dims>::_evolve_full() {
 
     // 6) Update rho_hat from rho for next step
     //    Use tmp_real/tmp_hat plans: copy rho -> tmp_real, FFT -> tmp_hat, then rho_hat = tmp_hat
-    for(int i = 0; i < this->_N_bins; i++)
-        for(int s = 0; s < this->_N_species; s++)
+    for(int i = 0; i < this->_N_bins; i++) {
+        for(int s = 0; s < this->_N_species; s++) {
             tmp_real(i, s) = this->_rho(i, s);
+        }
+    }
 
     fftw_execute(tmp_r2c_plan);
     rho_hat = tmp_hat;
@@ -454,27 +451,34 @@ void PseudospectralMobilityCPU<dims>::_apply_A(const std::vector<double> &x, std
     for(int k = 0; k < _hat_vector_size; k++) {
         double k2v = sqr_wave_vectors[k];
         q_hat[k] = (_S + 2.0 * this->_k_laplacian * k2v) * tmp_hat[k];
-        if(use_dealias) q_hat[k] *= dealiaser[k];
+        if(use_dealias) {
+            q_hat[k] *= dealiaser[k];
+        }
     }
 
     // grad q in real
     for(int d = 0; d < dims; d++) {
         for(int k = 0; k < _hat_vector_size; k++) {
             grad_mu_hat[d][k] = std::complex<double>(0.0, kcomp[d][k]) * q_hat[k];
-            if(use_dealias) grad_mu_hat[d][k] *= dealiaser[k];
+            if(use_dealias) {
+                grad_mu_hat[d][k] *= dealiaser[k];
+            }
         }
         fftw_execute(grad_mu_inverse_plan[d]);
-        for(int i = 0; i < this->_N_bins; i++)
-            for(int s = 0; s < this->_N_species; s++)
+        for(int i = 0; i < this->_N_bins; i++) {
+            for(int s = 0; s < this->_N_species; s++) {
                 grad_mu[d](i, s) /= this->_N_bins;
+            }
+        }
     }
 
     // flux = M * grad q
     for(int i = 0; i < this->_N_bins; i++) {
         for(int s = 0; s < this->_N_species; s++) {
             double Mxs = this->_sim_state.mobility(i, s);
-            for(int d = 0; d < dims; d++)
+            for(int d = 0; d < dims; d++) {
                 flux[d](i, s) = Mxs * grad_mu[d](i, s);
+            }
         }
     }
 
@@ -526,7 +530,9 @@ int PseudospectralMobilityCPU<dims>::_gmres_solve(const std::vector<double> &b,
     const double rhs_norm = std::max(_norm2(rhs), 1e-30);
     double beta = _norm2(r);
     double rel = beta / rhs_norm;
-    if(rel < gmres_tol) return 0;
+    if(rel < gmres_tol) {
+        return 0;
+    }
 
     int iter_total = 0;
 
