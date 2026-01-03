@@ -56,7 +56,7 @@ int EulerCPU<dims>::_cell_idx(int coords[dims]) {
 template<int dims>
 double EulerCPU<dims>::_cell_laplacian(MultiField<double> &field, int species, int idx) {
     if constexpr (dims == 1) {
-        int idx_m = (idx - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
+        int idx_m = (idx - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
         int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
 
         return (field(idx_m, species)
@@ -73,7 +73,7 @@ double EulerCPU<dims>::_cell_laplacian(MultiField<double> &field, int species, i
         for(int d = 0; d < dims; d++) {
             // minus direction
             memcpy(coords_n, coords, sizeof(coords));
-            coords_n[d] = (coords[d] - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
+            coords_n[d] = (coords[d] - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
             sum += field(this->_cell_idx(coords_n), species);
 
             // plus direction
@@ -118,7 +118,7 @@ double EulerCPU<dims>::_divergence(MultiField<Gradient<dims>> &flux, int species
 	memcpy(coords_m, coords, sizeof(coords));
 
 	for(int d = 0; d < dims; d++) {
-		coords_m[d] = (coords[d] - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
+		coords_m[d] = (coords[d] - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
 		int idx_m = this->_cell_idx(coords_m);
 		res += (flux(idx, species)[d] - flux(idx_m, species)[d]) / this->_dx;
 		coords_m[d] = coords[d];

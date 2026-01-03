@@ -4,7 +4,6 @@ set(common_files
 	integrators/BailoFiniteVolume.cpp
 	integrators/EulerCPU.cpp
 	integrators/EulerMobilityCPU.cpp
-	integrators/GelMobilityCPU.cpp
 	integrators/Integrator.cpp
 	integrators/PseudospectralCPU.cpp
 	integrators/PseudospectralMobilityCPU.cpp
