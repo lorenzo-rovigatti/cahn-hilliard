@@ -11,6 +11,7 @@
 #include <fstream>
 #include <ctime>
 #include <memory>
+#include <filesystem>
 
 namespace ch {
 
@@ -50,6 +51,15 @@ public:
 		}
 
 		srand48(_config_optional_value<long long int>(config, "seed", std::time(NULL)));
+
+		// New: parse optional output path and validate it
+		{
+			std::string outp = _config_optional_value<std::string>(config, "output_path", ".");
+			_output_path = std::filesystem::path(outp);
+			if(!std::filesystem::exists(_output_path) || !std::filesystem::is_directory(_output_path)) {
+				critical("Output path '{}' does not exist or is not a directory", outp);
+			}
+		}
 
 		std::string model_name = _config_value<std::string>(config, "free_energy");
 		if(model_name == "landau") {
@@ -100,7 +110,7 @@ public:
 		_trajectories.resize(_sim_state.model->N_species());
 		if(_print_trajectory_every > 0 || _log_n0 > 0) {
 			for(int i = 0; i < _sim_state.model->N_species(); i++) {
-				_trajectories[i].open(fmt::format("trajectory_{}.dat", i), _openmode);
+				_trajectories[i].open((_output_path / fmt::format("trajectory_{}.dat", i)).string(), _openmode);
 			}
 		}
 	}
@@ -116,10 +126,10 @@ public:
 	void run() {
 		_print_current_state("init_", 0);
 
-		std::ofstream mass_output("energy.dat", _openmode);
+		std::ofstream mass_output((_output_path / "energy.dat").string(), _openmode);
 		std::ofstream pressure_output;
 		if(_print_pressure_every > 0) {
-			pressure_output.open("pressure.dat", _openmode);
+			pressure_output.open((_output_path / "pressure.dat").string(), _openmode);
 		}
 
 		for(_t = _initial_t; _t < _initial_t + _steps; _t++) {
@@ -159,11 +169,12 @@ public:
 private:
 	void _print_current_state(std::string_view prefix, long long int t) {
 		for(int i = 0; i < _sim_state.model->N_species(); i++) {
-			_system->print_species_density(i, fmt::format("{}{}.dat", prefix, i), t);
+			auto p = (_output_path / fmt::format("{}{}.dat", prefix, i)).string();
+			_system->print_species_density(i, p, t);
 		}
-		_system->print_total_density(fmt::format("{}density.dat", prefix), t);
+		_system->print_total_density((_output_path / fmt::format("{}density.dat", prefix)).string(), t);
 		if(_print_average_pressure) {
-			_system->print_pressure(fmt::format("{}pressure.dat", prefix), t);
+			_system->print_pressure((_output_path / fmt::format("{}pressure.dat", prefix)).string(), t);
 		}
 	}
 
@@ -200,6 +211,9 @@ private:
 
 	std::vector<std::ofstream> _trajectories;
 	std::unique_ptr<ch::CahnHilliard<DIM>> _system;
+
+	// directory where output files will be placed (defaults to current folder)
+	std::filesystem::path _output_path = std::filesystem::path(".");
 };
 
 }
