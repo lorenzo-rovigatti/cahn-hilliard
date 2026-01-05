@@ -16,6 +16,10 @@ namespace ch {
 struct SimulationState {
     MultiField<double> rho;
     MultiField<double> mobility;
+    
+#ifndef NOCUDA
+    field_type *CUDA_mobility = nullptr;
+#endif
 
     std::unique_ptr<ch::FreeEnergyModel> model;
 

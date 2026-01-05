@@ -59,7 +59,8 @@ void EulerCUDA<dims>::evolve() {
 
     const int blocks = this->_grid_size / BLOCK_SIZE + 1;
     _Euler_add_surface_term_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, this->_d_rho_der, this->_dx, this->_k_laplacian);
-    _Euler_integrate_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, this->_d_rho_der, this->_dx, this->_dt, this->_M);
+    double M = this->_sim_state.mobility(0, 0); // constant mobility
+    _Euler_integrate_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, this->_d_rho_der, this->_dx, this->_dt, M);
 
     this->_output_ready = false;
 }

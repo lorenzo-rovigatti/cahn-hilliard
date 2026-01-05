@@ -110,7 +110,6 @@ public:
     GET_NAME(EulerMobilityCUDA)
 
 protected:
-    float _rho_min;
     bool _with_noise = false;
     CUDAGrid<dims, CUDAVector<dims>> *_h_flux = nullptr;
     CUDAGrid<dims, CUDAVector<dims>> *_d_flux = nullptr;

@@ -156,10 +156,9 @@ void PseudospectralCUDA<dims>::evolve() {
 
     CUFFT_CALL(cufftExecR2C(_d_f_der_plan, this->_d_rho_der, _d_f_der_hat));
 
+    double M = this->_sim_state.mobility(0, 0); // constant mobility
     const int blocks = this->_grid_size / BLOCK_SIZE + 1;
-    _integrate_fft_kernel<<<blocks, BLOCK_SIZE>>>(_d_rho_hat, _d_rho_hat_copy, _d_f_der_hat, 
-                                        _d_sqr_wave_vectors, this->_d_dealiaser, this->_dt, this->_M, 
-                                        this->_k_laplacian, this->_hat_vector_size);
+    _integrate_fft_kernel<<<blocks, BLOCK_SIZE>>>(_d_rho_hat, _d_rho_hat_copy, _d_f_der_hat, _d_sqr_wave_vectors, this->_d_dealiaser, this->_dt, M, this->_k_laplacian, this->_hat_vector_size);
 
 #ifdef CUDA_FIELD_FLOAT
     CUFFT_CALL(cufftExecC2R(_d_rho_inverse_plan, _d_rho_hat_copy, this->_d_rho));

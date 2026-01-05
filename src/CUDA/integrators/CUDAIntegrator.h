@@ -32,6 +32,10 @@ protected:
 	MultiField<field_type> _h_rho;
 	field_type *_d_rho = nullptr;
 	float *_d_rho_der = nullptr;
+
+    MultiField<field_type> _h_mobility;
+	field_type *_d_mobility = nullptr; // points to sim_state.CUDA_mobility
+
     int _grid_size;
     bool _output_ready = false;
 };
