@@ -43,7 +43,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 	_user_to_internal = 1.0 / _internal_to_user;
 	std::string user_integrator = _config_optional_value<std::string>(config, "integrator", "euler");
 
-	bool use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
+	sim_state.use_CUDA = _config_optional_value<bool>(config, "use_CUDA", false);
 
 	info("Running a simulation with N = {}, dt = {}, dx = {}, scaling factor = {}", N, dt, dx, _internal_to_user);
 
@@ -153,8 +153,12 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 
 	V_bin = CUB(dx);
 
+	// we need to build the mobility object before building the integrator, since CUDA integrators
+	// need to allocate device memory for mobility
+	mobility = std::unique_ptr<IMobility>(build_mobility(config, _sim_state));
+
 	if(user_integrator == "euler") {
-		if(use_CUDA) {
+		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
 			integrator = new EulerCUDA<dims>(_sim_state, m, config);
 #endif
@@ -164,7 +168,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 		}
 	}
 	else if(user_integrator == "euler_mobility") {
-		if(use_CUDA) {
+		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
 			integrator = new EulerMobilityCUDA<dims>(_sim_state, m, config);
 #endif
@@ -174,7 +178,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 		}
 	}
 	else if(user_integrator == "pseudospectral") {
-		if(use_CUDA) {
+		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
 			integrator = new PseudospectralCUDA<dims>(_sim_state, m, config);
 #endif
@@ -184,7 +188,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 		}
 	}
 	else if(user_integrator == "bailo") {
-		if(use_CUDA) {
+		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
 			critical("Unsupported CUDA integrator {}", user_integrator);
 #endif
@@ -194,7 +198,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 		}
 	}
 	else if(user_integrator == "pseudospectral_mobility") {
-		if(use_CUDA) {
+		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
 			critical("Unsupported CUDA integrator {}", user_integrator);
 #endif
@@ -207,8 +211,6 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 		critical("Unsupported integrator {}", user_integrator);
 	}
 	integrator->validate();
-
-	mobility = std::unique_ptr<IMobility>(build_mobility(config, _sim_state));
 
 	// the "free_energy" mobility model requires some of the model's internals to be initialised
 	// and since mobility is computed before the first evolve() call, we need to set it up now

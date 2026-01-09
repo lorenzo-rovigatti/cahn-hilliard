@@ -16,9 +16,10 @@ namespace ch {
 struct SimulationState {
     MultiField<double> rho;
     MultiField<double> mobility;
-    
+
 #ifndef NOCUDA
     field_type *CUDA_mobility = nullptr;
+    field_type *CUDA_rho = nullptr;
 #endif
 
     std::unique_ptr<ch::FreeEnergyModel> model;
@@ -27,6 +28,8 @@ struct SimulationState {
     double internal_to_user;
 
     long long int time_step;
+
+    bool use_CUDA;
 };
 
 } // namespace ch

@@ -34,13 +34,14 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 	_delta_BB *= CUB(_user_to_internal);
 
 #ifndef NOCUDA
-	if(_config_optional_value<bool>(config, "use_CUDA", false)) {
+	if(this->_use_CUDA) {
 		init_saleh_symbols(_valence, _linker_half_valence, _delta_AA, _delta_BB);
 	}
 #endif
 }
 
 SalehWertheim::~SalehWertheim() {
+	
 }
 
 double SalehWertheim::bonding_free_energy(const SpeciesView<double> &rhos) {

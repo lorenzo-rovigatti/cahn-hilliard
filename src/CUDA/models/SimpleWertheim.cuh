@@ -11,6 +11,7 @@
 #include "../../defs_CUDA.h"
 
 namespace ch {
+    void simple_wertheim_mobility(field_type *rho, field_type *mobility, double M0, int grid_size, int valence, float two_valence_delta);
     void simple_wertheim_der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size, float B2, int valence, float two_valence_delta);
 }
 

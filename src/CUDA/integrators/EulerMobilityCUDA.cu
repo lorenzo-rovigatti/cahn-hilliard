@@ -146,12 +146,6 @@ EulerMobilityCUDA<dims>::EulerMobilityCUDA(SimulationState &sim_state,FreeEnergy
 
 template<int dims>
 EulerMobilityCUDA<dims>::~EulerMobilityCUDA() {
-    if(this->_d_rho != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho));
-	}
-	if(this->_d_rho_der != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho_der));
-	}
     if(_d_flux != nullptr) {
         CUDA_SAFE_CALL(cudaFree(_d_flux));
     }

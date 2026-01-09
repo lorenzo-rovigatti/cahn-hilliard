@@ -20,7 +20,9 @@ CUDAIntegrator<dims>::CUDAIntegrator(SimulationState &sim_state,FreeEnergyModel 
 	this->info("Size of the CUDA direct-space vectors: {} ({} bytes)", this->_N_bins * model->N_species(), this->_d_vec_size);
 
 	this->_h_rho = MultiField<field_type>(this->_N_bins, model->N_species());
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));
+	CUDA_SAFE_CALL(cudaMalloc((void **) &sim_state.CUDA_rho, this->_d_vec_size));
+    this->_d_rho = sim_state.CUDA_rho;
+
 	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho_der, d_der_vec_size)); // always float
 
     this->_h_mobility = MultiField<field_type>(this->_N_bins, model->N_species());
@@ -32,9 +34,9 @@ CUDAIntegrator<dims>::CUDAIntegrator(SimulationState &sim_state,FreeEnergyModel 
 
 template<int dims>
 CUDAIntegrator<dims>::~CUDAIntegrator() {
-    CUDA_SAFE_CALL(cudaFree(this->_d_rho));
+    CUDA_SAFE_CALL(cudaFree(this->_sim_state.CUDA_rho));
     CUDA_SAFE_CALL(cudaFree(this->_d_rho_der));
-    CUDA_SAFE_CALL(cudaFree(this->_d_mobility));
+    CUDA_SAFE_CALL(cudaFree(this->_sim_state.CUDA_mobility));
 }
 
 template<int dims>

@@ -47,6 +47,9 @@ public:
 		return 0.;
 	}
 
+	virtual void set_mobility(field_type *rho, double M0, field_type *mobility, int grid_size) {
+		critical("this model does not support CUDA simulations");
+	}
 	virtual void set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) {
 		critical("this model does not support mobility coupling");
 	}

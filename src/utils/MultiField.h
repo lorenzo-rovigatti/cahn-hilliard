@@ -98,6 +98,10 @@ public:
     int species() const {
         return _species;
     }
+
+    int size() const {
+        return _data.size();
+    }
 };
 
 } /* namespace ch */

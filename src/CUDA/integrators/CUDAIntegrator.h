@@ -30,7 +30,7 @@ protected:
 
     int _d_vec_size;
 	MultiField<field_type> _h_rho;
-	field_type *_d_rho = nullptr;
+	field_type *_d_rho = nullptr; // points to sim_state.CUDA_rho
 	float *_d_rho_der = nullptr;
 
     MultiField<field_type> _h_mobility;

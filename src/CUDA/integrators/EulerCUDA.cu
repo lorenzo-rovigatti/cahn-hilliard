@@ -45,12 +45,7 @@ EulerCUDA<dims>::EulerCUDA(SimulationState &sim_state, FreeEnergyModel *model, t
 
 template<int dims>
 EulerCUDA<dims>::~EulerCUDA() {
-    if(this->_d_rho != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho));
-	}
-	if(this->_d_rho_der != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho_der));
-	}
+
 }
 
 template<int dims>

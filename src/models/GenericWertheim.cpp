@@ -130,9 +130,8 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 		}
 	}
 
-
 #ifndef NOCUDA
-	if(_config_optional_value<bool>(config, "use_CUDA", false)) {
+	if(this->_use_CUDA) {
 		// convert between CPU and CUDA data structures
 
 		// each ushort2 stores a unique patch and its associated multiplicity (as the x and y components, respectively)

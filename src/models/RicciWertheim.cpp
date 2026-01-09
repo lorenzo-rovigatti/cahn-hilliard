@@ -30,7 +30,7 @@
 	 _delta_12 *= CUB(_user_to_internal);
  
  #ifndef NOCUDA
-	 if(_config_optional_value<bool>(config, "use_CUDA", false)) {
+	 if(this->_use_CUDA) {
 		 init_ricci_symbols(_delta_00, _delta_12);
 	 }
  #endif

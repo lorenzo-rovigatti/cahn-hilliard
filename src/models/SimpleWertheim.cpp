@@ -95,6 +95,12 @@ void SimpleWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int g
 #endif
 }
 
+void SimpleWertheim::set_mobility(field_type *rho, double M0, field_type *mobility, int grid_size) {
+#ifndef NOCUDA
+    simple_wertheim_mobility(rho, mobility, M0, grid_size, _valence, _two_valence_delta);
+#endif
+}
+
 void SimpleWertheim::set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) {
     for(unsigned int idx = 0; idx < rho.bins(); idx++) {
         double rho_tot = rho.species_view(idx)[0];
