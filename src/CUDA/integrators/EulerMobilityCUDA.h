@@ -114,6 +114,10 @@ protected:
     CUDAGrid<dims, CUDAVector<dims>> *_h_flux = nullptr;
     CUDAGrid<dims, CUDAVector<dims>> *_d_flux = nullptr;
     curandState *_d_rand_states = nullptr;
+
+    bool _supports_nonconstant_mobility() const override {
+        return true;
+    }
 };
 
 } /* namespace ch */
