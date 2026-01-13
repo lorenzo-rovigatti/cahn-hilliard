@@ -2,6 +2,7 @@
 #define SRC_INTEGRATORS_INTEGRATOR_H_
 
 #include "../Object.h"
+#include "../SimulationState.h"
 #include "../models/FreeEnergyModel.h"
 
 namespace ch {
@@ -9,31 +10,34 @@ namespace ch {
 template<int dims>
 class Integrator : public Object {
 public:
-    Integrator(FreeEnergyModel *model, toml::table &config);
+    Integrator(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     virtual ~Integrator();
 
-    virtual void set_initial_rho(RhoMatrix<double> &r);
+    virtual void validate();
 
     virtual void evolve() = 0;
 
-    virtual RhoMatrix<double> &rho() {
-        return _rho;
-    }
+    virtual void sync() {}
 
     GET_NAME(Integrator)
 
 protected:
-    RhoMatrix<double> _rho;
+    SimulationState &_sim_state;
+    MultiField<double> &_rho;
     int _N_per_dim = 0;
     int _N_bins = 0;
+    int _N_species = 0;
     double _dt = 0.0;
 	double _k_laplacian = 0.0;
-	double _M = 0.0;
 	double _dx = 0.0;
-    double _user_to_internal, _internal_to_user;
+    std::string _mobility_type;
 
     FreeEnergyModel *_model;
+
+    virtual bool _supports_nonconstant_mobility() const {
+        return false;
+    }
 };
 
 } /* namespace ch */

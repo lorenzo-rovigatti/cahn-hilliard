@@ -4,9 +4,10 @@ set(common_files
 	integrators/BailoFiniteVolume.cpp
 	integrators/EulerCPU.cpp
 	integrators/EulerMobilityCPU.cpp
-	integrators/GelMobilityCPU.cpp
 	integrators/Integrator.cpp
 	integrators/PseudospectralCPU.cpp
+	integrators/PseudospectralMobilityCPU.cpp
+	mobility/IMobility.cpp
 	models/Landau.cpp
 	models/GenericWertheim.cpp
 	models/RicciWertheim.cpp

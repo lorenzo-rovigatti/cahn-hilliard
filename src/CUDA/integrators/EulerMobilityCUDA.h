@@ -101,7 +101,7 @@ public:
 template<int dims>
 class EulerMobilityCUDA : public CUDAIntegrator<dims> {
 public:
-    EulerMobilityCUDA(FreeEnergyModel *model, toml::table &config);
+    EulerMobilityCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config);
 
     ~EulerMobilityCUDA();
 
@@ -110,11 +110,14 @@ public:
     GET_NAME(EulerMobilityCUDA)
 
 protected:
-    float _rho_min;
     bool _with_noise = false;
     CUDAGrid<dims, CUDAVector<dims>> *_h_flux = nullptr;
     CUDAGrid<dims, CUDAVector<dims>> *_d_flux = nullptr;
     curandState *_d_rand_states = nullptr;
+
+    bool _supports_nonconstant_mobility() const override {
+        return true;
+    }
 };
 
 } /* namespace ch */

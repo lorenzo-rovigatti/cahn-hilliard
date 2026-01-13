@@ -15,11 +15,11 @@ namespace ch {
 template<int dims>
 class BailoFiniteVolume : public Integrator<dims> {
 public:
-    BailoFiniteVolume(FreeEnergyModel *model, toml::table &config);
+    BailoFiniteVolume(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~BailoFiniteVolume();
 
-    double cell_laplacian(RhoMatrix<double> &field, int species, int idx);
+    double cell_laplacian(MultiField<double> &field, int species, int idx);
     void evolve() override;
 
     GET_NAME(Bailo integrator)

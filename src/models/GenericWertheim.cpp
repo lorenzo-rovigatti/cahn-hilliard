@@ -118,8 +118,20 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 		_unique_patch_interactions[patch] = patch_interacting_species;
 	}
 
+	// precompute terms for derivative calculations
+	_terms_per_patch.resize(_N_patches);
+	for (int patch : _unique_patch_ids) {
+		auto& out = _terms_per_patch[patch];
+		for (auto& interaction : _unique_patch_interactions[patch]) {
+			for (auto& op : interaction.patches) {
+				const double d = _delta[patch * _N_patches + op.idx];
+				out.push_back({interaction.species, op.idx, double(op.multiplicity) * d});
+			}
+		}
+	}
+
 #ifndef NOCUDA
-	if(_config_optional_value<bool>(config, "use_CUDA", false)) {
+	if(this->_use_CUDA) {
 		// convert between CPU and CUDA data structures
 
 		// each ushort2 stores a unique patch and its associated multiplicity (as the x and y components, respectively)
@@ -169,22 +181,20 @@ std::pair<int, int> GenericWertheim::_parse_interaction(std::string int_string, 
 	return {part_A, part_B};
 }
 
-void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<double> &Xs) {
+void GenericWertheim::_update_X(const SpeciesView<double> &rhos, std::vector<double> &Xs) {
 	double tolerance = 1e-8;
 	int max_iter = 10000;
 
 	for(int iter = 0; iter < max_iter; iter++) {
 		double max_delta = 0.0;
 
-		for(auto &patch : _unique_patch_ids) {
+		for(int patch : _unique_patch_ids) {
 			double sum = 0.0;
-			for(auto &interaction : _unique_patch_interactions[patch]) {
-				double rho = rhos[interaction.species];
-				for(auto &other_patch : interaction.patches) {
-					double delta = _delta[patch * _N_patches + other_patch.idx];
-					sum += other_patch.multiplicity * rho * Xs[other_patch.idx] * delta;
+			for(const auto& t : _terms_per_patch[patch]) {
+				const double rho = rhos[t.species];
+				if(rho != 0.0) {
+					sum += rho * Xs[t.other_patch] * t.coeff;
 				}
-				
 			}
 
 			double new_X = 1.0 / (1.0 + sum);
@@ -198,7 +208,7 @@ void GenericWertheim::_update_X(const std::vector<double> &rhos, std::vector<dou
 	}
 }
 
-double GenericWertheim::bonding_free_energy(const std::vector<double> &rhos) {
+double GenericWertheim::bonding_free_energy(const SpeciesView<double> &rhos) {
 	double bonding_fe = 0;
 	std::vector<double> Xs(_N_patches, 0.0);
 	_update_X(rhos, Xs);
@@ -214,7 +224,7 @@ double GenericWertheim::bonding_free_energy(const std::vector<double> &rhos) {
 	return bonding_fe;
 }
 
-double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
+double GenericWertheim::bulk_free_energy(const SpeciesView<double> &rhos) {
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 
 	double mixing_S = 0.;
@@ -231,13 +241,20 @@ double GenericWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	return f_ref + bonding_free_energy(rhos);
 }
 
-void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
-	static std::vector<std::vector<double>> all_Xs(rho.bins(), std::vector<double>(_N_patches, 0.0));
+void GenericWertheim::der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) {
+	static std::vector<double> log_Xs(_N_patches, 0.0);
+	if(_all_Xs.empty()) {
+		_all_Xs.resize(rho.bins(), std::vector<double>(_N_patches, 1.0));
+	}
 
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-		std::vector<double> rhos = rho.rho_species(idx);
-		std::vector<double> &Xs = all_Xs[idx];
+		auto rhos = rho.species_view(idx);
+		std::vector<double> &Xs = _all_Xs[idx];
 		_update_X(rhos, Xs);
+		// precompute log(Xs) for efficiency
+		for(int i = 0; i < _N_patches; i++) {
+			log_Xs[i] = std::log(Xs[i]);
+		}
         for(int species = 0; species < N_species(); species++) {
 			// early return if the species has zero density
 			if(rhos[species] != 0.) {
@@ -249,7 +266,7 @@ void GenericWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatr
 				
 				double der_f_bond = 0.0;
 				for(auto &patch : _species[species].unique_patches) {
-					der_f_bond += patch.multiplicity * std::log(Xs[patch.idx]);
+					der_f_bond += patch.multiplicity * log_Xs[patch.idx];
 				}
 				rho_der(idx, species) = der_f_ref + der_f_bond;
 			}
@@ -261,6 +278,22 @@ void GenericWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int 
 #ifndef NOCUDA
 	generic_wertheim_der_bulk_free_energy(rho, rho_der, vec_size);
 #endif
+}
+
+void GenericWertheim::set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) {
+    for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+		auto rhos = rho.species_view(idx);
+		std::vector<double> &Xs = _all_Xs[idx];
+		for(int species = 0; species < N_species(); species++) {
+			double D = M0;
+			for(auto &patch : _species[species].unique_patches) {
+				D *= pow(Xs[patch.idx], (double) patch.multiplicity);
+			}
+
+			double rho = rhos[species];
+			mobility(idx, species) = rho * D; // See Dhont 1996, eq 9.32 (page 577), generalised (by me) to multiple species
+		}
+    }
 }
 
 } /* namespace ch */

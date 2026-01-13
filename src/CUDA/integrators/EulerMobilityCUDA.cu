@@ -29,10 +29,9 @@ __global__ void _EulerMobility_compute_flux_kernel(
     ch::CUDAGrid<dims, ch::CUDAVector<dims>> *grid, 
     field_type *rho, 
     float *rho_der,
+    field_type *mobility, 
     curandState *rand_states,
     float dx, 
-    float M, 
-    float rho_min,
     bool with_noise
 ) {
     if(IND >= grid->total_size) return;
@@ -58,8 +57,8 @@ __global__ void _EulerMobility_compute_flux_kernel(
         forward[d] = (indices[d] + 1) % grid->sizes[d];
         int idx_p = grid->index(forward, species);
 
-        field_type M_idx = M * rho[IND] / (rho[IND] + rho_min);
-        field_type M_p = M * rho[idx_p] / (rho[idx_p] + rho_min);
+        field_type M_idx = mobility[IND];
+        field_type M_p = mobility[idx_p];
         field_type M_flux = 0.5f * (M_idx + M_p);
 
         field_type deterministic = M_flux * (rho_der[idx_p] - rho_der[IND]) / dx;
@@ -115,22 +114,12 @@ __global__ void init_rand_states(curandState *states, unsigned long seed, int to
 namespace ch {
 
 template<int dims>
-EulerMobilityCUDA<dims>::EulerMobilityCUDA(FreeEnergyModel *model, toml::table &config) : CUDAIntegrator<dims>(model, config) {
-    this->_d_vec_size = this->_N_bins * model->N_species() * sizeof(field_type);
-	int d_der_vec_size = this->_N_bins * model->N_species() * sizeof(float);
-
-	this->info("Size of the CUDA direct-space vectors: {} ({} bytes)", this->_N_bins * model->N_species(), this->_d_vec_size);
-
-    _rho_min = this->template _config_value<float>(config, "mobility.rho_min");
-
+EulerMobilityCUDA<dims>::EulerMobilityCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config) : 
+        CUDAIntegrator<dims>(sim_state, model, config) {
     int N_species = model->N_species();
     _h_flux = new CUDAGrid<dims, CUDAVector<dims>>(this->_N_per_dim, N_species);
     CUDA_SAFE_CALL(cudaMalloc((CUDAGrid<dims, CUDAVector<dims>> **) &_d_flux, sizeof(CUDAGrid<dims, CUDAVector<dims>>)));
     CUDA_SAFE_CALL(cudaMemcpy(_d_flux, _h_flux, sizeof(CUDAGrid<dims, CUDAVector<dims>>), cudaMemcpyHostToDevice));
-
-	this->_h_rho = RhoMatrix<field_type>(this->_N_bins, N_species);
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho_der, d_der_vec_size)); // always float
 
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_N, &this->_N_per_dim, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_size, &this->_N_bins, sizeof(int)));
@@ -157,12 +146,6 @@ EulerMobilityCUDA<dims>::EulerMobilityCUDA(FreeEnergyModel *model, toml::table &
 
 template<int dims>
 EulerMobilityCUDA<dims>::~EulerMobilityCUDA() {
-    if(this->_d_rho != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho));
-	}
-	if(this->_d_rho_der != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho_der));
-	}
     if(_d_flux != nullptr) {
         CUDA_SAFE_CALL(cudaFree(_d_flux));
     }
@@ -177,7 +160,7 @@ void EulerMobilityCUDA<dims>::evolve() {
 
     const int blocks = this->_grid_size / BLOCK_SIZE + 1;
     _EulerMobility_add_surface_term_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, this->_d_rho_der, this->_dx, this->_k_laplacian);
-    _EulerMobility_compute_flux_kernel<dims><<<blocks, BLOCK_SIZE>>>(_d_flux, this->_d_rho, this->_d_rho_der, this->_d_rand_states, this->_dx, this->_M, _rho_min, _with_noise);
+    _EulerMobility_compute_flux_kernel<dims><<<blocks, BLOCK_SIZE>>>(_d_flux, this->_d_rho, this->_d_rho_der, this->_d_mobility, this->_d_rand_states, this->_dx, _with_noise);
     _EulerMobility_integrate_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, _d_flux, this->_dx, this->_dt);
 
     this->_output_ready = false;

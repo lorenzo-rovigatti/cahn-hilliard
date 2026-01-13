@@ -32,16 +32,8 @@ __global__ void _Euler_integrate_kernel(field_type *rho, float *rho_der, float d
 namespace ch {
 
 template<int dims>
-EulerCUDA<dims>::EulerCUDA(FreeEnergyModel *model, toml::table &config) : CUDAIntegrator<dims>(model, config) {
-    this->_d_vec_size = this->_N_bins * model->N_species() * sizeof(field_type);
-	int d_der_vec_size = this->_N_bins * model->N_species() * sizeof(float);
-
-	this->info("Size of the CUDA direct-space vectors: {} ({} bytes)", this->_N_bins * model->N_species(), this->_d_vec_size);
-
-	this->_h_rho = RhoMatrix<field_type>(this->_N_bins, model->N_species());
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho, this->_d_vec_size));
-	CUDA_SAFE_CALL(cudaMalloc((void **) &this->_d_rho_der, d_der_vec_size)); // always float
-
+EulerCUDA<dims>::EulerCUDA(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+        CUDAIntegrator<dims>(sim_state, model, config) {
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_N, &this->_N_per_dim, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_size, &this->_N_bins, sizeof(int)));
     int N_species = model->N_species();
@@ -53,12 +45,7 @@ EulerCUDA<dims>::EulerCUDA(FreeEnergyModel *model, toml::table &config) : CUDAIn
 
 template<int dims>
 EulerCUDA<dims>::~EulerCUDA() {
-    if(this->_d_rho != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho));
-	}
-	if(this->_d_rho_der != nullptr) {
-		CUDA_SAFE_CALL(cudaFree(this->_d_rho_der));
-	}
+
 }
 
 template<int dims>
@@ -67,7 +54,8 @@ void EulerCUDA<dims>::evolve() {
 
     const int blocks = this->_grid_size / BLOCK_SIZE + 1;
     _Euler_add_surface_term_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, this->_d_rho_der, this->_dx, this->_k_laplacian);
-    _Euler_integrate_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, this->_d_rho_der, this->_dx, this->_dt, this->_M);
+    double M = this->_sim_state.mobility(0, 0); // constant mobility
+    _Euler_integrate_kernel<dims><<<blocks, BLOCK_SIZE>>>(this->_d_rho, this->_d_rho_der, this->_dx, this->_dt, M);
 
     this->_output_ready = false;
 }

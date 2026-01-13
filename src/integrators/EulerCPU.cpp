@@ -3,7 +3,8 @@
 namespace ch {
 
 template<int dims>
-EulerCPU<dims>::EulerCPU(FreeEnergyModel *model, toml::table &config) : Integrator<dims>(model, config) {
+EulerCPU<dims>::EulerCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+		Integrator<dims>(sim_state, model, config) {
     _N_per_dim_minus_one = this->_N_per_dim - 1;
 	_log2_N_per_dim = (int) std::log2(this->_N_per_dim);
 }
@@ -15,19 +16,20 @@ EulerCPU<dims>::~EulerCPU() {
 
 template<int dims>
 void EulerCPU<dims>::evolve() {
-    static RhoMatrix<double> rho_der(this->_rho.bins(), this->_model->N_species());
+    static MultiField<double> rho_der(this->_rho.bins(), this->_N_species);
     // we first evaluate the time derivative for all the fields
 	this->_model->der_bulk_free_energy(this->_rho, rho_der);
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
-        for(int species = 0; species < this->_model->N_species(); species++) {
+        for(int species = 0; species < this->_N_species; species++) {
             rho_der(idx, species) -= 2 * this->_k_laplacian * _cell_laplacian(this->_rho, species, idx);
         }
     }
 
     // and then we integrate them
+    double M = this->_sim_state.mobility(0, 0); // constant mobility
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
-        for(int species = 0; species < this->_model->N_species(); species++) {
-			double total_derivative = this->_M * _cell_laplacian(rho_der, species, idx);
+        for(int species = 0; species < this->_N_species; species++) {
+			double total_derivative = M * _cell_laplacian(rho_der, species, idx);
             this->_rho(idx, species) += total_derivative * this->_dt;
         }
     }
@@ -52,91 +54,72 @@ int EulerCPU<dims>::_cell_idx(int coords[dims]) {
 	return idx;
 }
 
-template<>
-double EulerCPU<1>::_cell_laplacian(RhoMatrix<double> &field, int species, int idx) {
-	int idx_m = (idx - 1 + this->_N_bins) & _N_per_dim_minus_one;
-	int idx_p = (idx + 1) & _N_per_dim_minus_one;
+template<int dims>
+double EulerCPU<dims>::_cell_laplacian(MultiField<double> &field, int species, int idx) {
+    if constexpr (dims == 1) {
+        int idx_m = (idx - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
+        int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
 
-	return (field(idx_m, species) + field(idx_p, species) - 2.0 * field(idx, species)) / SQR(this->_dx);
-}
+        return (field(idx_m, species)
+              + field(idx_p, species)
+              - 2.0 * field(idx, species)) / SQR(this->_dx);
+    } 
+	else {
+        int coords[dims];
+        int coords_n[dims];
+        this->_fill_coords(coords, idx);
 
-template<>
-double EulerCPU<2>::_cell_laplacian(RhoMatrix<double> &field, int species, int idx) {
-	int coords_xy[2];
-	_fill_coords(coords_xy, idx);
+        double sum = 0.0;
 
-	int coords_xmy[2] = {
-			(coords_xy[0] - 1 + this->_N_bins) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
+        for(int d = 0; d < dims; d++) {
+            // minus direction
+            memcpy(coords_n, coords, sizeof(coords));
+            coords_n[d] = (coords[d] - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
+            sum += field(this->_cell_idx(coords_n), species);
 
-	int coords_xym[2] = {
-			coords_xy[0],
-			(coords_xy[1] - 1 + this->_N_bins) & _N_per_dim_minus_one
-	};
+            // plus direction
+            memcpy(coords_n, coords, sizeof(coords));
+            coords_n[d] = (coords[d] + 1) & this->_N_per_dim_minus_one;
+            sum += field(this->_cell_idx(coords_n), species);
+        }
 
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & _N_per_dim_minus_one
-	};
-
-	return (
-			field(_cell_idx(coords_xmy), species) +
-			field(_cell_idx(coords_xpy), species) +
-			field(_cell_idx(coords_xym), species) +
-			field(_cell_idx(coords_xyp), species) -
-			4 * field(idx, species))
-			/ SQR(this->_dx);
-}
-
-template<>
-Gradient<1> EulerCPU<1>::_cell_gradient(RhoMatrix<double> &field, int species, int idx) {
-	int idx_p = (idx + 1) & _N_per_dim_minus_one;
-
-	return Gradient<1>({(field(idx_p, species) - field(idx, species)) / _dx});
-}
-
-template<>
-Gradient<2> EulerCPU<2>::_cell_gradient(RhoMatrix<double> &field, int species, int idx) {
-	int coords_xy[2];
-	_fill_coords(coords_xy, idx);
-
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & _N_per_dim_minus_one
-	};
-
-	return Gradient<2>({
-		(field(_cell_idx(coords_xpy), species) - field(_cell_idx(coords_xy), species)) / this->_dx, 
-		(field(_cell_idx(coords_xyp), species) - field(_cell_idx(coords_xy), species)) / this->_dx
-	});
-}
-
-template<>
-double EulerCPU<1>::_divergence(RhoMatrix<Gradient<1>> &flux, int species, int idx) {
-	int idx_m = (idx - 1 + _N_bins) & _N_per_dim_minus_one;
-	return (flux(idx, species)[0] - flux(idx_m, species)[0]) / this->_dx;
+        return (sum - 2.0 * dims * field(idx, species)) / SQR(this->_dx);
+    }
 }
 
 template<int dims>
-double EulerCPU<dims>::_divergence(RhoMatrix<Gradient<dims>> &flux, int species, int idx) {
+Gradient<dims>
+EulerCPU<dims>::_cell_gradient(MultiField<double> &field, int species, int idx) {
+    Gradient<dims> grad{};
+
+    if constexpr (dims == 1) {
+        int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
+        grad[0] = (field(idx_p, species) - field(idx, species)) / this->_dx;
+    } 
+	else {
+        int coords[dims];
+        int coords_p[dims];
+        this->_fill_coords(coords, idx);
+
+        for(int d = 0; d < dims; d++) {
+            memcpy(coords_p, coords, sizeof(coords));
+            coords_p[d] = (coords[d] + 1) & this->_N_per_dim_minus_one;
+            grad[d] = (field(this->_cell_idx(coords_p), species) - field(idx, species)) / this->_dx;
+        }
+    }
+
+    return grad;
+}
+
+template<int dims>
+double EulerCPU<dims>::_divergence(MultiField<Gradient<dims>> &flux, int species, int idx) {
 	double res = 0;
 	int coords[dims], coords_m[dims];
 	this->_fill_coords(coords, idx);
-	memcpy(coords_m, coords, sizeof(int) * dims);
+	memcpy(coords_m, coords, sizeof(coords));
 
 	for(int d = 0; d < dims; d++) {
-		coords_m[d] = (coords[d] - 1 + this->_N_bins) & this->_N_per_dim_minus_one;
+		coords_m[d] = (coords[d] - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
 		int idx_m = this->_cell_idx(coords_m);
 		res += (flux(idx, species)[d] - flux(idx_m, species)[d]) / this->_dx;
 		coords_m[d] = coords[d];

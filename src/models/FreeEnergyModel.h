@@ -9,7 +9,7 @@
 #define SRC_MODELS_FREEENERGYMODEL_H_
 
 #include "../Object.h"
-#include "../utils/RhoMatrix.h"
+#include "../utils/MultiField.h"
 
 #include <vector>
 
@@ -31,20 +31,27 @@ public:
 	virtual void der_bulk_free_energy(field_type *rho, float *rho_der, int grid_size) {
 		critical("this model does not support CUDA simulations");
 	}
-	virtual double der_bulk_free_energy_expansive(int species, const std::vector<double> &) {
+	virtual double der_bulk_free_energy_expansive(int species, const SpeciesView<double> &) {
 		critical("this model does not support expansive/contractive splitting");
 		return 0.;
 	}
-	virtual double der_bulk_free_energy_contractive(int species, const std::vector<double> &) {
+	virtual double der_bulk_free_energy_contractive(int species, const SpeciesView<double> &) {
 		critical("this model does not support expansive/contractive splitting");
 		return 0.;
 	}
-	virtual void der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) = 0;
-	virtual double bulk_free_energy(const std::vector<double> &) = 0;
+	virtual void der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) = 0;
+	virtual double bulk_free_energy(const SpeciesView<double> &) = 0;
 
-	virtual double pressure(int species, const std::vector<double> &) {
+	virtual double pressure(int species, const SpeciesView<double> &) {
 		critical("this model does not support the pressure coupling");
 		return 0.;
+	}
+
+	virtual void set_mobility(field_type *rho, double M0, field_type *mobility, int grid_size) {
+		critical("this model does not support CUDA simulations");
+	}
+	virtual void set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) {
+		critical("this model does not support mobility coupling");
 	}
 
 protected:

@@ -1,2 +1,4 @@
 /build/
 /cuda/
+*.pyc
+__pycache__/

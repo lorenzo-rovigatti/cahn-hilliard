@@ -10,7 +10,9 @@
 namespace ch {
 
 template<int dims>
-PseudospectralCPU<dims>::PseudospectralCPU(FreeEnergyModel *model, toml::table &config) : Integrator<dims>(model, config) {
+PseudospectralCPU<dims>::PseudospectralCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+        Integrator<dims>(sim_state, model, config) {
+
     _reciprocal_n.fill(this->_N_per_dim);
     hat_grid_size = _reciprocal_n[dims - 1] / 2 + 1; 
     for(int i = 0; i < dims - 1; i++) {
@@ -18,33 +20,36 @@ PseudospectralCPU<dims>::PseudospectralCPU(FreeEnergyModel *model, toml::table &
     }
     hat_vector_size = hat_grid_size * model->N_species();
 
-    this->info("Size of the reciprocal vectors: {}", hat_vector_size);
+    _splitting_S = this->template _config_optional_value<double>(config, "pseudospectral.S", 0.0);
+    use_dealias = this->template _config_optional_value<bool>(config, "pseudospectral.use_dealias", false);
+
+    this->info("Size of the reciprocal vectors: {}, S = {}, use_dealias = {}", hat_vector_size, _splitting_S, use_dealias);
 
     rho_hat.resize(hat_vector_size);
     rho_hat_copy.resize(hat_vector_size);
     sqr_wave_vectors.resize(hat_vector_size);
     dealiaser.resize(hat_vector_size);
 
-    double nyquist_mode = this->_N_per_dim * M_PI / (this->_N_per_dim * this->_dx) * 2.0 / 3.0;
-    if(dims == 1) {
+    double k_cut = this->_N_per_dim * M_PI / (this->_N_per_dim * this->_dx) * 2.0 / 3.0;
+    if constexpr (dims == 1) {
         int k_idx = 0;
         for(int species = 0; species < model->N_species(); species++) {
             for(unsigned int i = 0; i < hat_grid_size; i++) {
                 double k = 2.0 * M_PI * i / (this->_N_per_dim * this->_dx);
-                dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
+                dealiaser[k_idx] = (k <= k_cut) ? 1.0 : 0.0;
                 sqr_wave_vectors[k_idx] = SQR(k);
                 k_idx++;
             }
         }
     }
-    else if(dims == 2) {
+    else if constexpr (dims == 2) {
         int k_idx = 0;
         for(int species = 0; species < model->N_species(); species++) {
             for(int kx_idx = 0; kx_idx < _reciprocal_n[0]; kx_idx++) {
                 int kx = (kx_idx < _reciprocal_n[0] / 2) ? kx_idx : _reciprocal_n[0] - kx_idx;
                 for(int ky = 0; ky < (_reciprocal_n[1] / 2 + 1); ky++) {
                     double k = 2.0 * M_PI * std::sqrt(SQR(kx) + SQR(ky)) / (this->_N_per_dim * this->_dx);
-                    dealiaser[k_idx] = (k < nyquist_mode) ? 1.0 : 0.0;
+                    dealiaser[k_idx] = (k < k_cut) ? 1.0 : 0.0;
                     sqr_wave_vectors[k_idx] = SQR(k);
                     k_idx++;
                 }
@@ -54,20 +59,8 @@ PseudospectralCPU<dims>::PseudospectralCPU(FreeEnergyModel *model, toml::table &
     else {
         this->critical("Unsupported number of dimensions {}", dims);
     }
-}
 
-template<int dims>
-PseudospectralCPU<dims>::~PseudospectralCPU() {
-    fftw_destroy_plan(rho_inverse_plan);
-    fftw_destroy_plan(f_der_plan);
-    fftw_cleanup();
-}
-
-template<int dims>
-void PseudospectralCPU<dims>::set_initial_rho(RhoMatrix<double> &r) {
-    Integrator<dims>::set_initial_rho(r);
-
-    f_der = RhoMatrix<double>(this->_rho.bins(), this->_model->N_species());
+    f_der = MultiField<double>(this->_rho.bins(), this->_model->N_species());
     f_der_hat.resize(hat_vector_size);
     
     int idist = this->_N_bins;
@@ -84,15 +77,33 @@ void PseudospectralCPU<dims>::set_initial_rho(RhoMatrix<double> &r) {
 }
 
 template<int dims>
+PseudospectralCPU<dims>::~PseudospectralCPU() {
+    fftw_destroy_plan(rho_inverse_plan);
+    fftw_destroy_plan(f_der_plan);
+    fftw_cleanup();
+}
+
+template<int dims>
 void PseudospectralCPU<dims>::evolve() {
+    static double M = this->_sim_state.mobility(0, 0); // constant mobility
+
     this->_model->der_bulk_free_energy(this->_rho, f_der);
 
     fftw_execute(f_der_plan); // transform f_der into f_der_hat
 
     for(unsigned int k_idx = 0; k_idx < rho_hat.size(); k_idx++) {
-        // f_der_hat[k_idx] *= dealiaser[k_idx];
-        rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * this->_M * sqr_wave_vectors[k_idx] * f_der_hat[k_idx]) / (1.0 + this->_dt * this->_M * 2.0 * this->_k_laplacian * SQR(sqr_wave_vectors[k_idx]));
+        if(use_dealias) {
+            f_der_hat[k_idx] *= dealiaser[k_idx];
+        }
+
+        double k2 = sqr_wave_vectors[k_idx];
+        double k4 = SQR(k2);
+
+        double denom = 1.0 + this->_dt * M * (_splitting_S * k2 + 2.0 * this->_k_laplacian * k4);
+        rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * M * k2 * (f_der_hat[k_idx] - _splitting_S * rho_hat[k_idx])) / denom;
+
         rho_hat_copy[k_idx] /= this->_N_bins;
+
     }
 
     fftw_execute(rho_inverse_plan);

@@ -34,16 +34,17 @@ SalehWertheim::SalehWertheim(toml::table &config) :
 	_delta_BB *= CUB(_user_to_internal);
 
 #ifndef NOCUDA
-	if(_config_optional_value<bool>(config, "use_CUDA", false)) {
+	if(this->_use_CUDA) {
 		init_saleh_symbols(_valence, _linker_half_valence, _delta_AA, _delta_BB);
 	}
 #endif
 }
 
 SalehWertheim::~SalehWertheim() {
+	
 }
 
-double SalehWertheim::bonding_free_energy(const std::vector<double> &rhos) {
+double SalehWertheim::bonding_free_energy(const SpeciesView<double> &rhos) {
 	double rho_factor =  _delta_AA * (_valence[0] * rhos[0] + _linker_half_valence * rhos[2]);
 	double X_1A = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
 	double fe_part_1 = std::log(X_1A) - X_1A / 2.0 + 0.5;
@@ -60,7 +61,7 @@ double SalehWertheim::bonding_free_energy(const std::vector<double> &rhos) {
 	return bonding_fe;
 }
 
-double SalehWertheim::bulk_free_energy(const std::vector<double> &rhos) {
+double SalehWertheim::bulk_free_energy(const SpeciesView<double> &rhos) {
 	double rho = std::accumulate(rhos.begin(), rhos.end(), 0.);
 
 	double mixing_S = 0.;
@@ -76,17 +77,17 @@ double SalehWertheim::bulk_free_energy(const std::vector<double> &rhos) {
 	return f_ref + bonding_free_energy(rhos);
 }
 
-double SalehWertheim::_der_contribution(const std::vector<double> &rhos, int species) {
+double SalehWertheim::_der_contribution(const SpeciesView<double> &rhos, int species) {
 	double delta = (species == 0) ? _delta_AA : _delta_BB;
 	double rho_factor =  delta * (_valence[species] * rhos[species] + _linker_half_valence * rhos[2]);
 	double X = (-1.0 + std::sqrt(1.0 + 4.0 * rho_factor)) / (2.0 * rho_factor);
 	return (rho_factor >= 0) ? std::log(X) : 0.0;
 }
 
-void SalehWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+void SalehWertheim::der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) {
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
         for(int species = 0; species < N_species(); species++) {
-			auto rhos = rho.rho_species(idx);
+			auto rhos = rho.species_view(idx);
 			if(rhos[species] != 0.) {
 				double rho_tot = std::accumulate(rhos.begin(), rhos.end(), 0.);
 				double der_f_ref = std::log(rhos[species]) + 2.0 * _B2 * rho_tot + 3.0 * _B3 * SQR(rho_tot);

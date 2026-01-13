@@ -9,9 +9,11 @@
 #define SRC_CAHNHILLIARD_H_
 
 #include "defs.h"
-#include "utils/RhoMatrix.h"
+#include "SimulationState.h"
+#include "utils/MultiField.h"
 #include "models/FreeEnergyModel.h"
 #include "integrators/Integrator.h"
+#include "mobility/IMobility.h"
 
 #include <vector>
 #include <string>
@@ -34,14 +36,15 @@ public:
 	double V_bin;
 	FreeEnergyModel *model = nullptr;
 	Integrator<dims> *integrator = nullptr;
+	std::unique_ptr<IMobility> mobility = nullptr;
 
-	CahnHilliard(FreeEnergyModel *m, toml::table &config);
+	CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();
 
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);
 
-	std::array<double, dims> gradient(RhoMatrix<double> &field, int species, int idx);
+	std::array<double, dims> gradient(MultiField<double> &field, int species, int idx);
 
 	void evolve();
 
@@ -57,6 +60,7 @@ public:
 	GET_NAME(Simulation manager)
 
 private:
+	SimulationState &_sim_state;
 	double _user_to_internal, _internal_to_user;
 	bool _output_ready = false;
 	int _d_vec_size;

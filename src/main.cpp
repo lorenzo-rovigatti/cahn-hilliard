@@ -1,4 +1,5 @@
 #include "CahnHilliard.h"
+#include "SimulationState.h"
 #include "models/Landau.h"
 #include "models/GenericWertheim.h"
 #include "models/RicciWertheim.h"
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <ctime>
 #include <memory>
+#include <filesystem>
 
 namespace ch {
 
@@ -21,6 +23,9 @@ public:
 		if(_steps < 0) {
 			critical("steps should be a number larger than 0");
 		}
+
+		_sim_state.internal_to_user = _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
+    	_sim_state.user_to_internal = 1.0 / _sim_state.internal_to_user;
 
 		_print_mass_every = _config_optional_value<long long int>(config, "print_every", 0);
 
@@ -47,27 +52,36 @@ public:
 
 		srand48(_config_optional_value<long long int>(config, "seed", std::time(NULL)));
 
+		// New: parse optional output path and validate it
+		{
+			std::string outp = _config_optional_value<std::string>(config, "output_path", ".");
+			_output_path = std::filesystem::path(outp);
+			if(!std::filesystem::exists(_output_path) || !std::filesystem::is_directory(_output_path)) {
+				critical("Output path '{}' does not exist or is not a directory", outp);
+			}
+		}
+
 		std::string model_name = _config_value<std::string>(config, "free_energy");
 		if(model_name == "landau") {
-			_model = std::make_unique<ch::Landau>(config);
+			_sim_state.model = std::make_unique<ch::Landau>(config);
 		}
 		else if(model_name == "simple_wertheim") {
-			_model = std::make_unique<ch::SimpleWertheim>(config);
+			_sim_state.model = std::make_unique<ch::SimpleWertheim>(config);
 		}
 		else if(model_name == "saleh") {
-			_model = std::make_unique<ch::SalehWertheim>(config);
+			_sim_state.model = std::make_unique<ch::SalehWertheim>(config);
 		}
 		else if(model_name == "generic_wertheim") {
-			_model = std::make_unique<ch::GenericWertheim>(config);
+			_sim_state.model = std::make_unique<ch::GenericWertheim>(config);
 		}
 		else if(model_name == "ricci") {
-			_model = std::make_unique<ch::RicciWertheim>(config);
+			_sim_state.model = std::make_unique<ch::RicciWertheim>(config);
 		}
 		else {
 			critical("Unsupported free energy model '{}'", model_name);
 		}
 
-		_system = std::make_unique<ch::CahnHilliard<DIM>>(_model.get(), config);
+		_system = std::make_unique<ch::CahnHilliard<DIM>>(_sim_state, _sim_state.model.get(), config);
 
 		if(config["load_from"]) {
 			_openmode = std::ios_base::app;
@@ -93,10 +107,10 @@ public:
 			load_from.close();
 		}
 
-		_trajectories.resize(_model->N_species());
+		_trajectories.resize(_sim_state.model->N_species());
 		if(_print_trajectory_every > 0 || _log_n0 > 0) {
-			for(int i = 0; i < _model->N_species(); i++) {
-				_trajectories[i].open(fmt::format("trajectory_{}.dat", i), _openmode);
+			for(int i = 0; i < _sim_state.model->N_species(); i++) {
+				_trajectories[i].open((_output_path / fmt::format("trajectory_{}.dat", i)).string(), _openmode);
 			}
 		}
 	}
@@ -112,10 +126,10 @@ public:
 	void run() {
 		_print_current_state("init_", 0);
 
-		std::ofstream mass_output("energy.dat", _openmode);
+		std::ofstream mass_output((_output_path / "energy.dat").string(), _openmode);
 		std::ofstream pressure_output;
 		if(_print_pressure_every > 0) {
-			pressure_output.open("pressure.dat", _openmode);
+			pressure_output.open((_output_path / "pressure.dat").string(), _openmode);
 		}
 
 		for(_t = _initial_t; _t < _initial_t + _steps; _t++) {
@@ -123,7 +137,7 @@ public:
 				_print_current_state("last_", _t);
 			}
 			if(_should_print_traj(_t)) {
-				for(int i = 0; i < _model->N_species(); i++) {
+				for(int i = 0; i < _sim_state.model->N_species(); i++) {
 					_system->print_species_density(i, _trajectories[i], _t);
 				}
 				_traj_printed++;
@@ -154,12 +168,13 @@ public:
 
 private:
 	void _print_current_state(std::string_view prefix, long long int t) {
-		for(int i = 0; i < _model->N_species(); i++) {
-			_system->print_species_density(i, fmt::format("{}{}.dat", prefix, i), t);
+		for(int i = 0; i < _sim_state.model->N_species(); i++) {
+			auto p = (_output_path / fmt::format("{}{}.dat", prefix, i)).string();
+			_system->print_species_density(i, p, t);
 		}
-		_system->print_total_density(fmt::format("{}density.dat", prefix), t);
+		_system->print_total_density((_output_path / fmt::format("{}density.dat", prefix)).string(), t);
 		if(_print_average_pressure) {
-			_system->print_pressure(fmt::format("{}pressure.dat", prefix), t);
+			_system->print_pressure((_output_path / fmt::format("{}pressure.dat", prefix)).string(), t);
 		}
 	}
 
@@ -182,6 +197,8 @@ private:
 		return (_print_pressure_every > 0 && t % _print_pressure_every == 0);
 	}
 
+	SimulationState _sim_state;
+
 	bool _print_average_pressure;
 	std::string _print_traj_strategy;
 	long long int _initial_t = 0;
@@ -193,8 +210,10 @@ private:
 	std::ios_base::openmode _openmode = std::ios_base::out;
 
 	std::vector<std::ofstream> _trajectories;
-	std::unique_ptr<ch::FreeEnergyModel> _model;
 	std::unique_ptr<ch::CahnHilliard<DIM>> _system;
+
+	// directory where output files will be placed (defaults to current folder)
+	std::filesystem::path _output_path = std::filesystem::path(".");
 };
 
 }

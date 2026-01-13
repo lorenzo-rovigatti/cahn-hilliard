@@ -37,18 +37,22 @@ SimpleWertheim::~SimpleWertheim() {
 
 }
 
-void SimpleWertheim::der_bulk_free_energy(const RhoMatrix<double> &rho, RhoMatrix<double> &rho_der) {
+void SimpleWertheim::der_bulk_free_energy(const MultiField<double> &rho, MultiField<double> &rho_der) {
 	for(unsigned int idx = 0; idx < rho.bins(); idx++) {
-        double rho_tot = rho.rho_species(idx)[0];
-        double der_f_ref = (rho_tot < _regularisation_delta) ? rho_tot / _regularisation_delta + _log_delta - 1.0 : std::log(rho_tot);
-        der_f_ref += 2 * _B2 * rho_tot;
-        double X = _X(rho_tot);
-        double der_f_bond = (rho_tot > 0.) ? _valence * std::log(X) : 0.0;
+        double rho_tot = rho.species_view(idx)[0];
+        double der_f_ref = 2 * _B2 * rho_tot;
+        if(rho_tot < _regularisation_delta) {
+            der_f_ref += _log_delta  + (rho_tot - _regularisation_delta) / _regularisation_delta;
+        }
+        else {
+            der_f_ref += std::log(rho_tot);
+        }
+        double der_f_bond = (rho_tot > 0.) ? _valence * std::log(_X(rho_tot)) : 0.0;
         rho_der(idx, 0) = der_f_ref + der_f_bond;
     }
 }
 
-double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::vector<double> &rhos) {
+double SimpleWertheim::der_bulk_free_energy_expansive(int species, const SpeciesView<double> &rhos) {
     double rho = rhos[0];
     double X = _X(rho);
     double der_f_bond = (rho > 0.) ? _valence * std::log(X) : 0.0;
@@ -56,7 +60,7 @@ double SimpleWertheim::der_bulk_free_energy_expansive(int species, const std::ve
     return der_f_bond;
 }
 
-double SimpleWertheim::der_bulk_free_energy_contractive(int species, const std::vector<double> &rhos) {
+double SimpleWertheim::der_bulk_free_energy_contractive(int species, const SpeciesView<double> &rhos) {
     double rho = rhos[0];
     double der_f_ref = (rho < _regularisation_delta) ? rho / _regularisation_delta + _log_delta - 1.0 : std::log(rho);
 	der_f_ref += 2 * _B2 * rho;
@@ -64,10 +68,18 @@ double SimpleWertheim::der_bulk_free_energy_contractive(int species, const std::
     return der_f_ref;
 }
 
-double SimpleWertheim::bulk_free_energy(const std::vector<double> &rhos) {
+double SimpleWertheim::bulk_free_energy(const SpeciesView<double> &rhos) {
     double rho = rhos[0];
-    double f_ref = (rho < _regularisation_delta) ? SQR(rho) / (2.0 * _regularisation_delta) + rho * _log_delta - _regularisation_delta / 2.0 : rho * std::log(rho * _density_conversion_factor);
-    f_ref += -rho + _B2 * SQR(rho);
+    double f_ref = _B2 * SQR(rho);
+    if(rho < _regularisation_delta) {
+        double a = 1 / (2.0 * _regularisation_delta);
+        double b = _log_delta - 1.0;
+        double c = _regularisation_delta * (_log_delta - 1.0) - a * SQR(_regularisation_delta) - b * _regularisation_delta;
+        f_ref += a * SQR(rho) + b * rho + c;
+    }
+    else {
+        f_ref += rho * (std::log(rho * _density_conversion_factor) - 1.0);
+    }
     double f_bond = (rho > 0.) ? _valence * rho * (std::log(_X(rho)) + 0.5 * (1. - _X(rho))) : 0.0;
 
     return (f_ref + f_bond);
@@ -81,6 +93,21 @@ void SimpleWertheim::der_bulk_free_energy(field_type *rho, float *rho_der, int g
 #ifndef NOCUDA
     simple_wertheim_der_bulk_free_energy(rho, rho_der, grid_size, _B2, _valence, _two_valence_delta);
 #endif
+}
+
+void SimpleWertheim::set_mobility(field_type *rho, double M0, field_type *mobility, int grid_size) {
+#ifndef NOCUDA
+    simple_wertheim_mobility(rho, mobility, M0, grid_size, _valence, _two_valence_delta);
+#endif
+}
+
+void SimpleWertheim::set_mobility(const MultiField<double> &rho, double M0, MultiField<double> &mobility) {
+    for(unsigned int idx = 0; idx < rho.bins(); idx++) {
+        double rho_tot = rho.species_view(idx)[0];
+        double my_X = _X(rho_tot);
+        double D = M0 * std::pow(my_X, (double) _valence);
+        mobility(idx, 0) = rho_tot * D; // See Dhont 1996, eq 9.32 (page 577)
+    }
 }
 
 } /* namespace ch */

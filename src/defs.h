@@ -19,6 +19,7 @@
 #include <toml++/toml.hpp>
 
 #include <iostream>
+#include <cassert>
 
 #include "defs_CUDA.h"
 

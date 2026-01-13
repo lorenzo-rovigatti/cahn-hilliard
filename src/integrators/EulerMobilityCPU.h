@@ -10,7 +10,7 @@ namespace ch {
 template<int dims>
 class EulerMobilityCPU : public EulerCPU<dims> {
 public:
-    EulerMobilityCPU(FreeEnergyModel *model, toml::table &config);
+    EulerMobilityCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~EulerMobilityCPU();
 
@@ -19,12 +19,15 @@ public:
     GET_NAME(EulerMobilityCPU)
 
 protected:
+    bool _supports_nonconstant_mobility() const override {
+        return true;
+    }
 
 private:
-    double _rho_min;
     bool _with_noise = false;
     double _noise_factor = 0.0;
     std::mt19937 _generator;
+    
 };
 
 } /* namespace ch */
