@@ -23,7 +23,9 @@ public:
 
     void update_mobility() override {
         if(_sim_state.use_CUDA) {
+#ifndef NOCUDA
             _sim_state.model->set_mobility(_sim_state.CUDA_rho, _M0, _sim_state.CUDA_mobility, _sim_state.rho.size());
+#endif
         }
         else {
             _sim_state.model->set_mobility(_sim_state.rho, _M0, _sim_state.mobility);
