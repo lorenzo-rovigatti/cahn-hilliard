@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 
 // copied from https://stackoverflow.com/a/67539748/5140209
