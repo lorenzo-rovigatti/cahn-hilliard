@@ -15,6 +15,7 @@
 
 #include "utils/utility_functions.h"
 #include "utils/strings.h"
+#include "utils/write_confs.h"
 
 #ifndef NOCUDA
 #include "CUDA/integrators/EulerCUDA.h"
@@ -345,15 +346,8 @@ template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output, long long int t) {
 	integrator->sync();
 
-	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
-	int newline_every = (dims == 1) ? 1 : N;
-	for(int idx = 0; idx < grid_size; idx++) {
-		if(idx > 0 && idx % newline_every == 0) {
-			output << std::endl;
-		}
-		output << _density_to_user(_sim_state.rho(idx, species)) << " ";
-	}
-	output << std::endl;
+	utils::write_ch<dims>(_sim_state, output, species, grid_size, dx, t, dt);
+	// utils::write_vtk<dims>(_sim_state, output, species, N, dx, t, dt);
 }
 
 template<int dims>
