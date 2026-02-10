@@ -7,44 +7,41 @@ namespace ch::utils {
 
 namespace detail {
 template <int D>
-int dim_or_one(const std::array<int, D>& n, int idx) {
-    return (idx < D) ? n[idx] : 1;
+int dim_or_one(int grid_size, int idx) {
+    return (idx < D) ? grid_size : 1;
 }
 template <int D>
-double dx_or_one(const std::array<double, D>& dx, int idx) {
-    return (idx < D) ? dx[idx] : 1.0;
+double dx_or_one(double dx, int idx) {
+    return (idx < D) ? dx : 1.0;
 }
 }  // namespace detail
 
 template <int dims>
-void write_ch(SimulationState &sim_state, std::ofstream &output, int species, int grid_size, double dx) {
+void write_ch(SimulationState &sim_state, std::ofstream &output, int species, int grid_size, double dx, long long int time_step, double dt) {
     const int nx = detail::dim_or_one<dims>(grid_size, 0);
     const int ny = detail::dim_or_one<dims>(grid_size, 1);
     const int nz = detail::dim_or_one<dims>(grid_size, 2);
-    const double sx = detail::dx_or_one<dims>(dx, 0);
-    const double sy = detail::dx_or_one<dims>(dx, 1);
-    const double sz = detail::dx_or_one<dims>(dx, 2);
+    const double sx = sim_state.length_to_user(detail::dx_or_one<dims>(dx, 0));
+    const double sy = sim_state.length_to_user(detail::dx_or_one<dims>(dx, 1));
+    const double sz = sim_state.length_to_user(detail::dx_or_one<dims>(dx, 2));
 
-    double dt = 1; // CHANGE THIS: we should pass the actual dt here, but for now we just want to print the time in physical units, so we can use dt=1 and multiply by it when printing the time
-
-    output << fmt::format("# step = {}, t = {:.5}, size = {}x{}x{}x", sim_state.time_step, sim_state.time_step * dt, nx, ny, nz) << std::endl;
-	int newline_every = (dims == 1) ? 1 : N;
+    output << fmt::format("# step = {}, t = {:.5}, size = {}x{}x{}", time_step, time_step * dt, nx, ny, nz) << std::endl;
+	int newline_every = (dims == 1) ? 1 : grid_size;
 	for(int idx = 0; idx < grid_size; idx++) {
 		if(idx > 0 && idx % newline_every == 0) {
 			output << std::endl;
 		}
-        double density = _sim_state.rho(idx, species) / (sim_state.internal_to_user * sim_state.internal_to_user * sim_state.internal_to_user);
-		output << _density_to_user() << " ";
+		output << sim_state.density_to_user(sim_state.rho(idx, species)) << " ";
 	}
 	output << std::endl;
 }
 
 template <int D>
-inline int flat(const std::array<int, D>& I, const int grid_size) {
+inline int flat(const std::array<int, D>& I, const int N) {
     int s = 0, m = 1;
     for (int d = 0; d < D; ++d) {
         s += I[d] * m;
-        m *= grid_size;
+        m *= N;
     }
     return s;
 }
@@ -52,13 +49,13 @@ inline int flat(const std::array<int, D>& I, const int grid_size) {
 // Write a single scalar field to VTK (STRUCTURED_POINTS, ASCII).
 // Works for D=1/2/3; for D<3 we set missing dims to 1 and nz=1 (2D) or ny=nz=1 (1D).
 template <int D>
-void write_vtk(SimulationState &state, std::ofstream &output, int species, int grid_size, double dx) {
-    const int nx = detail::dim_or_one<D>(grid_size, 0);
-    const int ny = detail::dim_or_one<D>(grid_size, 1);
-    const int nz = detail::dim_or_one<D>(grid_size, 2);
-    const double sx = detail::dx_or_one<D>(dx, 0);
-    const double sy = detail::dx_or_one<D>(dx, 1);
-    const double sz = detail::dx_or_one<D>(dx, 2);
+void write_vtk(SimulationState &sim_state, std::ofstream &output, int species, int N, double dx, long long int time_step, double dt) {
+    const int nx = detail::dim_or_one<D>(N, 0);
+    const int ny = detail::dim_or_one<D>(N, 1);
+    const int nz = detail::dim_or_one<D>(N, 2);
+    const double sx = sim_state.length_to_user(detail::dx_or_one<D>(dx, 0));
+    const double sy = sim_state.length_to_user(detail::dx_or_one<D>(dx, 1));
+    const double sz = sim_state.length_to_user(detail::dx_or_one<D>(dx, 2));
 
     output << "# vtk DataFile Version 3.0\n";
     output << "CIRCA scalar output\n";
@@ -68,7 +65,7 @@ void write_vtk(SimulationState &state, std::ofstream &output, int species, int g
     output << "ORIGIN 0 0 0\n";
     output << "SPACING " << std::setprecision(16) << sx << " " << sy << " " << sz << "\n";
     output << "POINT_DATA " << (static_cast<size_t>(nx) * ny * nz) << "\n";
-    output << "SCALARS " << scalar_name << " double 1\n";
+    output << "SCALARS species_" << species << " double 1\n";
     output << "LOOKUP_TABLE default\n";
 
     // VTK expects x fastest, then y, then z. Our flat() does x-fastest too,
@@ -88,8 +85,8 @@ void write_vtk(SimulationState &state, std::ofstream &output, int species, int g
                 if constexpr (D >= 3) {
                     ID[2] = I3[2];
                 }
-                const int lin = flat<D>(ID, grid_size);
-                output << std::setprecision(16) << f.a[lin] << "\n";
+                const int idx = flat<D>(ID, N);
+                output << std::setprecision(16) << sim_state.density_to_user(sim_state.rho(idx, species)) << "\n";
             }
         }
     }

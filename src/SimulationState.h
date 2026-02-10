@@ -27,9 +27,23 @@ struct SimulationState {
     double user_to_internal;
     double internal_to_user;
 
-    long long int time_step;
-
     bool use_CUDA;
+
+    double density_to_user(double v) const {
+        return v / (internal_to_user * internal_to_user * internal_to_user);
+    }
+
+    double user_to_density(double v) const {
+        return v * (user_to_internal * user_to_internal * user_to_internal);
+    }
+
+    double length_to_user(double v) const {
+        return v * internal_to_user;
+    }
+
+    double user_to_length(double v) const {
+        return v * user_to_internal;
+    }
 };
 
 } // namespace ch

@@ -52,13 +52,10 @@ public:
 
 		srand48(_config_optional_value<long long int>(config, "seed", std::time(NULL)));
 
-		// New: parse optional output path and validate it
-		{
-			std::string outp = _config_optional_value<std::string>(config, "output_path", ".");
-			_output_path = std::filesystem::path(outp);
-			if(!std::filesystem::exists(_output_path) || !std::filesystem::is_directory(_output_path)) {
-				critical("Output path '{}' does not exist or is not a directory", outp);
-			}
+		std::string outp = _config_optional_value<std::string>(config, "output_path", ".");
+		_output_path = std::filesystem::path(outp);
+		if(!std::filesystem::exists(_output_path) || !std::filesystem::is_directory(_output_path)) {
+			critical("Output path '{}' does not exist or is not a directory", outp);
 		}
 
 		std::string model_name = _config_value<std::string>(config, "free_energy");
