@@ -15,7 +15,6 @@
 
 #include "utils/utility_functions.h"
 #include "utils/strings.h"
-#include "utils/write_confs.h"
 
 #ifndef NOCUDA
 #include "CUDA/integrators/EulerCUDA.h"
@@ -32,7 +31,7 @@
 namespace ch {
 
 template<int dims>
-CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m, toml::table &config) :
+CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyModel *m, toml::table &config) :
 				_sim_state(sim_state),
 				model(m) {
 
@@ -156,7 +155,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m,
 
 	// we need to build the mobility object before building the integrator, since CUDA integrators
 	// need to allocate device memory for mobility
-	mobility = std::unique_ptr<IMobility>(build_mobility(config, _sim_state));
+	mobility = std::unique_ptr<IMobility<dims>>(build_mobility(config, _sim_state));
 
 	if(user_integrator == "euler") {
 		if(sim_state.use_CUDA) {
@@ -345,9 +344,6 @@ void CahnHilliard<dims>::print_species_density(int species, const std::string &f
 template<int dims>
 void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output, long long int t) {
 	integrator->sync();
-
-	utils::write_ch<dims>(_sim_state, output, species, grid_size, dx, t, dt);
-	// utils::write_vtk<dims>(_sim_state, output, species, N, dx, t, dt);
 }
 
 template<int dims>

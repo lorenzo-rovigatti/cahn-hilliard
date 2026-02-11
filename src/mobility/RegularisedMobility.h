@@ -12,21 +12,22 @@
 
 namespace ch {
 
-class RegularisedMobility: public IMobility {
+template<int dims>
+class RegularisedMobility: public IMobility<dims> {
 public:
-    RegularisedMobility(SimulationState& state, double M, double rho_min) :
+    RegularisedMobility(SimulationState<dims>& state, double M, double rho_min) :
             _M(M / state.user_to_internal), 
             _rho_min(rho_min / state.user_to_internal),
-            IMobility(state) {
+            IMobility<dims>(state) {
     }
 
     ~RegularisedMobility() {}
 
     void update_mobility() override {
-        for(unsigned int idx = 0; idx < _sim_state.rho.bins(); idx++) {
-            for(int species = 0; species < _sim_state.rho.species(); species++) {
-                double M = _M * _sim_state.rho(idx, species) / (_sim_state.rho(idx, species) + _rho_min);
-                _sim_state.mobility(idx, species) = M;
+        for(unsigned int idx = 0; idx < this->_sim_state.rho.bins(); idx++) {
+            for(int species = 0; species < this->_sim_state.rho.species(); species++) {
+                double M = _M * this->_sim_state.rho(idx, species) / (this->_sim_state.rho(idx, species) + _rho_min);
+                this->_sim_state.mobility(idx, species) = M;
             }
         }
     }

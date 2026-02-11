@@ -16,30 +16,29 @@
 
 namespace ch {
 
+template<int dims>
 class Printer : public Object {
 public:
-    Printer(SimulationState &sim_state, toml::table &config);
+    Printer(SimulationState<dims> &sim_state, toml::table &config);
     ~Printer();
 
-    template <int dims>
-    void print_current_state(std::string_view prefix, long long int t);
+    bool should_print_last(long long int t);
+    bool should_print_traj(long long int t);
+
+    void print_current_state(std::string_view prefix, long long int time_step);
+
+    void add_to_trajectory(int species, long long int time_step);
 
     GET_NAME(Printer)
 
 private:
-    bool _should_print_last(long long int t);
-    bool _should_print_traj(long long int t);
-
-    template <int dims>
     void _write_native(std::ofstream &output, int species, long long int time_step);
 
-    template <int dims>
     void _write_native(const std::string &filename, int species, long long int time_step);
 
-    template <int dims>
     void _write_vtk(const std::string &filename, int species, long long int time_step);
 
-    SimulationState &_sim_state;
+    SimulationState<dims> &_sim_state;
 
     int N, grid_size;
     double dt;

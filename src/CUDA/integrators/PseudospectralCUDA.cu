@@ -100,7 +100,7 @@ namespace ch {
 
 
 template<int dims>
-PseudospectralCUDA<dims>::PseudospectralCUDA(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+PseudospectralCUDA<dims>::PseudospectralCUDA(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
         CUDAIntegrator<dims>(sim_state, model, config) {
 	this->_h_rho = MultiField<field_type>(this->_N_bins, model->N_species());
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_N, &this->_N_per_dim, sizeof(int)));

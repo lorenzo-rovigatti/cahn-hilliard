@@ -32,7 +32,7 @@ __global__ void _Euler_integrate_kernel(field_type *rho, float *rho_der, float d
 namespace ch {
 
 template<int dims>
-EulerCUDA<dims>::EulerCUDA(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+EulerCUDA<dims>::EulerCUDA(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
         CUDAIntegrator<dims>(sim_state, model, config) {
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_N, &this->_N_per_dim, sizeof(int)));
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_size, &this->_N_bins, sizeof(int)));

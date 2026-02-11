@@ -3,7 +3,7 @@
 namespace ch {
 
 template<int dims>
-Integrator<dims>::Integrator(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+Integrator<dims>::Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
                 _sim_state(sim_state),
                 _rho(sim_state.rho),
                 _model(model) {

@@ -12,10 +12,11 @@
 
 namespace ch {
 
-class ConstantMobility: public IMobility {
+template<int dims>
+class ConstantMobility: public IMobility<dims> {
 public:
-    ConstantMobility(SimulationState& state, double M) : 
-            IMobility(state) {
+    ConstantMobility(SimulationState<dims>& state, double M) : 
+            IMobility<dims>(state) {
         M /= state.user_to_internal; // proportional to m^-1
         state.mobility.fill(M);
     }

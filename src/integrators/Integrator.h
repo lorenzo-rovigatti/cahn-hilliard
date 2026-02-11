@@ -10,7 +10,7 @@ namespace ch {
 template<int dims>
 class Integrator : public Object {
 public:
-    Integrator(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
+    Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config);
 
     virtual ~Integrator();
 
@@ -23,7 +23,7 @@ public:
     GET_NAME(Integrator)
 
 protected:
-    SimulationState &_sim_state;
+    SimulationState<dims> &_sim_state;
     MultiField<double> &_rho;
     int _N_per_dim = 0;
     int _N_bins = 0;

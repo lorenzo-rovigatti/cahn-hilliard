@@ -36,9 +36,9 @@ public:
 	double V_bin;
 	FreeEnergyModel *model = nullptr;
 	Integrator<dims> *integrator = nullptr;
-	std::unique_ptr<IMobility> mobility = nullptr;
+	std::unique_ptr<IMobility<dims>> mobility = nullptr;
 
-	CahnHilliard(SimulationState &sim_state, FreeEnergyModel *m, toml::table &config);
+	CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyModel *m, toml::table &config);
 	~CahnHilliard();
 
 	void fill_coords(int coords[dims], int idx);
@@ -60,7 +60,7 @@ public:
 	GET_NAME(Simulation manager)
 
 private:
-	SimulationState &_sim_state;
+	SimulationState<dims> &_sim_state;
 	double _user_to_internal, _internal_to_user;
 	bool _output_ready = false;
 	int _d_vec_size;

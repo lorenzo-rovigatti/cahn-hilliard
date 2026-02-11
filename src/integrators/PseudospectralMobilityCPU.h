@@ -29,7 +29,7 @@ template<int dims>
 class PseudospectralMobilityCPU : public Integrator<dims> {
 public:
     PseudospectralMobilityCPU(
-        SimulationState &sim_state,
+        SimulationState<dims> &sim_state,
         FreeEnergyModel *model,
         toml::table &config
     );

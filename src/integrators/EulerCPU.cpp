@@ -3,7 +3,7 @@
 namespace ch {
 
 template<int dims>
-EulerCPU<dims>::EulerCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+EulerCPU<dims>::EulerCPU(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
 		Integrator<dims>(sim_state, model, config) {
     _N_per_dim_minus_one = this->_N_per_dim - 1;
 	_log2_N_per_dim = (int) std::log2(this->_N_per_dim);

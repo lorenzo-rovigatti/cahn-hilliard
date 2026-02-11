@@ -114,7 +114,7 @@ __global__ void init_rand_states(curandState *states, unsigned long seed, int to
 namespace ch {
 
 template<int dims>
-EulerMobilityCUDA<dims>::EulerMobilityCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config) : 
+EulerMobilityCUDA<dims>::EulerMobilityCUDA(SimulationState<dims> &sim_state,FreeEnergyModel *model, toml::table &config) : 
         CUDAIntegrator<dims>(sim_state, model, config) {
     int N_species = model->N_species();
     _h_flux = new CUDAGrid<dims, CUDAVector<dims>>(this->_N_per_dim, N_species);

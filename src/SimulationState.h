@@ -13,6 +13,9 @@
 
 namespace ch {
 
+template<int dims> class Integrator;
+
+template<int dims>
 struct SimulationState {
     MultiField<double> rho;
     MultiField<double> mobility;
@@ -23,6 +26,7 @@ struct SimulationState {
 #endif
 
     std::unique_ptr<ch::FreeEnergyModel> model;
+    std::unique_ptr<ch::Integrator<dims>> *integrator;
 
     double user_to_internal;
     double internal_to_user;

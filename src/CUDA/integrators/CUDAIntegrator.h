@@ -17,7 +17,7 @@ namespace ch {
 template<int dims>
 class CUDAIntegrator : public Integrator<dims> {
 public:
-    CUDAIntegrator(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
+    CUDAIntegrator(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~CUDAIntegrator();
 

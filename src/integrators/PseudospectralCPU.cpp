@@ -10,7 +10,7 @@
 namespace ch {
 
 template<int dims>
-PseudospectralCPU<dims>::PseudospectralCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+PseudospectralCPU<dims>::PseudospectralCPU(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
         Integrator<dims>(sim_state, model, config) {
 
     _reciprocal_n.fill(this->_N_per_dim);

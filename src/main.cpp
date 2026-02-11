@@ -80,7 +80,7 @@ public:
 		}
 
 		_system = std::make_unique<ch::CahnHilliard<DIM>>(_sim_state, _sim_state.model.get(), config);
-		_printer = std::make_unique<ch::Printer>(_sim_state, config);
+		_printer = std::make_unique<ch::Printer<DIM>>(_sim_state, config);
 
 		if(config["load_from"]) {
 			_openmode = std::ios_base::app;
@@ -132,12 +132,12 @@ public:
 		}
 
 		for(_t = _initial_t; _t < _initial_t + _steps; _t++) {
-			if(_should_print_last(_t)) {
+			if(_printer->should_print_last(_t)) {
 				_print_current_state("last_", _t);
 			}
-			if(_should_print_traj(_t)) {
+			if(_printer->should_print_traj(_t)) {
 				for(int i = 0; i < _sim_state.model->N_species(); i++) {
-					_system->print_species_density(i, _trajectories[i], _t);
+					_printer->add_to_trajectory(i, _t);
 				}
 				_traj_printed++;
 			}
@@ -167,32 +167,17 @@ public:
 
 private:
 	void _print_current_state(std::string_view prefix, long long int t) {
-		_printer->print_current_state<DIM>(prefix, t);
+		_printer->print_current_state(prefix, t);
 		if(_print_average_pressure) {
 			_system->print_pressure((_output_path / fmt::format("{}pressure.dat", prefix)).string(), t);
 		}
-	}
-
-	bool _should_print_last(long long int t) {
-		return (_print_last_every > 0 && t % _print_last_every == 0);
-	}
-
-	bool _should_print_traj(long long int t) {
-		if(_print_traj_strategy == "linear") {
-			return (_print_trajectory_every > 0 && t % _print_trajectory_every == 0);
-		}
-		else if(_print_traj_strategy == "log") {
-			long long int next_t = (long long int) round((_log_n0 * pow(_log_fact, _traj_printed)));
-			return (next_t == t);
-		}
-		return false;
 	}
 
 	bool _should_print_pressure(long long int t) {
 		return (_print_pressure_every > 0 && t % _print_pressure_every == 0);
 	}
 
-	SimulationState _sim_state;
+	SimulationState<DIM> _sim_state;
 
 	bool _print_average_pressure;
 	std::string _print_traj_strategy;
@@ -206,7 +191,7 @@ private:
 
 	std::vector<std::ofstream> _trajectories;
 	std::unique_ptr<ch::CahnHilliard<DIM>> _system;
-	std::unique_ptr<ch::Printer> _printer;
+	std::unique_ptr<ch::Printer<DIM>> _printer;
 
 	// directory where output files will be placed (defaults to current folder)
 	std::filesystem::path _output_path = std::filesystem::path(".");

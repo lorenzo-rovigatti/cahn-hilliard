@@ -10,7 +10,7 @@
 namespace ch {
 
 template<int dims>
-PseudospectralMobilityCPU<dims>::PseudospectralMobilityCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+PseudospectralMobilityCPU<dims>::PseudospectralMobilityCPU(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
         Integrator<dims>(sim_state, model, config) {
     _reciprocal_n.fill(this->_N_per_dim);
     _hat_grid_size = _reciprocal_n[dims - 1] / 2 + 1;

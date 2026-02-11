@@ -12,23 +12,24 @@
 
 namespace ch {
 
-class FreeEnergyMobility: public IMobility {
+template<int dims>
+class FreeEnergyMobility: public IMobility<dims> {
 public:
-    FreeEnergyMobility(SimulationState& state, double M0) :
+    FreeEnergyMobility(SimulationState<dims>& state, double M0) :
             _M0(M0 / state.user_to_internal), 
-            IMobility(state) {
+            IMobility<dims>(state) {
     }
 
     ~FreeEnergyMobility() {}
 
     void update_mobility() override {
-        if(_sim_state.use_CUDA) {
+        if(this->_sim_state.use_CUDA) {
 #ifndef NOCUDA
-            _sim_state.model->set_mobility(_sim_state.CUDA_rho, _M0, _sim_state.CUDA_mobility, _sim_state.rho.size());
+            this->_sim_state.model->set_mobility(this->_sim_state.CUDA_rho, _M0, this->_sim_state.CUDA_mobility, this->_sim_state.rho.size());
 #endif
         }
         else {
-            _sim_state.model->set_mobility(_sim_state.rho, _M0, _sim_state.mobility);
+            this->_sim_state.model->set_mobility(this->_sim_state.rho, _M0, this->_sim_state.mobility);
         }
     }
 

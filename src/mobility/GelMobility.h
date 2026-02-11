@@ -14,14 +14,15 @@
 
 namespace ch {
 
-class GelMobility: public IMobility {
+template<int dims>
+class GelMobility: public IMobility<dims> {
 public:
-    GelMobility(SimulationState& state, double dt, double phi_critical, double c_0, double M_c, double beta_delta_F) :
+    GelMobility(SimulationState<dims>& state, double dt, double phi_critical, double c_0, double M_c, double beta_delta_F) :
             _dt(dt),
             _phi_critical(phi_critical),
             _c_0(c_0),
             _M_c(M_c / state.user_to_internal),
-            IMobility(state) {
+            IMobility<dims>(state) {
 
         _p_gel = exp(beta_delta_F) / (1.0 + exp(beta_delta_F));
 
@@ -38,10 +39,10 @@ public:
     ~GelMobility() {}
 
     void update_mobility() override {
-        for(unsigned int idx = 0; idx < _sim_state.rho.bins(); idx++) {
+        for(unsigned int idx = 0; idx < this->_sim_state.rho.bins(); idx++) {
             double rho_tot = 0.;
-            for(int species = 0; species < _sim_state.rho.species(); species++) {
-                rho_tot += _sim_state.rho(idx, species);
+            for(int species = 0; species < this->_sim_state.rho.species(); species++) {
+                rho_tot += this->_sim_state.rho(idx, species);
             }
             
             // update the gel OP
@@ -51,9 +52,9 @@ public:
             double c_der = _M_c * (g * c - c * c);
 
             _gel_OP(idx, 0) += c_der * this->_dt;
-            for(int species = 0; species < _sim_state.rho.species(); species++) {
+            for(int species = 0; species < this->_sim_state.rho.species(); species++) {
                 double M = std::exp(-_gel_OP(idx, 0) / _c_0);
-                _sim_state.mobility(idx, species) = M;
+                this->_sim_state.mobility(idx, species) = M;
             }
         }
     }

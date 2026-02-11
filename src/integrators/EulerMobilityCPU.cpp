@@ -5,7 +5,7 @@
 namespace ch {
 
 template<int dims>
-EulerMobilityCPU<dims>::EulerMobilityCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config) : 
+EulerMobilityCPU<dims>::EulerMobilityCPU(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
 		EulerCPU<dims>(sim_state, model, config) {
 	_with_noise = this->template _config_optional_value<bool>(config, "mobility.with_noise", false);
 	

@@ -14,9 +14,10 @@
 
 namespace ch {
 
+template<int dims>
 class IMobility : public Object {
 public:
-    IMobility(SimulationState& state) : _sim_state(state) {};
+    IMobility(SimulationState<dims>& state) : _sim_state(state) {};
 
     virtual void update_mobility() = 0;
 
@@ -25,10 +26,12 @@ public:
     GET_NAME(IMobility)
 
 protected:
-    SimulationState &_sim_state;
+    SimulationState<dims> &_sim_state;
 };
 
-IMobility *build_mobility(toml::table &config, SimulationState &state);
+// Builders for supported dimensions
+IMobility<1> *build_mobility(toml::table &config, SimulationState<1> &state);
+IMobility<2> *build_mobility(toml::table &config, SimulationState<2> &state);
 
 } /* namespace ch */
 

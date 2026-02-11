@@ -10,7 +10,7 @@
 namespace ch {
 
 template<int dims>
-CUDAIntegrator<dims>::CUDAIntegrator(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config) : 
+CUDAIntegrator<dims>::CUDAIntegrator(SimulationState<dims> &sim_state,FreeEnergyModel *model, toml::table &config) : 
         Integrator<dims>(sim_state, model, config) {
     _grid_size = this->_N_bins * model->N_species();
 

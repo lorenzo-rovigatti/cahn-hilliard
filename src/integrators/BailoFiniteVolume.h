@@ -15,7 +15,7 @@ namespace ch {
 template<int dims>
 class BailoFiniteVolume : public Integrator<dims> {
 public:
-    BailoFiniteVolume(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
+    BailoFiniteVolume(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~BailoFiniteVolume();
 

@@ -37,7 +37,7 @@ namespace ch {
 template<int dims>
 class PseudospectralCPU : public Integrator<dims> {
 public:
-    PseudospectralCPU(SimulationState &sim_state, FreeEnergyModel *model, toml::table &config);
+    PseudospectralCPU(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config);
 
     ~PseudospectralCPU();
 

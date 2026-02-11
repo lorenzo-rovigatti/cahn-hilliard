@@ -17,7 +17,7 @@ namespace ch {
 template<int dims>
 class EulerCUDA : public CUDAIntegrator<dims> {
 public:
-    EulerCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config);
+    EulerCUDA(SimulationState<dims> &sim_state,FreeEnergyModel *model, toml::table &config);
 
     ~EulerCUDA();
 

@@ -9,7 +9,8 @@
 
 namespace ch {
 
-Printer::Printer(SimulationState &sim_state, toml::table &config) : _sim_state(sim_state) {
+template <int dims>
+Printer<dims>::Printer(SimulationState<dims> &sim_state, toml::table &config) : _sim_state(sim_state) {
     N = _config_value<int>(config, "N");
 	dt = _config_value<double>(config, "dt");
 	dx = _config_optional_value<double>(config, "dx", 1.0);
@@ -38,7 +39,18 @@ Printer::Printer(SimulationState &sim_state, toml::table &config) : _sim_state(s
         critical("Output path '{}' is not a directory", outp);
     }
 
-    std::string trajp = _config_optional_value<std::string>(config, "output.trajectory_path", outp);
+    std::string trajp;
+    _print_vtk = _config_optional_value<bool>(config, "output.print_vtk", false);
+    // trajectory_path is mandatory if we print vtk trajectories, otherwise it defaults to output.path
+    if(_print_vtk) {
+        trajp = _config_value<std::string>(config, "output.trajectory_path");
+        info("VTK trajectory printing is enabled, trajectory files will be written to '{}'", trajp);
+    }
+    else {
+        trajp = _config_optional_value<std::string>(config, "output.trajectory_path", outp);
+        info("Trajectory files will be written in native format to '{}'", trajp);
+    }
+
     _traj_path = std::filesystem::path(trajp);
     if(!std::filesystem::exists(_traj_path)) {
         critical("Trajectory output path '{}' does not exist", trajp);
@@ -47,55 +59,80 @@ Printer::Printer(SimulationState &sim_state, toml::table &config) : _sim_state(s
         critical("Trajectory output path '{}' is not a directory", trajp);
     }
 
-    _print_vtk = _config_optional_value<bool>(config, "output.print_vtk", false);
-
-    if(config["load_from"]) {
-        _openmode = std::ios_base::app;
+    // if we print native trajectories and we are not loading from a previous state, then we
+    // open the trajectory files in output mode (overwriting any existing file with the same name)
+    if(!_print_vtk && !config["load_from"]) {
+        for(int i = 0; i < _sim_state.model->N_species(); i++) {
+            std::string filename = (_traj_path / fmt::format("traj_{}.dat", i)).string();
+            std::ofstream output(filename, std::ios_base::out);
+            output.close();
+        }
     }
 }
 
-Printer::~Printer() {
+template <int dims>
+Printer<dims>::~Printer() {
 
 }
 
 template <int dims>
-void Printer::print_current_state(std::string_view prefix, long long int t) {
+void Printer<dims>::print_current_state(std::string_view prefix, long long int time_step) {
+    _sim_state.integrator->sync();
+
     for(int i = 0; i < _sim_state.model->N_species(); i++) {
         auto filename = (_output_path / fmt::format("{}{}.dat", prefix, i)).string();
-        _write_native<dims>(filename, i, t);
+        _write_native(filename, i, time_step);
 
         if(_print_vtk) {
             auto vtk_filename = (_output_path / fmt::format("{}{}.vtk", prefix, i)).string();
-            _write_vtk<dims>(vtk_filename, i, t);
+            _write_vtk(vtk_filename, i, time_step);
         }
     }
 
     auto filename = (_output_path / fmt::format("{}density.dat", prefix)).string();
-    _write_native<dims>(filename, -1, t); // -1 indicates that we want to print the total density
+    _write_native(filename, -1, time_step); // -1 indicates that we want to print the total density
 
     if(_print_vtk) {
         auto vtk_filename = (_output_path / fmt::format("{}density.vtk", prefix)).string();
-        _write_vtk<dims>(vtk_filename, -1, t);
+        _write_vtk(vtk_filename, -1, time_step);
     }
 }
 
-bool Printer::_should_print_last(long long int t) {
-    return (_print_last_every > 0 && t % _print_last_every == 0);
+template <int dims>
+void Printer<dims>::add_to_trajectory(int species, long long int time_step) {
+    _sim_state.integrator->sync();
+
+    if(_print_vtk) {
+        auto vtk_filename = (_traj_path / fmt::format("traj_{}_{}.vtk", species, time_step)).string();
+        _write_vtk(vtk_filename, -1, time_step);
+    }
+    else {
+        std::string filename = (_traj_path / fmt::format("traj_{}.dat", species)).string();
+        std::ofstream output(filename, std::ios_base::app);
+        _write_native(output, -1, time_step);
+        output.close();
+    }
 }
 
-bool Printer::_should_print_traj(long long int t) {
+template <int dims>
+bool Printer<dims>::should_print_last(long long int time_step) {
+    return (_print_last_every > 0 && time_step % _print_last_every == 0);
+}
+
+template <int dims>
+bool Printer<dims>::should_print_traj(long long int time_step) {
     if(_print_traj_strategy == "linear") {
-        return (_print_trajectory_every > 0 && t % _print_trajectory_every == 0);
+        return (_print_trajectory_every > 0 && time_step % _print_trajectory_every == 0);
     }
     else if(_print_traj_strategy == "log") {
         long long int next_t = (long long int) round((_log_n0 * std::pow(_log_fact, _traj_printed)));
-        return (next_t == t);
+        return (next_t == time_step);
     }
     return false;
 }
 
 template <int dims>
-void Printer::_write_native(std::ofstream &output, int species, long long int time_step) {
+void Printer<dims>::_write_native(std::ofstream &output, int species, long long int time_step) {
     const int nx = N;
     const int ny = (dims >= 2) ? N : 1;
     const int nz = (dims >= 3) ? N : 1;
@@ -114,14 +151,14 @@ void Printer::_write_native(std::ofstream &output, int species, long long int ti
 }
 
 template <int dims>
-void Printer::_write_native(const std::string &filename, int species, long long int time_step) {
+void Printer<dims>::_write_native(const std::string &filename, int species, long long int time_step) {
     std::ofstream output(filename);
-    _write_native<dims>(output, species, time_step);
+    _write_native(output, species, time_step);
     output.close();
 }
 
 template <int dims>
-void Printer::_write_vtk(const std::string &filename, int species, long long int time_step) {
+void Printer<dims>::_write_vtk(const std::string &filename, int species, long long int time_step) {
     std::ofstream output(filename);
 
     const int nx = N;
@@ -162,8 +199,8 @@ void Printer::_write_vtk(const std::string &filename, int species, long long int
     output.close();
 }
 
-template void Printer::print_current_state<1>(std::string_view, long long int);
-template void Printer::print_current_state<2>(std::string_view, long long int);
-template void Printer::print_current_state<3>(std::string_view, long long int);
+template class Printer<1>;
+template class Printer<2>;
+template class Printer<3>;
 
 } /* namespace ch */

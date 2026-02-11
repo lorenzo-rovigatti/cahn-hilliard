@@ -17,7 +17,7 @@ namespace ch {
 template<int dims>
 class PseudospectralCUDA : public CUDAIntegrator<dims> {
 public:
-    PseudospectralCUDA(SimulationState &sim_state,FreeEnergyModel *model, toml::table &config);
+    PseudospectralCUDA(SimulationState<dims> &sim_state,FreeEnergyModel *model, toml::table &config);
 
     ~PseudospectralCUDA();
 
