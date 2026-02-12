@@ -40,5 +40,6 @@ void Integrator<dims>::validate() {
 
 template class Integrator<1>;
 template class Integrator<2>;
+template class Integrator<3>;
 
 } /* namespace ch */

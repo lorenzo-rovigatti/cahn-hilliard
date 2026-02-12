@@ -10,6 +10,7 @@
 
 #include "defs.h"
 #include "SimulationState.h"
+#include "utils/Gradient.h"
 #include "utils/MultiField.h"
 #include "models/FreeEnergyModel.h"
 #include "integrators/Integrator.h"
@@ -35,7 +36,7 @@ public:
 	double dx = 0.0;
 	double V_bin;
 	FreeEnergyModel *model = nullptr;
-	Integrator<dims> *integrator = nullptr;
+	std::unique_ptr<ch::Integrator<dims>> integrator;
 	std::unique_ptr<IMobility<dims>> mobility = nullptr;
 
 	CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyModel *m, toml::table &config);
@@ -44,16 +45,13 @@ public:
 	void fill_coords(int coords[dims], int idx);
 	int cell_idx(int coords[dims]);
 
-	std::array<double, dims> gradient(MultiField<double> &field, int species, int idx);
+	Gradient<dims> gradient(MultiField<double> &field, int species, int idx);
 
 	void evolve();
 
 	double average_mass();
 	double average_free_energy();
 	double average_pressure();
-	void print_species_density(int species, const std::string &filename, long long int t);
-	void print_species_density(int species, std::ofstream &output, long long int t);
-	void print_total_density(const std::string &filename, long long int t);
 	void print_pressure(const std::string &filename, long long int t);
 	void print_pressure(std::ofstream &output, long long int t);
 
@@ -65,8 +63,6 @@ private:
 	bool _output_ready = false;
 	int _d_vec_size;
 	std::string _grid_size_str;
-
-	double _density_to_user(double v);
 };
 
 } /* namespace ch */

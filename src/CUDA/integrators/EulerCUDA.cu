@@ -62,5 +62,6 @@ void EulerCUDA<dims>::evolve() {
 
 template class EulerCUDA<1>;
 template class EulerCUDA<2>;
+template class EulerCUDA<3>;
 
 } /* namespace ch */

@@ -107,7 +107,14 @@ CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyMod
 						}
 					}
 					else {
-						static_assert(dims == 1 || dims == 2, "Unsupported dims for the initial configuration");
+						if(spl.size() != N) {
+							critical("Line n. {} in the initial configuration file contains only {} fields, should be {}", lines, spl.size(), N);
+						}
+						int coords[3] = {0, OK_lines % N, OK_lines / N};
+						for(coords[0] = 0; coords[0] < N; coords[0]++) {
+							int idx = cell_idx(coords);
+							_sim_state.rho(idx, s) = std::stod(spl[coords[0]]);
+						}
 					}
 					OK_lines++;
 				}
@@ -160,31 +167,31 @@ CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyMod
 	if(user_integrator == "euler") {
 		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
-			integrator = new EulerCUDA<dims>(_sim_state, m, config);
+			integrator = std::make_unique<EulerCUDA<dims>>(_sim_state, m, config);
 #endif
 		}
 		else {
-			integrator = new EulerCPU<dims>(_sim_state, m, config);
+			integrator = std::make_unique<EulerCPU<dims>>(_sim_state, m, config);
 		}
 	}
 	else if(user_integrator == "euler_mobility") {
 		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
-			integrator = new EulerMobilityCUDA<dims>(_sim_state, m, config);
+			integrator = std::make_unique<EulerMobilityCUDA<dims>>(_sim_state, m, config);
 #endif
 		}
 		else {
-			integrator = new EulerMobilityCPU<dims>(_sim_state, m, config);
+			integrator = std::make_unique<EulerMobilityCPU<dims>>(_sim_state, m, config);
 		}
 	}
 	else if(user_integrator == "pseudospectral") {
 		if(sim_state.use_CUDA) {
 #ifndef NOCUDA
-			integrator = new PseudospectralCUDA<dims>(_sim_state, m, config);
+			integrator = std::make_unique<PseudospectralCUDA<dims>>(_sim_state, m, config);
 #endif
 		}
 		else {
-			integrator = new PseudospectralCPU<dims>(_sim_state, m, config);
+			integrator = std::make_unique<PseudospectralCPU<dims>>(_sim_state, m, config);
 		}
 	}
 	else if(user_integrator == "bailo") {
@@ -194,7 +201,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyMod
 #endif
 		}
 		else {
-			integrator = new BailoFiniteVolume<dims>(_sim_state, m, config);
+			integrator = std::make_unique<BailoFiniteVolume<dims>>(_sim_state, m, config);
 		}
 	}
 	else if(user_integrator == "pseudospectral_mobility") {
@@ -204,13 +211,14 @@ CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyMod
 #endif
 		}
 		else {
-			integrator = new PseudospectralMobilityCPU<dims>(_sim_state, m, config);
+			integrator = std::make_unique<PseudospectralMobilityCPU<dims>>(_sim_state, m, config);
 		}
 	}
 	else {
 		critical("Unsupported integrator {}", user_integrator);
 	}
 	integrator->validate();
+	_sim_state.integrator = integrator.get();
 
 	// the "free_energy" mobility model requires some of the model's internals to be initialised
 	// and since mobility is computed before the first evolve() call, we need to set it up now
@@ -220,9 +228,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyMod
 
 template<int dims>
 CahnHilliard<dims>::~CahnHilliard() {
-	if(integrator != nullptr) {
-		delete integrator;
-	}
+
 }
 
 template<int dims>
@@ -244,32 +250,27 @@ int CahnHilliard<dims>::cell_idx(int coords[dims]) {
 	return idx;
 }
 
-template<>
-std::array<double, 1> CahnHilliard<1>::gradient(MultiField<double> &field, int species, int idx) {
-	int idx_p = (idx + 1) & N_minus_one;
+template<int dims>
+Gradient<dims> CahnHilliard<dims>::gradient(MultiField<double> &field, int species, int idx) {
+    Gradient<dims> grad{};
 
-	return {(field(idx_p, species) - field(idx, species)) / dx};
-}
+    if constexpr (dims == 1) {
+        int idx_p = (idx + 1) & N_minus_one;
+        grad[0] = (field(idx_p, species) - field(idx, species)) / dx;
+    } 
+	else {
+        int coords[dims];
+        int coords_p[dims];
+        fill_coords(coords, idx);
 
-template<>
-std::array<double, 2> CahnHilliard<2>::gradient(MultiField<double> &field, int species, int idx) {
-	int coords_xy[2];
-	fill_coords(coords_xy, idx);
+        for(int d = 0; d < dims; d++) {
+            memcpy(coords_p, coords, sizeof(coords));
+            coords_p[d] = (coords[d] + 1) & N_minus_one;
+            grad[d] = (field(cell_idx(coords_p), species) - field(idx, species)) / dx;
+        }
+    }
 
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & N_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & N_minus_one
-	};
-
-	return {
-		(field(cell_idx(coords_xpy), species) - field(idx, species)) / dx,
-		(field(cell_idx(coords_xyp), species) - field(idx, species)) / dx
-	};
+    return grad;
 }
 
 template<int dims>
@@ -335,37 +336,6 @@ double CahnHilliard<dims>::average_pressure() {
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_species_density(int species, const std::string &filename, long long int t) {
-	std::ofstream output(filename);
-	print_species_density(species, output, t);
-	output.close();
-}
-
-template<int dims>
-void CahnHilliard<dims>::print_species_density(int species, std::ofstream &output, long long int t) {
-	integrator->sync();
-}
-
-template<int dims>
-void CahnHilliard<dims>::print_total_density(const std::string &filename, long long int t) {
-	integrator->sync();
-
-	std::ofstream output(filename.c_str());
-
-	output << fmt::format("# step = {}, t = {:.5}, size = {}", t, t * dt, _grid_size_str) << std::endl;
-	int newline_every = (dims == 1) ? 1 : N;
-	for(int idx = 0; idx < grid_size; idx++) {
-		if(idx > 0 && idx % newline_every == 0) {
-			output << std::endl;
-		}
-		output << _density_to_user(_sim_state.rho.field_sum(idx)) << " ";
-	}
-	output << std::endl;
-
-	output.close();
-}
-
-template<int dims>
 void CahnHilliard<dims>::print_pressure(const std::string &filename, long long int t) {
 	std::ofstream output(filename);
 	print_pressure(output, t);
@@ -396,12 +366,8 @@ void CahnHilliard<dims>::print_pressure(std::ofstream &output, long long int t) 
 	output << std::endl;
 }
 
-template<int dims>
-double CahnHilliard<dims>::_density_to_user(double v) {
-	return v / (_internal_to_user * _internal_to_user * _internal_to_user);
-}
-
 template class CahnHilliard<1>;
 template class CahnHilliard<2>;
+template class CahnHilliard<3>;
 
 } /* namespace ch */

@@ -71,6 +71,7 @@ IF(CUDA)
 
 	cuda_add_executable(ch_1D main.cpp)
 	cuda_add_executable(ch_2D main.cpp)
+	cuda_add_executable(ch_3D main.cpp)
 
 	set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 else()
@@ -79,6 +80,7 @@ else()
 	add_library(ch_common ${common_files})
 	add_executable(ch_1D main.cpp)
 	add_executable(ch_2D main.cpp)
+	add_executable(ch_3D main.cpp)
 endif(CUDA)
 	
 target_link_libraries(ch_1D ch_common spdlog::spdlog fftw3)
@@ -86,5 +88,8 @@ target_compile_definitions(ch_1D PRIVATE DIM=1)
 
 target_link_libraries(ch_2D ch_common spdlog::spdlog fftw3)
 target_compile_definitions(ch_2D PRIVATE DIM=2)
+
+target_link_libraries(ch_3D ch_common spdlog::spdlog fftw3)
+target_compile_definitions(ch_3D PRIVATE DIM=3)
 
 add_compile_options(-Wall -Wextra)

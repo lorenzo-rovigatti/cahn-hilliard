@@ -29,9 +29,8 @@ protected:
     SimulationState<dims> &_sim_state;
 };
 
-// Builders for supported dimensions
-IMobility<1> *build_mobility(toml::table &config, SimulationState<1> &state);
-IMobility<2> *build_mobility(toml::table &config, SimulationState<2> &state);
+template<int dims>
+IMobility<dims> *build_mobility(toml::table &config, SimulationState<dims> &state);
 
 } /* namespace ch */
 

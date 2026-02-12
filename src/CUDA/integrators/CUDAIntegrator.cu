@@ -71,5 +71,6 @@ void CUDAIntegrator<dims>::sync() {
 
 template class CUDAIntegrator<1>;
 template class CUDAIntegrator<2>;
+template class CUDAIntegrator<3>;
 
 } /* namespace ch */

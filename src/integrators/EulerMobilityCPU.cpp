@@ -125,5 +125,6 @@ void EulerMobilityCPU<dims>::evolve() {
 
 template class EulerMobilityCPU<1>;
 template class EulerMobilityCPU<2>;
+template class EulerMobilityCPU<3>;
 
 } /* namespace ch */

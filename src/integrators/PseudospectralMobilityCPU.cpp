@@ -633,5 +633,6 @@ int PseudospectralMobilityCPU<dims>::_gmres_solve(const std::vector<double> &b,
 
 template class PseudospectralMobilityCPU<1>;
 template class PseudospectralMobilityCPU<2>;
+template class PseudospectralMobilityCPU<3>;
 
 } /* namespace ch */

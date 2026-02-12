@@ -111,5 +111,6 @@ void PseudospectralCPU<dims>::evolve() {
 
 template class PseudospectralCPU<1>;
 template class PseudospectralCPU<2>;
+template class PseudospectralCPU<3>;
 
 } /* namespace ch */

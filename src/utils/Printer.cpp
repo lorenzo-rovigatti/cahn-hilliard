@@ -77,8 +77,6 @@ Printer<dims>::~Printer() {
 
 template <int dims>
 void Printer<dims>::print_current_state(std::string_view prefix, long long int time_step) {
-    _sim_state.integrator->sync();
-
     for(int i = 0; i < _sim_state.model->N_species(); i++) {
         auto filename = (_output_path / fmt::format("{}{}.dat", prefix, i)).string();
         _write_native(filename, i, time_step);
@@ -100,16 +98,14 @@ void Printer<dims>::print_current_state(std::string_view prefix, long long int t
 
 template <int dims>
 void Printer<dims>::add_to_trajectory(int species, long long int time_step) {
-    _sim_state.integrator->sync();
-
     if(_print_vtk) {
         auto vtk_filename = (_traj_path / fmt::format("traj_{}_{}.vtk", species, time_step)).string();
-        _write_vtk(vtk_filename, -1, time_step);
+        _write_vtk(vtk_filename, species, time_step);
     }
     else {
         std::string filename = (_traj_path / fmt::format("traj_{}.dat", species)).string();
         std::ofstream output(filename, std::ios_base::app);
-        _write_native(output, -1, time_step);
+        _write_native(output, species, time_step);
         output.close();
     }
 }

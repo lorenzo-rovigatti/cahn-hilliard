@@ -19,8 +19,8 @@ __device__ int _cell_idx(int bits, int coords[dims]) {
 	return idx;
 }
 
-template<int dims, typename number> 
-__device__ float _cell_laplacian(int size, int N, int bits, number *field, int idx, float dx) {
+template<int dims, typename number>
+__device__ float _cell_laplacian_old(int size, int N, int bits, number *field, int idx, float dx) {
     int base_idx = (idx / size) * size;
     int rel_idx = idx % size;
     int N_minus_one = N - 1;
@@ -65,9 +65,96 @@ __device__ float _cell_laplacian(int size, int N, int bits, number *field, int i
                 4.f * (float) field[idx])
                 / (dx * dx);
     }
-    else {
-        static_assert(dims == 1 || dims == 2, "Unsupported dims for the laplacian");
+    else if constexpr (dims == 3) {
+        int coords_xyz[3];
+        _fill_coords<3>(N, bits, coords_xyz, rel_idx);
+
+        int coords_xmyz[3] = {
+                (coords_xyz[0] - 1 + N) & N_minus_one,
+                coords_xyz[1],
+                coords_xyz[2]
+        };
+
+        int coords_xyzm[3] = {
+                coords_xyz[0],
+                (coords_xyz[1] - 1 + N) & N_minus_one,
+                coords_xyz[2]
+        };
+
+        int coords_xyzm2[3] = {
+                coords_xyz[0],
+                coords_xyz[1],
+                (coords_xyz[2] - 1 + N) & N_minus_one
+        };
+
+        int coords_xpyz[3] = {
+                (coords_xyz[0] + 1) & N_minus_one,
+                coords_xyz[1],
+                coords_xyz[2]
+        };
+
+        int coords_xyzp[3] = {
+                coords_xyz[0],
+                (coords_xyz[1] + 1) & N_minus_one,
+                coords_xyz[2]
+        };
+
+        int coords_xyzp2[3] = {
+                coords_xyz[0],
+                coords_xyz[1],
+                (coords_xyz[2] + 1) & N_minus_one
+        };
+
+        laplacian = (
+                (float) field[base_idx + _cell_idx<3>(bits, coords_xmyz)] +
+                (float) field[base_idx + _cell_idx<3>(bits, coords_xpyz)] +
+                (float) field[base_idx + _cell_idx<3>(bits, coords_xyzm)] +
+                (float) field[base_idx + _cell_idx<3>(bits, coords_xyzp)] +
+                (float) field[base_idx + _cell_idx<3>(bits, coords_xyzm2)] +
+                (float) field[base_idx + _cell_idx<3>(bits, coords_xyzp2)] -
+                6.f * (float) field[idx])
+                / (dx * dx);
     }
+    else {
+        static_assert(dims == 1 || dims == 2 || dims == 3, "Unsupported dims for the laplacian");
+    }
+
+    return laplacian;
+}
+
+template<int dims, typename number>
+__device__ float _cell_laplacian(int size, int N, int bits, number *field, int idx, float dx) {
+    int base_idx = (idx / size) * size;
+    int rel_idx = idx % size;
+    int N_minus_one = N - 1;
+
+    int coords[dims];
+    _fill_coords<dims>(N, bits, coords, rel_idx);
+
+    float laplacian = 0.f;
+
+    // Iterate through each dimension to compute neighbor contributions
+    #pragma unroll
+    for(int d = 0; d < dims; d++) {
+        int coords_p[dims], coords_m[dims];
+
+        #pragma unroll
+        for(int i = 0; i < dims; i++) {
+            coords_p[i] = coords[i];
+            coords_m[i] = coords[i];
+        }
+
+        // Positive and negative neighbors in dimension d
+        coords_p[d] = (coords[d] + 1) & N_minus_one;
+        coords_m[d] = (coords[d] - 1 + N) & N_minus_one;
+
+        laplacian += (float) field[base_idx + _cell_idx<dims>(bits, coords_p)];
+        laplacian += (float) field[base_idx + _cell_idx<dims>(bits, coords_m)];
+    }
+
+    // Subtract center value: (2 * dims) times
+    laplacian -= 2.f * dims * (float) field[idx];
+    laplacian /= (dx * dx);
 
     return laplacian;
 }

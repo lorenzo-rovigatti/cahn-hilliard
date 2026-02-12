@@ -231,5 +231,6 @@ void PseudospectralCUDA<dims>::evolve() {
 
 template class PseudospectralCUDA<1>;
 template class PseudospectralCUDA<2>;
+template class PseudospectralCUDA<3>;
 
 } /* namespace ch */

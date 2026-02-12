@@ -168,5 +168,6 @@ void EulerMobilityCUDA<dims>::evolve() {
 
 template class EulerMobilityCUDA<1>;
 template class EulerMobilityCUDA<2>;
+template class EulerMobilityCUDA<3>;
 
 } /* namespace ch */

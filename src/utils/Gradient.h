@@ -1,17 +1,16 @@
+#pragma once
 #include <array>
 
 // Templated class to store a staggered gradient at a single point in D-dimensional space
 template <std::size_t dims>
 class Gradient {
 public:
-    std::array<double, dims> components;  // Stores the gradient components in each dimension
+    std::array<double, dims> components;
 
-    // Constructor - Initializes to zero by default
     Gradient() {
         components.fill(0.0);
     }
 
-    // Constructor - Initialize with an array of values
     explicit Gradient(const std::array<double, dims>& values) : components(values) {}
 
     double& operator[](std::size_t index) {
@@ -22,7 +21,6 @@ public:
         return components[index];
     }
 
-    // Addition
     Gradient operator+(const Gradient& other) const {
         Gradient result;
         for (std::size_t i = 0; i < dims; i++)
@@ -30,7 +28,6 @@ public:
         return result;
     }
 
-    // Subtraction
     Gradient operator-(const Gradient& other) const {
         Gradient result;
         for (std::size_t i = 0; i < dims; i++) {
@@ -39,7 +36,6 @@ public:
         return result;
     }
 
-    // Scalar multiplication
     Gradient operator*(double scalar) const {
         Gradient result;
         for (std::size_t i = 0; i < dims; i++) {
@@ -48,7 +44,6 @@ public:
         return result;
     }
 
-    // Dot product
     double operator*(Gradient &other) const {
         double result = 0;
         for (std::size_t i = 0; i < dims; i++) {
@@ -57,7 +52,6 @@ public:
         return result;
     }
 
-    // In-place addition
     Gradient& operator+=(const Gradient& other) {
         for (std::size_t i = 0; i < dims; ++i) {
             components[i] += other.components[i];
@@ -65,7 +59,6 @@ public:
         return *this;
     }
 
-    // In-place subtraction
     Gradient& operator-=(const Gradient& other) {
         for (std::size_t i = 0; i < dims; ++i) {
             components[i] -= other.components[i];
@@ -85,7 +78,6 @@ public:
         return grad * scalar;
     }
 
-    // Print function for debugging
     void print() const {
         std::cout << "Gradient: (";
         for (std::size_t i = 0; i < dims; i++) {

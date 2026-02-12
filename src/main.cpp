@@ -1,5 +1,6 @@
 #include "CahnHilliard.h"
 #include "SimulationState.h"
+#include "integrators/Integrator.h"
 #include "models/Landau.h"
 #include "models/GenericWertheim.h"
 #include "models/RicciWertheim.h"
@@ -34,21 +35,6 @@ public:
 		_print_pressure_every = _config_optional_value<long long int>(config, "print_pressure_every", 0);
 		if(_print_pressure_every > 0) {
 			_print_average_pressure = true;
-		}
-
-		_print_traj_strategy = _config_optional_value<std::string>(config, "print_trajectory_strategy", "linear");
-		
-		if(_print_traj_strategy == "linear") {
-			_print_trajectory_every = _config_optional_value<long long int>(config, "print_trajectory_every", 0);
-			_print_last_every = _config_optional_value<long long int>(config, "print_last_every", _print_trajectory_every);
-		}
-		else if(_print_traj_strategy == "log") {
-			_log_n0 = _config_value<int>(config, "log_n0");
-			_log_fact = _config_value<double>(config, "log_fact");
-			_print_last_every = _config_value<long long int>(config, "print_last_every");
-		}
-		else {
-			critical("Unsupported printing strategy '{}'", _print_traj_strategy);
 		}
 
 		srand48(_config_optional_value<long long int>(config, "seed", std::time(NULL)));
@@ -105,21 +91,10 @@ public:
 
 			load_from.close();
 		}
-
-		_trajectories.resize(_sim_state.model->N_species());
-		if(_print_trajectory_every > 0 || _log_n0 > 0) {
-			for(int i = 0; i < _sim_state.model->N_species(); i++) {
-				_trajectories[i].open((_output_path / fmt::format("trajectory_{}.dat", i)).string(), _openmode);
-			}
-		}
 	}
 
 	~Manager() {
-		for(auto &traj : _trajectories) {
-			if(traj.good()) {
-				traj.close();
-			}
-		}
+
 	}
 
 	void run() {
@@ -137,6 +112,7 @@ public:
 			}
 			if(_printer->should_print_traj(_t)) {
 				for(int i = 0; i < _sim_state.model->N_species(); i++) {
+					_sim_state.integrator->sync();
 					_printer->add_to_trajectory(i, _t);
 				}
 				_traj_printed++;
@@ -180,16 +156,12 @@ private:
 	SimulationState<DIM> _sim_state;
 
 	bool _print_average_pressure;
-	std::string _print_traj_strategy;
 	long long int _initial_t = 0;
 	long long int _t;
-	long long int _steps, _print_mass_every, _print_trajectory_every, _print_last_every, _print_pressure_every;
+	long long int _steps, _print_mass_every, _print_pressure_every;
 	int _traj_printed = 0;
-	int _log_n0 = 0;
-	double _log_fact = 0;
 	std::ios_base::openmode _openmode = std::ios_base::out;
 
-	std::vector<std::ofstream> _trajectories;
 	std::unique_ptr<ch::CahnHilliard<DIM>> _system;
 	std::unique_ptr<ch::Printer<DIM>> _printer;
 

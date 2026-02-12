@@ -119,49 +119,41 @@ int BailoFiniteVolume<dims>::_cell_idx(int coords[dims]) {
 	return idx;
 }
 
-template<>
-double BailoFiniteVolume<1>::cell_laplacian(MultiField<double> &field, int species, int idx) {
-	int idx_m = (idx - 1 + this->_N_bins) & _N_per_dim_minus_one;
-	int idx_p = (idx + 1) & _N_per_dim_minus_one;
+template<int dims>
+double BailoFiniteVolume<dims>::cell_laplacian(MultiField<double> &field, int species, int idx) {
+    if constexpr (dims == 1) {
+        int idx_m = (idx - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
+        int idx_p = (idx + 1) & this->_N_per_dim_minus_one;
 
-	return (field(idx_m, species) + field(idx_p, species) - 2.0 * field(idx, species)) / SQR(this->_dx);
-}
+        return (field(idx_m, species)
+              + field(idx_p, species)
+              - 2.0 * field(idx, species)) / SQR(this->_dx);
+    } 
+	else {
+        int coords[dims];
+        int coords_n[dims];
+        this->_fill_coords(coords, idx);
 
-template<>
-double BailoFiniteVolume<2>::cell_laplacian(MultiField<double> &field, int species, int idx) {
-	int coords_xy[2];
-	_fill_coords(coords_xy, idx);
+        double sum = 0.0;
 
-	int coords_xmy[2] = {
-			(coords_xy[0] - 1 + this->_N_bins) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
+        for(int d = 0; d < dims; d++) {
+            // minus direction
+            memcpy(coords_n, coords, sizeof(coords));
+            coords_n[d] = (coords[d] - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
+            sum += field(this->_cell_idx(coords_n), species);
 
-	int coords_xym[2] = {
-			coords_xy[0],
-			(coords_xy[1] - 1 + this->_N_bins) & _N_per_dim_minus_one
-	};
+            // plus direction
+            memcpy(coords_n, coords, sizeof(coords));
+            coords_n[d] = (coords[d] + 1) & this->_N_per_dim_minus_one;
+            sum += field(this->_cell_idx(coords_n), species);
+        }
 
-	int coords_xpy[2] = {
-			(coords_xy[0] + 1) & _N_per_dim_minus_one,
-			coords_xy[1]
-	};
-
-	int coords_xyp[2] = {
-			coords_xy[0],
-			(coords_xy[1] + 1) & _N_per_dim_minus_one
-	};
-
-	return (
-			field(_cell_idx(coords_xmy), species) +
-			field(_cell_idx(coords_xpy), species) +
-			field(_cell_idx(coords_xym), species) +
-			field(_cell_idx(coords_xyp), species) -
-			4 * field(idx, species))
-			/ SQR(this->_dx);
+        return (sum - 2.0 * dims * field(idx, species)) / SQR(this->_dx);
+    }
 }
 
 template class BailoFiniteVolume<1>;
 template class BailoFiniteVolume<2>;
+template class BailoFiniteVolume<3>;
 
 } /* namespace */

@@ -88,8 +88,7 @@ double EulerCPU<dims>::_cell_laplacian(MultiField<double> &field, int species, i
 }
 
 template<int dims>
-Gradient<dims>
-EulerCPU<dims>::_cell_gradient(MultiField<double> &field, int species, int idx) {
+Gradient<dims> EulerCPU<dims>::_cell_gradient(MultiField<double> &field, int species, int idx) {
     Gradient<dims> grad{};
 
     if constexpr (dims == 1) {
@@ -130,5 +129,6 @@ double EulerCPU<dims>::_divergence(MultiField<Gradient<dims>> &flux, int species
 
 template class EulerCPU<1>;
 template class EulerCPU<2>;
+template class EulerCPU<3>;
 
 } /* namespace ch */

@@ -26,7 +26,7 @@ struct SimulationState {
 #endif
 
     std::unique_ptr<ch::FreeEnergyModel> model;
-    std::unique_ptr<ch::Integrator<dims>> *integrator;
+    Integrator<dims> *integrator;
 
     double user_to_internal;
     double internal_to_user;

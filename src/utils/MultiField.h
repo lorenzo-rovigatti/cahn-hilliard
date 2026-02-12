@@ -8,6 +8,9 @@
 #ifndef SRC_UTILS_MULTIFIELD_H_
 #define SRC_UTILS_MULTIFIELD_H_
 
+#include <cassert>
+#include <vector>
+
 namespace ch {
 
 template <class T>
