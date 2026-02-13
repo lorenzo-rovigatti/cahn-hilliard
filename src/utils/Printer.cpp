@@ -171,7 +171,7 @@ void Printer<dims>::_write_vtk(const std::string &filename, int species, long lo
     output << "DATASET STRUCTURED_POINTS\n";
     output << "DIMENSIONS " << nx << " " << ny << " " << nz << "\n";
     output << "ORIGIN 0 0 0\n";
-    output << "SPACING " << std::setprecision(16) << sx << " " << sy << " " << sz << "\n";
+    output << "SPACING " << sx << " " << sy << " " << sz << "\n";
     output << "POINT_DATA " << (static_cast<size_t>(nx) * ny * nz) << "\n";
     output << "SCALARS species_" << species << " double 1\n";
     output << "LOOKUP_TABLE default\n";
@@ -187,7 +187,7 @@ void Printer<dims>::_write_vtk(const std::string &filename, int species, long lo
                     idx += k * nx * ny;
                 }
                 double rho_value = (species == -1) ? _sim_state.rho.field_sum(idx) : _sim_state.rho(idx, species);
-                output << std::setprecision(16) << _sim_state.density_to_user(rho_value) << "\n";
+                output << std::scientific << _sim_state.density_to_user(rho_value) << "\n";
             }
         }
     }

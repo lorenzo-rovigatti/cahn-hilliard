@@ -56,6 +56,30 @@ PseudospectralCPU<dims>::PseudospectralCPU(SimulationState<dims> &sim_state, Fre
             }
         }
     }
+    else if constexpr (dims == 3) {
+        int k_idx = 0;
+        for(int species = 0; species < model->N_species(); species++) {
+            for(int kx_idx = 0; kx_idx < _reciprocal_n[0]; kx_idx++) {
+                int kx_i = (kx_idx < _reciprocal_n[0] / 2) ? kx_idx : (kx_idx - _reciprocal_n[0]);
+                double kx = 2.0 * M_PI * kx_i / (this->_N_per_dim * this->_dx);
+                
+                for(int ky_idx = 0; ky_idx < _reciprocal_n[1]; ky_idx++) {
+                    int ky_i = (ky_idx < _reciprocal_n[1] / 2) ? ky_idx : (ky_idx - _reciprocal_n[1]);
+                    double ky = 2.0 * M_PI * ky_i / (this->_N_per_dim * this->_dx);
+                    
+                    for(int kz_idx = 0; kz_idx < (_reciprocal_n[2] / 2 + 1); kz_idx++) {
+                        double kz = 2.0 * M_PI * kz_idx / (this->_N_per_dim * this->_dx);
+                        
+                        double k2 = SQR(kx) + SQR(ky) + SQR(kz);
+                        double k = std::sqrt(k2);
+                        dealiaser[k_idx] = (k <= k_cut) ? 1.0 : 0.0;
+                        sqr_wave_vectors[k_idx] = k2;
+                        k_idx++;
+                    }
+                }
+            }
+        }
+    }
     else {
         this->critical("Unsupported number of dimensions {}", dims);
     }
