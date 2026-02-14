@@ -77,13 +77,4 @@ public:
     friend Gradient operator*(double scalar, const Gradient& grad) {
         return grad * scalar;
     }
-
-    void print() const {
-        std::cout << "Gradient: (";
-        for (std::size_t i = 0; i < dims; i++) {
-            std::cout << components[i];
-            if (i < dims - 1) std::cout << ", ";
-        }
-        std::cout << ")\n";
-    }
 };

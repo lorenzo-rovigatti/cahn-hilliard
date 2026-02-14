@@ -82,14 +82,40 @@ else()
 	add_executable(ch_2D main.cpp)
 	add_executable(ch_3D main.cpp)
 endif(CUDA)
+
+# the latter two define's are required to work around a known toml++ bug (see https://github.com/marzer/tomlplusplus/issues/213)
+target_compile_definitions(ch_common PRIVATE 
+	TOML_EXCEPTIONS=0
+	TOML_ENABLE_FORMATTERS=0
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN=1
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED=1
+)
 	
 target_link_libraries(ch_1D ch_common spdlog::spdlog fftw3)
-target_compile_definitions(ch_1D PRIVATE DIM=1)
+target_compile_definitions(ch_1D PRIVATE 
+	DIM=1
+	TOML_EXCEPTIONS=0
+	TOML_ENABLE_FORMATTERS=0
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN=1
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED=1
+)
 
 target_link_libraries(ch_2D ch_common spdlog::spdlog fftw3)
-target_compile_definitions(ch_2D PRIVATE DIM=2)
+target_compile_definitions(ch_2D PRIVATE
+	DIM=2
+	TOML_EXCEPTIONS=0
+	TOML_ENABLE_FORMATTERS=0
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN=1
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED=1
+)
 
 target_link_libraries(ch_3D ch_common spdlog::spdlog fftw3)
-target_compile_definitions(ch_3D PRIVATE DIM=3)
+target_compile_definitions(ch_3D PRIVATE
+	DIM=3
+	TOML_EXCEPTIONS=0
+	TOML_ENABLE_FORMATTERS=0
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN=1
+	TOML_RETURN_BOOL_FROM_FOR_EACH_BROKEN_ACKNOWLEDGED=1
+)
 
 add_compile_options(-Wall -Wextra)

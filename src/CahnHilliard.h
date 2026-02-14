@@ -30,7 +30,7 @@ public:
 	int N = 0;
 	int N_minus_one = 0;
 	int bits = 0;
-	int grid_size = 0; // size of the grid
+	int grid_size = 0;
 	double dt = 0.0;
 	double k_laplacian = 0.0;
 	double dx = 0.0;
