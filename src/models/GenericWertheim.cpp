@@ -58,7 +58,7 @@ GenericWertheim::GenericWertheim(toml::table &config) :
 			auto interaction = _config_value<std::string>(*elem.as_table(), "interaction");
 			int patch_A, patch_B;
 			std::tie(patch_A, patch_B) = _parse_interaction(interaction, "delta");
-			
+
 			double my_delta = Delta(toml::node_view<const toml::node>{ elem }); // the horror
 			info("Adding {}-{} interaction with delta = {:.2f}", patch_A, patch_B, my_delta);
 			my_delta *= CUB(_user_to_internal);

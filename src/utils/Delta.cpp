@@ -18,17 +18,21 @@ Delta::Delta(toml::node_view<const toml::node> nv) {
 	}
 	else if(nv.is_table()){
 		const toml::table &delta_table = *nv.as_table();
-		double T = _config_value<double>(delta_table, "T");
-		double salt = _config_optional_value<double>(delta_table, "salt", 1.0);
-		int L_DNA = _config_optional_value<int>(delta_table, "sticky_size", 6);
-		double delta_H = _config_value<double>(delta_table, "deltaH");
-		double delta_S = _config_value<double>(delta_table, "deltaS");
 
-		double delta_S_salt = 0.368 * (L_DNA - 1.0) * std::log(salt);
-		double delta_G = delta_H - T * (delta_S + delta_S_salt);
+		_delta = _config_optional_value<double>(delta_table, "value", 0.0);
+		if(_delta == 0.0) {
+			double T = _config_value<double>(delta_table, "T");
+			double salt = _config_optional_value<double>(delta_table, "salt", 1.0);
+			int L_DNA = _config_optional_value<int>(delta_table, "sticky_size", 6);
+			double delta_H = _config_value<double>(delta_table, "deltaH");
+			double delta_S = _config_value<double>(delta_table, "deltaS");
 
-		const double k_B = 1.9872036;
-		_delta = 1.6606 * std::exp(-delta_G / (k_B * T));
+			double delta_S_salt = 0.368 * (L_DNA - 1.0) * std::log(salt);
+			double delta_G = delta_H - T * (delta_S + delta_S_salt);
+
+			const double k_B = 1.9872036;
+			_delta = 1.6606 * std::exp(-delta_G / (k_B * T));
+		}
 	}
 	else {
 		std::ostringstream oss;
