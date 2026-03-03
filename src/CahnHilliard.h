@@ -18,9 +18,6 @@
 
 #include <vector>
 #include <string>
-#include <array>
-#include <complex>
-#include <fftw3.h>
 
 namespace ch {
 

@@ -11,8 +11,6 @@
 #include "../Object.h"
 #include "../utils/MultiField.h"
 
-#include <vector>
-
 namespace ch {
 
 class FreeEnergyModel : public Object {
