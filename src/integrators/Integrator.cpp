@@ -9,12 +9,14 @@ Integrator<dims>::Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *
                 _model(model) {
 
     _mobility_type = _config_optional_value<std::string>(config, "mobility.type", "constant");
-    _k_laplacian = _config_optional_value<double>(config, "k", 1.0);
+    _k_laplacian = _config_array_values<double>(config, "k", model->N_species());
     _dt = _config_value<double>(config, "dt");
     _dx = _config_optional_value<double>(config, "dx", 1.0);
 
     _dx *= sim_state.user_to_internal; // proportional to m
-	_k_laplacian *= std::pow(sim_state.user_to_internal, 5); // proportional to m^5
+    for(auto &k : _k_laplacian) {
+        k *= std::pow(sim_state.user_to_internal, 5); // proportional to m^5
+    }
 
     _N_per_dim = _config_value<int>(config, "N");
     _N_bins = _N_per_dim;
@@ -23,7 +25,12 @@ Integrator<dims>::Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *
 	}
     _N_species = model->N_species();
 
-    info("Integrator initialized with dt = {}, dx = {}, k = {}", _dt, _dx, _k_laplacian);
+    std::stringstream k_laplacian_str;
+    for(auto k : _k_laplacian) {
+        k_laplacian_str << k << " ";
+    }
+
+    info("Integrator initialized with dt = {}, dx = {}, k = {}", _dt, _dx, k_laplacian_str.str());
 }
 
 template<int dims>

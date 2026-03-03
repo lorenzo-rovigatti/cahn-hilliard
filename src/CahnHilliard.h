@@ -29,7 +29,7 @@ public:
 	int bits = 0;
 	int grid_size = 0;
 	double dt = 0.0;
-	double k_laplacian = 0.0;
+	std::vector<double> k_laplacian;
 	double dx = 0.0;
 	double V_bin;
 	FreeEnergyModel *model = nullptr;

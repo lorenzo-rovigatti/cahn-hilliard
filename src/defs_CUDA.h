@@ -85,4 +85,6 @@ using field_type = float;
 using field_type = double;
 #endif /* CUDA_FIELD_FLOAT */
 
+#define MAX_N_SPECIES 10
+
 #endif /* SRC_DEFS_CUDA_H_ */

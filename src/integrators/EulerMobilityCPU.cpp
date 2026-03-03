@@ -38,7 +38,7 @@ void EulerMobilityCPU<dims>::evolve() {
     this->_model->der_bulk_free_energy(this->_rho, mu);
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
         for(int s = 0; s < this->_model->N_species(); s++) {
-            mu(idx, s) -= 2.0 * this->_k_laplacian * this->_cell_laplacian(this->_rho, s, idx);
+            mu(idx, s) -= 2.0 * this->_k_laplacian[s] * this->_cell_laplacian(this->_rho, s, idx);
         }
     }
 

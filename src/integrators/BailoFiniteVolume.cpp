@@ -69,7 +69,6 @@ BailoFiniteVolume<dims>::BailoFiniteVolume(SimulationState<dims> &sim_state, Fre
     N_bins = this->_N_bins;
     fe_model = model;
     bailo<dims> = this;
-    k_laplacian = this->_k_laplacian;
 	dx = this->_dx;
 	dt = this->_dt;
 	base_csi = MultiField<double>(N_bins, fe_model->N_species());
@@ -89,7 +88,7 @@ void BailoFiniteVolume<dims>::evolve() {
 	for(int idx = 0; idx < N_bins; idx++) {
         for(int species = 0; species < fe_model->N_species(); species++) {
     		double F_der_exp = fe_model->der_bulk_free_energy_expansive(species, rho_curr.species_view(idx));
-			double interf_exp = 2 * k_laplacian * bailo<dims>->cell_laplacian(rho_curr, species, idx);
+			double interf_exp = 2 * this->_k_laplacian[species] * bailo<dims>->cell_laplacian(rho_curr, species, idx);
 			base_csi(idx, species) = F_der_exp - 0.5 * interf_exp;
         }
     }

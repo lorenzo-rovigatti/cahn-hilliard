@@ -36,7 +36,7 @@ CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyMod
 				model(m) {
 
 	N = _config_value<int>(config, "N");
-	k_laplacian = _config_optional_value<double>(config, "k", 1.0);
+	k_laplacian = _config_array_values<double>(config, "k", model->N_species());
 	dt = _config_value<double>(config, "dt");
 	dx = _config_optional_value<double>(config, "dx", 1.0);
 	_internal_to_user = _config_optional_value<double>(config, "distance_scaling_factor", 1.0);
@@ -151,7 +151,9 @@ CahnHilliard<dims>::CahnHilliard(SimulationState<dims> &sim_state, FreeEnergyMod
 	}
 
 	dx *= _user_to_internal; // proportional to m
-	k_laplacian *= std::pow(_user_to_internal, 5); // proportional to m^5
+	for(auto &k : k_laplacian) {
+		k *= std::pow(_user_to_internal, 5); // proportional to m^^5
+	}
 	for(unsigned int idx = 0; idx < _sim_state.rho.bins(); idx++) {
 		for(int species = 0; species < model->N_species(); species++) {
 			_sim_state.rho(idx, species) /= CUB(_user_to_internal); // proportional to m^-3
@@ -304,7 +306,7 @@ double CahnHilliard<dims>::average_free_energy() {
 		for(int species = 0; species < model->N_species(); species++) {
 			auto rho_grad = gradient(_sim_state.rho, species, i);
 			for(int d = 0; d < dims; d++) {
-				interfacial_contrib += k_laplacian * rho_grad[d] * rho_grad[d];
+				interfacial_contrib += k_laplacian[species] * rho_grad[d] * rho_grad[d];
 			}
 		}
 		fe += model->bulk_free_energy(_sim_state.rho.species_view(i)) + interfacial_contrib;
@@ -327,7 +329,7 @@ double CahnHilliard<dims>::average_pressure() {
 			pressure += model->pressure(species, _sim_state.rho.species_view(i));
 			auto rho_grad = gradient(_sim_state.rho, species, i);
 			for(int d = 0; d < dims; d++) {
-				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
+				pressure -= 0.5 * k_laplacian[species] * rho_grad[d] * rho_grad[d];
 			}
 		}
 	}
@@ -358,7 +360,7 @@ void CahnHilliard<dims>::print_pressure(std::ofstream &output, long long int t) 
 			pressure += model->pressure(species, _sim_state.rho.species_view(idx));
 			auto rho_grad = gradient(_sim_state.rho, species, idx);
 			for(int d = 0; d < dims; d++) {
-				pressure -= 0.5 * k_laplacian * rho_grad[d] * rho_grad[d];
+				pressure -= 0.5 * k_laplacian[species] * rho_grad[d] * rho_grad[d];
 			}
 		}
 		output << pressure << " ";

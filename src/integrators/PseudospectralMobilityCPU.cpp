@@ -246,7 +246,7 @@ void PseudospectralMobilityCPU<dims>::_evolve_simple() {
 
     // 3) build full mu_hat = mu_bulk_hat + 2k * k^2 * rho_hat
     for(int k = 0; k < _hat_vector_size; k++) {
-        mu_hat[k] = f_der_hat[k] + 2.0 * this->_k_laplacian * sqr_wave_vectors[k] * rho_hat[k];
+        mu_hat[k] = f_der_hat[k] + 2.0 * this->_k_laplacian[0] * sqr_wave_vectors[k] * rho_hat[k];
         if(use_dealias) {
             mu_hat[k] *= dealiaser[k];
         }
@@ -299,7 +299,7 @@ void PseudospectralMobilityCPU<dims>::_evolve_simple() {
         double k2 = sqr_wave_vectors[k];
         double k4 = SQR(k2);
 
-        double denom = 1.0 + this->_dt * M0_species[s] * (_S * k2 + 2.0 * this->_k_laplacian * k4);
+        double denom = 1.0 + this->_dt * M0_species[s] * (_S * k2 + 2.0 * this->_k_laplacian[0] * k4);
         rho_hat[k] = rho_hat_copy[k] = (rho_hat[k] + this->_dt * divJ_hat[k] - this->_dt * M0_species[s] * k2 * (f_der_hat[k] - _S * rho_hat[k])) / denom;
 
         rho_hat_copy[k] /= this->_N_bins;
@@ -448,7 +448,7 @@ void PseudospectralMobilityCPU<dims>::_apply_Pinv(const std::vector<double> &r, 
         double k2v = sqr_wave_vectors[k];
         double k4v = k2v * k2v;
 
-        double denom = 1.0 + this->_dt * M0_species[s] * (_S * k2v + 2.0 * this->_k_laplacian * k4v);
+        double denom = 1.0 + this->_dt * M0_species[s] * (_S * k2v + 2.0 * this->_k_laplacian[0] * k4v);
         tmp_hat[k] /= denom;
     }
 
@@ -478,7 +478,7 @@ void PseudospectralMobilityCPU<dims>::_apply_A(const std::vector<double> &x, std
     // q_hat = (S + 2k*k^2) * x_hat   (since -2k laplacian x => +2k*k^2 * x_hat)
     for(int k = 0; k < _hat_vector_size; k++) {
         double k2v = sqr_wave_vectors[k];
-        q_hat[k] = (_S + 2.0 * this->_k_laplacian * k2v) * tmp_hat[k];
+        q_hat[k] = (_S + 2.0 * this->_k_laplacian[0] * k2v) * tmp_hat[k];
         if(use_dealias) {
             q_hat[k] *= dealiaser[k];
         }

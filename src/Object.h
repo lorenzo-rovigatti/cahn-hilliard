@@ -71,7 +71,7 @@ public:
 			}
 		}
 		if(output_size > 0 && output.size() != output_size) {
-			critical("Option '{}' should be a single value or an array of size {}", path, output_size);
+			critical("Option '{}' should be a single value or an array of size {}, not {}", path, output_size, output.size());
 		}
 
 		return output;

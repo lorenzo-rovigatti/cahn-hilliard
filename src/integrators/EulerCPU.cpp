@@ -21,7 +21,7 @@ void EulerCPU<dims>::evolve() {
 	this->_model->der_bulk_free_energy(this->_rho, rho_der);
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
         for(int species = 0; species < this->_N_species; species++) {
-            rho_der(idx, species) -= 2 * this->_k_laplacian * _cell_laplacian(this->_rho, species, idx);
+            rho_der(idx, species) -= 2 * this->_k_laplacian[species] * _cell_laplacian(this->_rho, species, idx);
         }
     }
 
