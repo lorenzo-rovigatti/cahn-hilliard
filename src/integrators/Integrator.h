@@ -29,7 +29,7 @@ protected:
     int _N_bins = 0;
     int _N_species = 0;
     double _dt = 0.0;
-	double _k_laplacian = 0.0;
+	std::vector<double> _k_laplacian;
 	double _dx = 0.0;
     std::string _mobility_type;
 

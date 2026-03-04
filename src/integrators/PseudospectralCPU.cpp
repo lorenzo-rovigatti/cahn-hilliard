@@ -122,8 +122,9 @@ void PseudospectralCPU<dims>::evolve() {
 
         double k2 = sqr_wave_vectors[k_idx];
         double k4 = SQR(k2);
+        int species = k_idx / hat_grid_size;
 
-        double denom = 1.0 + this->_dt * M * (_splitting_S * k2 + 2.0 * this->_k_laplacian * k4);
+        double denom = 1.0 + this->_dt * M * (_splitting_S * k2 + 2.0 * this->_k_laplacian[species] * k4);
         rho_hat[k_idx] = rho_hat_copy[k_idx] = (rho_hat[k_idx] - this->_dt * M * k2 * (f_der_hat[k_idx] - _splitting_S * rho_hat[k_idx])) / denom;
 
         rho_hat_copy[k_idx] /= this->_N_bins;

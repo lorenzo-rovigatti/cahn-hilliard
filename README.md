@@ -11,7 +11,7 @@ Compilation requires CMake. Follow these steps to compile the code:
 3. `cmake ..`
 4. `make`
 
-At the end of the process two executables, `ch_1D` and `ch_2D`, will be placed in the `build` folder.
+At the end of the process three executables, `ch_1D`, `ch_2D`, and `ch_3D` will be placed in the `build` folder.
 
 ## Usage
 
@@ -19,37 +19,137 @@ The two executables are used to run simulations in 1D and 2D, respectively, and 
 
 Look at the `examples` folder for some runnable input files. Most of the options should be self-explanatory. The code prints an output consisting of four columns (time, free energy per bin, mass per bin and time step) both to the standard output and to file. It also appends configurations to the trajectory files (one for each species). In addition, the code also prints standalone configuration files every time 
 
-Here is a (likely incomplete) list of options. Note that each free energy model requires specific options, which are detailed further below. Non-mandatory options are enclosed in square brackets, and their default values are specified after the equal sign.
+Here is a (code-accurate) list of input keys and their behaviour. Non-mandatory options show their default values in brackets. Where a numeric value is accepted both as integer or floating point the code will accept either (integers are converted to the appropriate floating type when needed).
 
-* `steps` (integer): the number of integration steps that will be carried out.
-* `print_every` (integer): the frequency with which the output is printed (in number of integration steps).
-* `[print_trajectory_strategy = "linear"]` (string): controls the way the trajectory files are updated. There are two supported strategies:
-  1. "linear": print configurations with fixed frequency. The behaviour is controlled by two options:
-    * `[print_trajectory_every = 0]`: the frequency with which the configuration is appended to the trajectory.
-    * `[print_last_every = print_trajectory_every]`: the frequency with which the configuration is printed to `last_*` files
-  2. "log": use a logarithmic spacing to print the configurations. With this strategy, the time at which the next configuration is printed is given by ${\rm round}(n_0 f^N)$, where $n_0$ and $f$ are set with the `log_n0` and `log_fact` options, and $N$ is the number of configurations that have been already printed. The behaviour is controlled by the following options:
-    * `log_n0`: the $n_0$ constant.
-    * `log_fact`: the $f$ constant.
-    * `print_last_every`: the (linear) frequency with which the configuration is printed to `last_*` files. Note that this option is mandatory when the "log" printing strategy is specified.
-* `[seed = time(NULL)]`: the seed used to initialise the random number generator.
-* `free_energy`: the free energy model to be used (see [below](#free-energy-models) for a list of models).
-* `N`: the linear size of the simulation grid. In 1D system this is the number of bins, whereas in 2D the number of bins is `N` squared.
-* `k`: the coefficient linked to the free energy penalty that comes with the creation of an interface between two phases in the Cahn-Hilliard equation.
-* `dt`: the integration time step.
-* `dx`: the linear size of the bins, in nanometers.
-* `[distance_scaling_factor = 1]`: a numerical factor used internally to rescale all lengths. Depending on the free energy model and on the parameters chosen, changing this value may increase the numerical stability of the simulation. For instance, in DNA nanostar systems setting it to 10 brings densities and other numerical constants rather close to 1, which helps the numerical stability, especially on GPUs.
-* `[integrator = "euler"]`: the algorithm that will be used to integrate the Cahn-Hilliard equation in time (see [below](#integrators) for a list of integrators).
-* `[use_CUDA = false]`: if `true`, the simulation will be run on the GPU.
-* `load_from`: the filename of the initial configuration. See [below](#initial-configuration) for details.
-* `initial_density`: used only if `load_from` is not specified, this is the average density of the initial configuration, which will be generated randomly. This should be either a single value, or an array with as many entries as the number of species to be simulated, which is controlled by the free energy model chosen. The way the random configuration is generated is controlled by the `initial_A` and `initial_N_peaks` options (see [below](#initial-configuration) for details). 
+- `steps` (integer, required): number of integration steps to run. Must be >= 0. Parsed as a 64-bit integer.
+- `print_every` (integer, optional, default: `0`): frequency (in steps) at which the main energy/mass/time output line is written to `energy.dat` and to stdout. When `0` no periodic energy output is produced.
+- `print_average_pressure` (bool, optional, default: `false`): if `true`, the average pressure is appended to the energy output and written to `pressure.dat` when `print_pressure_every` > 0.
+- `print_pressure_every` (integer, optional, default: `0`): frequency (in steps) to compute and write the pressure to `pressure.dat`.
+- `print_trajectory_strategy` (string, optional, default: `"linear"`): controls trajectory printing. Supported values:
+  - `"linear"`: print configurations at fixed intervals using `print_trajectory_every`.
+  - `"log"`: print configurations at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
+- `print_trajectory_every` (integer, optional, default: `0`): when using the `linear` strategy, append configurations to the trajectory every this many steps. If `0` no trajectory is appended.
+- `print_last_every` (integer, optional): frequency (in steps) to write the `last_*` snapshot files. Defaults to the value of `print_trajectory_every` for the `linear` strategy. When using the `log` strategy `print_last_every` is required and must be explicitly provided.
+- `log_n0` (integer, required for `log` strategy): base step for the logarithmic spacing.
+- `log_fact` (double, required for `log` strategy): multiplicative factor for the logarithmic spacing.
+- `seed` (integer, optional, default: `time(NULL)`): seed used to initialise the RNG (parsed as 64-bit integer).
+- `free_energy` (string, required): selects the free-energy model. Accepted values include `landau`, `simple_wertheim`, `saleh`, `generic_wertheim`, `ricci` (see the "Free energy models" section).
+- `N` (integer, required): linear size per dimension. Must be a power of two. The total number of cells is `N` (1D), `N*N` (2D) or `N*N*N` (3D) depending on the executable.
+- `k` (single value or array, required): interfacial penalty coefficient(s). The code accepts either a single numeric value (applied to all species) or an array with one value per species. Values may only be specified as floating point numbers.
+- `dt` (double, required): time step used by the integrator.
+- `dx` (double, optional, default: `1.0`): physical bin size (units used by the user). The code rescales `dx` internally according to `distance_scaling_factor`.
+- `distance_scaling_factor` (double, optional, default: `1.0`): rescales user lengths to the internal units. Internally the code multiplies `dx` by `user_to_internal` and rescales `k` and densities accordingly; changing this can improve numerical stability for particular models.
+- `integrator` (string, optional, default: `"euler"`): integration scheme. Supported values include `euler`, `euler_mobility`, `pseudospectral`, `pseudospectral_mobility`, `bailo`. When `use_CUDA = true` some integrators have CUDA implementations (the code chooses the appropriate variant automatically).
+- `use_CUDA` (bool, optional, default: `false`): enable CUDA-enabled integrators (when built with CUDA support).
+- `output.path` (string, optional, default: `.`): directory where `last_*`, `*_*.dat` and `energy.dat` are written.
+- `output.print_vtk` (bool, optional, default: `false`): when `true` produce VTK files instead of the native text format for snapshots.
+- `output.trajectory_path` (string, optional): directory where trajectory files are written. When `output.print_vtk = true` this key is mandatory; otherwise it defaults to `output.path`.
+- `load_from` (string, optional): path to a plain-text file used to initialise the fields. If present the file is parsed and used as the starting configuration (see "Initial configuration" below). When restarting from a `load_from` file the program will append to existing outputs.
+- `initial_density` (single value or array, optional if `load_from` is present): average density used to randomly generate the initial configuration when `load_from` is not given. Accepts a single numeric value (applied to all species) or an array with one value per species.
+- `initial_A` (double, optional, default: `1e-2`): amplitude of an optional sinusoidal modulation applied to the initial condition.
+- `initial_N_peaks` (integer, optional, default: `0`): number of peaks for the initial sinusoidal modulation. When `0` the initial condition is purely random (white-noise like) around `initial_density`.
+
+Notes about numeric fields and arrays:
+- Keys parsed with the helper `_config_array_values<T>` may be provided either as a single value or as an array. If a single value is provided and an `output_size` (for example the number of species) is required the single value is replicated to match the expected size.
+- Arrays must be homogeneous (all elements of the same TOML numeric type).
+
 
 ## Initial configuration
 
-To be written
+The program accepts an initial-configuration file in the native text format produced by the program itself (or a file using the same layout). Alternatively, when `load_from` is not present the initial configuration is generated randomly from the TOML options described below.
+
+Native text format (accepted by `load_from`)
+- The file is plain text and usually starts with a header line in the form printed by the program:
+
+  # step = <step>, t = <time>, size = Nx[ xNy[ xNz]]
+
+- After the header the field values follow as whitespace-separated numbers. The layout depends on dimensionality (`N`):
+  - 1D: the file contains `N` non-comment lines for each species; each line is a single number (the density for that bin).
+  - 2D: the file contains `N` non-comment lines for each species; each line contains `N` whitespace-separated numbers (rows of the 2D grid, left-to-right).
+  - 3D: the file contains `N*N` non-comment lines for each species; each line contains `N` whitespace-separated numbers. The data are written in a flattened order so that each line holds `N` values and the set of `N*N` lines represents the full `N x N x N` grid.
+
+- Lines beginning with `#` are treated as comments and ignored when the file is read back with `load_from`.
+
+Notes about `load_from` parsing
+- The program reads the file species-by-species: for each species it skips comment lines and reads the expected number of data lines (see dims above). The native output produced by a run of the program (the `last_*` or `traj_*.dat` native files) can be reused as a `load_from` file for a later run.
+
+Generating the initial configuration randomly from the TOML input
+- If `load_from` is not given, the initial field is created using the following TOML options:
+  - `initial_density`: a single numeric value (applied to all species) or an array with one value per species. The code uses `_config_array_values<double>` to read this key and will replicate a single value to all species if needed.
+  - `initial_A` (double, default `1e-2`): amplitude of an optional sinusoidal modulation applied across bins.
+  - `initial_N_peaks` (integer, default `0`): number of peaks of the sinusoidal modulation. When `0` the initialization is purely random (white-noise like) around `initial_density`.
+
+- The initialization algorithm (as implemented in the code) computes a modulation wavevector
+
+  initial_k = 2 * pi * initial_N_peaks / N
+
+  then for each linear bin index `bin` (0..grid_size-1) it computes
+
+  modulation = initial_A * cos(initial_k * bin)
+
+  and a `random_factor`:
+  - if `initial_N_peaks == 0`: `random_factor = drand48() - 0.5` (zero-mean white noise)
+  - otherwise: `random_factor = 1.0 + 0.02 * (drand48() - 0.5)` (small random perturbation around 1)
+
+  For each species `i` the initial value placed in the internal grid is
+
+  - if `average_rho != 0`: rho = average_rho * (1.0 + 2.0 * modulation * random_factor)
+  - else: rho = 2.0 * modulation * random_factor
+
+- The values are generated in user units and are later rescaled internally according to `distance_scaling_factor` (see the `distance_scaling_factor` / `dx` discussion above). The RNG seed can be set via `seed` (defaults to `time(NULL)`).
+
+Practical tips
+- If you want to produce a reproducible starting file, set the `seed` option or run the program once to write a `last_*` snapshot (or `traj_*.dat`), then reuse that file as `load_from` for subsequent runs.
+- Make sure the file you provide as `load_from` matches the dimensionality (`ch_1D` / `ch_2D` / `ch_3D`) and the declared `N` used in the TOML configuration.
 
 ## Integrators
 
-To be written
+The code implements several time integrators. Choose one with the `integrator` key in the TOML input. When `use_CUDA = true` the program will automatically select CUDA implementations if available.
+
+- `euler` (default) — explicit finite-difference Euler stepping
+  - Description: a straightforward explicit finite-difference discretisation of the continuity equation used for Cahn–Hilliard evolution. It computes local gradients and laplacians on the grid and advances densities explicitly by `dt`.
+  - Use when: you want a simple, robust CPU implementation. Time-step `dt` must be chosen small enough for stability (explicit schemes are conditionally stable).
+
+- `euler_mobility` — explicit Euler with (possibly variable) mobility
+  - Description: same spatial discretisation as `euler` but supports non-constant, density-dependent mobility fields. The integrator optionally adds stochastic noise to the mobility-driven flux when configured.
+  - Config/notes: this integrator advertises support for non-constant mobility in the code; it accepts mobility-related parameters through the model/mobility interfaces. Noise can be enabled via integrator-specific TOML keys (see model/integrator docs or inspect `EulerMobilityCPU` for exact keys).
+  - Use when: your free-energy model requires spatially varying mobility or you want to include mobility noise.
+
+- `pseudospectral` — semi-implicit pseudospectral (FFT) integrator with mobility splitting
+  - Description: FFT-based semi-implicit scheme. The integrator advances the solution in Fourier space using a semi-implicit factor for the highest-order (Laplacian) terms, while lower-order and mobility-correction terms are handled explicitly in real space and added as a correction. This improves stability and allows larger `dt` than explicit Euler for the same spatial resolution.
+  - Important config keys (examples):
+    - `mobility.M0` (double, optional): base mobility used in the splitting (defaults to a value derived from the mobility object).
+    - `semi_implicit.rho_floor` (double, optional, default `0.0`): clamp applied to `rho` before calling free-energy derivatives.
+    - `semi_implicit.dealias` (bool, optional, default `false`): enable dealiasing in spectral operations.
+  - Use when: you need better stability / larger time-steps and can pay the FFT cost. Works well with smooth fields and periodic boundary conditions.
+
+- `pseudospectral_mobility` — pseudospectral scheme with explicit treatment of mobility corrections
+  - Description: variant of the `pseudospectral` integrator that explicitly accounts for variable mobility via a splitting strategy (compute correction terms in real space and transform them when needed).
+  - Use when: mobility varies significantly and you still want the stability benefits of a semi-implicit spectral solver.
+
+Notes and selection guidance
+- Explicit schemes (`euler`, `euler_mobility`) are simple and sometimes faster per-step on small grids, but require smaller `dt` for stability.
+- Pseudospectral integrators require FFT libraries (the code uses FFTW on CPU and cuFFT on CUDA). They permit larger `dt` and can be more efficient on large grids, especially when paired with optimized FFT backends.
+- CUDA implementations exist for most integrators; enable them with `use_CUDA = true` and ensure the code was built with CUDA support.
+
+S splitting parameter for pseudospectral integrators
+- Key: `pseudospectral.S` (double, optional, default `0.0`)
+- Role: `S` is a linear splitting parameter used in the semi-implicit spectral update. The pseudospectral integrator advances the Fourier components using a denominator of the form
+
+  denom = 1 + dt * M * (S * k^2 + 2 * k_laplacian * k^4)
+
+  and subtracts an implicit linear contribution `S * rho_hat` from the explicit free-energy derivative term. In practice this moves a linearised part of the chemical-potential derivative into the implicit side, increasing numerical stability for stiff nonlinearities.
+
+- Guidance:
+  - Default `S = 0.0` leaves the method semi-implicit only for the highest-order (k^4) term. Increasing `S` increases implicit stabilization and typically allows larger `dt` at similar stability.
+  - Choose `S` based on the scale of the (local) derivative of the free-energy: a reasonable heuristic is to set `S` approximately equal to the largest expected value of f''(rho) (the derivative of `f'` with respect to density) in user units. For example, for a Landau model with f' = -epsilon * psi + psi^3, f'' = -epsilon + 3 psi^2 — if |psi| ~ 1 and epsilon small, `S ~ 3` is a sensible starting point.
+  - Larger `S` stabilises the scheme but may overdamp fast modes and reduce accuracy; tune `S` and `dt` together.
+
+Example (TOML):
+
+```
+pseudospectral = { S = 2.0, use_dealias = true }
+```
 
 ## Free energy models
 

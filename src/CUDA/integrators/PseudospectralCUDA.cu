@@ -11,8 +11,10 @@ __constant__ int c_N[1]; // number of bins along each direction
 __constant__ int c_size[1]; // size of the grid of a single species (N**d)
 __constant__ int c_N_species[1];
 __constant__ int c_grid_size[1]; // size of the arrays, size * N_species
+__constant__ int c_hat_grid_size[1]; // size of the arrays in Fourier space
 __constant__ int c_bits[1];
 __constant__ float c_splitting_S[1];
+__constant__ float c_k_laplacian[MAX_N_SPECIES]; // surface tension parameter for each species
 
 __device__ cufftComplex operator*(const cufftComplex &lhs, const float &rhs) {
     return cufftComplex({lhs.x * rhs, lhs.y * rhs});
@@ -52,8 +54,9 @@ __global__ void _integrate_fft_kernel(cufftFieldComplex *rho_hat, cufftFieldComp
     float k2 = sqr_wave_vectors[IND];
     float k4 = SQR(k2);
     cufftComplex f_der_hat_dealiased = f_der_hat[IND];// * dealiaser[IND];
+    int species = IND / c_hat_grid_size[0];
     
-    float denom = 1.f + dt * M * (c_splitting_S[0] * k2 + 2.f * k_laplacian * k4);
+    float denom = 1.f + dt * M * (c_splitting_S[0] * k2 + 2.f * c_k_laplacian[species] * k4);
 	cufftFieldComplex new_rho_hat = (rho_hat[IND] - dt * M * k2 * (f_der_hat_dealiased - rho_hat[IND] * c_splitting_S[0]) ) / denom;
     rho_hat[IND] = new_rho_hat;
     rho_hat_for_inverse_transform[IND] = new_rho_hat / c_size[0];
@@ -97,8 +100,6 @@ __global__ void _integrate_fft_kernel(cufftFieldComplex *rho_hat, cufftFieldComp
 
 namespace ch {
 
-
-
 template<int dims>
 PseudospectralCUDA<dims>::PseudospectralCUDA(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
         CUDAIntegrator<dims>(sim_state, model, config) {
@@ -114,8 +115,7 @@ PseudospectralCUDA<dims>::PseudospectralCUDA(SimulationState<dims> &sim_state, F
     double splitting_S = this->template _config_optional_value<double>(config, "pseudospectral.S", 0.0);
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_splitting_S, &splitting_S, sizeof(float)));
 
-     // Prepare the arrays needed for the FFT-based integration
-
+    // Prepare the arrays needed for the FFT-based integration
     std::array<int, dims> reciprocal_n;
     reciprocal_n.fill(this->_N_per_dim);
     int hat_grid_size = reciprocal_n[dims - 1] / 2 + 1; 
@@ -123,6 +123,13 @@ PseudospectralCUDA<dims>::PseudospectralCUDA(SimulationState<dims> &sim_state, F
         hat_grid_size *= reciprocal_n[i];
     }
     _hat_vector_size = hat_grid_size * model->N_species();
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_hat_grid_size, &hat_grid_size, sizeof(int)));
+
+    std::vector<float> k_laplacian(
+        this->_k_laplacian.begin(),
+        this->_k_laplacian.begin() + model->N_species()
+    );
+    CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_k_laplacian, k_laplacian.data(), k_laplacian.size() * sizeof(float)));
 
     CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_hat, sizeof(cufftFieldComplex) * _hat_vector_size));
     CUDA_SAFE_CALL(cudaMalloc((void **) &_d_rho_hat_copy, sizeof(cufftFieldComplex) * _hat_vector_size));
@@ -242,7 +249,7 @@ void PseudospectralCUDA<dims>::evolve() {
 
     double M = this->_sim_state.mobility(0, 0); // constant mobility
     const int blocks = this->_grid_size / BLOCK_SIZE + 1;
-    _integrate_fft_kernel<<<blocks, BLOCK_SIZE>>>(_d_rho_hat, _d_rho_hat_copy, _d_f_der_hat, _d_sqr_wave_vectors, this->_d_dealiaser, this->_dt, M, this->_k_laplacian, this->_hat_vector_size);
+    _integrate_fft_kernel<<<blocks, BLOCK_SIZE>>>(_d_rho_hat, _d_rho_hat_copy, _d_f_der_hat, _d_sqr_wave_vectors, this->_d_dealiaser, this->_dt, M, this->_k_laplacian[0], this->_hat_vector_size);
 
 #ifdef CUDA_FIELD_FLOAT
     CUFFT_CALL(cufftExecC2R(_d_rho_inverse_plan, _d_rho_hat_copy, this->_d_rho));
