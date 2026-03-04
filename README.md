@@ -59,9 +59,11 @@ Notes about numeric fields and arrays:
 The program accepts an initial-configuration file in the native text format produced by the program itself (or a file using the same layout). Alternatively, when `load_from` is not present the initial configuration is generated randomly from the TOML options described below.
 
 Native text format (accepted by `load_from`)
-- The file is plain text and usually starts with a header line in the form printed by the program:
+- The file is plain text and may start with a header line in the form printed by the program:
 
+  ```
   # step = <step>, t = <time>, size = Nx[ xNy[ xNz]]
+  ```
 
 - After the header the field values follow as whitespace-separated numbers. The layout depends on dimensionality (`N`):
   - 1D: the file contains `N` non-comment lines for each species; each line is a single number (the density for that bin).
@@ -71,7 +73,7 @@ Native text format (accepted by `load_from`)
 - Lines beginning with `#` are treated as comments and ignored when the file is read back with `load_from`.
 
 Notes about `load_from` parsing
-- The program reads the file species-by-species: for each species it skips comment lines and reads the expected number of data lines (see dims above). The native output produced by a run of the program (the `last_*` or `traj_*.dat` native files) can be reused as a `load_from` file for a later run.
+- The program reads the file species-by-species: for each species it skips comment lines and reads the expected number of data lines (see dims above). The native output produced by a run of the program (the `last_*` or `traj_*.dat` native files) can be reused as a `load_from` file for a later run. For multi-species systems, an initial configuration can be created by concatenating one file for each species, *e.g.* `cat last_?.dat > initial.dat`.
 
 Generating the initial configuration randomly from the TOML input
 - If `load_from` is not given, the initial field is created using the following TOML options:
@@ -83,7 +85,7 @@ Generating the initial configuration randomly from the TOML input
 
   initial_k = 2 * pi * initial_N_peaks / N
 
-  then for each linear bin index `bin` (0..grid_size-1) it computes
+  then for each linear bin index `bin` (from 0 to `grid_size` - 1) it computes
 
   modulation = initial_A * cos(initial_k * bin)
 
@@ -99,7 +101,7 @@ Generating the initial configuration randomly from the TOML input
 - The values are generated in user units and are later rescaled internally according to `distance_scaling_factor` (see the `distance_scaling_factor` / `dx` discussion above). The RNG seed can be set via `seed` (defaults to `time(NULL)`).
 
 Practical tips
-- If you want to produce a reproducible starting file, set the `seed` option or run the program once to write a `last_*` snapshot (or `traj_*.dat`), then reuse that file as `load_from` for subsequent runs.
+- If you want to produce a reproducible starting file, set the `seed` option or run the program once to write a `last_*` snapshot (or `traj_*.dat`), then reuse the output as `load_from` for subsequent runs.
 - Make sure the file you provide as `load_from` matches the dimensionality (`ch_1D` / `ch_2D` / `ch_3D`) and the declared `N` used in the TOML configuration.
 
 ## Integrators
@@ -127,12 +129,12 @@ The code implements several time integrators. Choose one with the `integrator` k
   - Description: variant of the `pseudospectral` integrator that explicitly accounts for variable mobility via a splitting strategy (compute correction terms in real space and transform them when needed).
   - Use when: mobility varies significantly and you still want the stability benefits of a semi-implicit spectral solver.
 
-Notes and selection guidance
+### Notes and selection guidance
 - Explicit schemes (`euler`, `euler_mobility`) are simple and sometimes faster per-step on small grids, but require smaller `dt` for stability.
 - Pseudospectral integrators require FFT libraries (the code uses FFTW on CPU and cuFFT on CUDA). They permit larger `dt` and can be more efficient on large grids, especially when paired with optimized FFT backends.
 - CUDA implementations exist for most integrators; enable them with `use_CUDA = true` and ensure the code was built with CUDA support.
 
-S splitting parameter for pseudospectral integrators
+### S splitting parameter for pseudospectral integrators
 - Key: `pseudospectral.S` (double, optional, default `0.0`)
 - Role: `S` is a linear splitting parameter used in the semi-implicit spectral update. The pseudospectral integrator advances the Fourier components using a denominator of the form
 
@@ -141,14 +143,16 @@ S splitting parameter for pseudospectral integrators
   and subtracts an implicit linear contribution `S * rho_hat` from the explicit free-energy derivative term. In practice this moves a linearised part of the chemical-potential derivative into the implicit side, increasing numerical stability for stiff nonlinearities.
 
 - Guidance:
-  - Default `S = 0.0` leaves the method semi-implicit only for the highest-order (k^4) term. Increasing `S` increases implicit stabilization and typically allows larger `dt` at similar stability.
-  - Choose `S` based on the scale of the (local) derivative of the free-energy: a reasonable heuristic is to set `S` approximately equal to the largest expected value of f''(rho) (the derivative of `f'` with respect to density) in user units. For example, for a Landau model with f' = -epsilon * psi + psi^3, f'' = -epsilon + 3 psi^2 — if |psi| ~ 1 and epsilon small, `S ~ 3` is a sensible starting point.
+  - Default `S = 0.0` leaves the method semi-implicit only for the highest-order ($k^4$) term. Increasing `S` increases implicit stabilization and typically allows larger `dt` at similar stability.
+  - Choose `S` based on the scale of the (local) derivative of the free-energy: a reasonable heuristic is to set `S` approximately equal to the largest expected value of $f''(\rho)$ (the derivative of $f$ with respect to density) in user units. For example, for a Landau model with $f' = -\epsilon * \psi + \psi^3$, $f'' = -\epsilon + 3 \psi^2$, since $|\psi| \approx 1$, for small values of $\epsilon$, $S \simeq 3$ is a sensible starting point.
   - Larger `S` stabilises the scheme but may overdamp fast modes and reduce accuracy; tune `S` and `dt` together.
 
 Example (TOML):
 
 ```
-pseudospectral = { S = 2.0, use_dealias = true }
+[pseudospectral]
+S = 2.0
+use_dealias = true
 ```
 
 ## Free energy models
