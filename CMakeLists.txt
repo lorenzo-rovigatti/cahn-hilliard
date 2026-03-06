@@ -53,6 +53,6 @@ enable_testing()
 
 add_test(
     NAME python_tests
-    COMMAND pytest -q
+    COMMAND pytest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )

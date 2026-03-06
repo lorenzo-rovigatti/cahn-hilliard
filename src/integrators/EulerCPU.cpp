@@ -68,19 +68,19 @@ double EulerCPU<dims>::_cell_laplacian(MultiField<double> &field, int species, i
         int coords[dims];
         int coords_n[dims];
         this->_fill_coords(coords, idx);
+        memcpy(coords_n, coords, sizeof(coords));
 
         double sum = 0.0;
 
         for(int d = 0; d < dims; d++) {
             // minus direction
-            memcpy(coords_n, coords, sizeof(coords));
             coords_n[d] = (coords[d] - 1 + this->_N_per_dim) & this->_N_per_dim_minus_one;
             sum += field(this->_cell_idx(coords_n), species);
 
             // plus direction
-            memcpy(coords_n, coords, sizeof(coords));
             coords_n[d] = (coords[d] + 1) & this->_N_per_dim_minus_one;
             sum += field(this->_cell_idx(coords_n), species);
+            coords_n[d] = coords[d]; // restore original coords for next iteration
         }
 
         return (sum - 2.0 * dims * field(idx, species)) / SQR(this->_dx);
