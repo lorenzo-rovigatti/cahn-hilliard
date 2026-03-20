@@ -112,7 +112,8 @@ PseudospectralCUDA<dims>::PseudospectralCUDA(SimulationState<dims> &sim_state, F
     int bits = (int) std::log2(this->_N_per_dim);
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_bits, &bits, sizeof(int)));
 
-    double splitting_S = this->template _config_optional_value<double>(config, "pseudospectral.S", 0.0);
+    float splitting_S = this->template _config_optional_value<float>(config, "pseudospectral.S", 0.0);
+    splitting_S *= std::pow(sim_state.user_to_internal, 3); // proportional to m^3
     CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_splitting_S, &splitting_S, sizeof(float)));
 
     // Prepare the arrays needed for the FFT-based integration

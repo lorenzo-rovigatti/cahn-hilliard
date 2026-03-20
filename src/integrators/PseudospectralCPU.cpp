@@ -21,6 +21,7 @@ PseudospectralCPU<dims>::PseudospectralCPU(SimulationState<dims> &sim_state, Fre
     hat_vector_size = hat_grid_size * model->N_species();
 
     _splitting_S = this->template _config_optional_value<double>(config, "pseudospectral.S", 0.0);
+    _splitting_S *= std::pow(sim_state.user_to_internal, 3); // proportional to m^3
     use_dealias = this->template _config_optional_value<bool>(config, "pseudospectral.use_dealias", false);
 
     this->info("Size of the reciprocal vectors: {}, S = {}, use_dealias = {}", hat_vector_size, _splitting_S, use_dealias);
