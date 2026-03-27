@@ -22,12 +22,28 @@ Printer<dims>::Printer(SimulationState<dims> &sim_state, toml::table &config) : 
         _print_last_every = _config_optional_value<long long int>(config, "print_last_every", _print_trajectory_every);
     }
     else if(_print_traj_strategy == "log") {
-        _log_n0 = _config_value<int>(config, "log_n0");
-        _log_fact = _config_value<double>(config, "log_fact");
+        _log_n0 = _config_value<int>(config, "output.log_n0");
+        _log_fact = _config_value<double>(config, "output.log_fact");
         _print_last_every = _config_value<long long int>(config, "print_last_every");
     }
     else {
-        critical("Unsupported printing strategy '{}'", _print_traj_strategy);
+        critical("Unsupported trajectory printing strategy '{}'", _print_traj_strategy);
+    }
+
+    _print_pressure = _config_optional_value<bool>(config, "output.print_pressure", false);
+
+    if(_print_pressure) {
+        _print_pressure_strategy = _config_optional_value<std::string>(config, "output.print_pressure_strategy", "linear");
+        if(_print_pressure_strategy == "linear") {
+            _print_pressure_every = _config_value<long long int>(config, "output.print_pressure_every");
+        }
+        else if(_print_pressure_strategy == "log") {
+            _log_n0 = _config_value<int>(config, "output.log_n0");
+            _log_fact = _config_value<double>(config, "output.log_fact");
+        }
+        else {
+            critical("Unsupported pressure printing strategy '{}'", _print_pressure_strategy);
+        }
     }
 
     std::string outp = _config_optional_value<std::string>(config, "output.path", ".");
@@ -59,13 +75,17 @@ Printer<dims>::Printer(SimulationState<dims> &sim_state, toml::table &config) : 
         critical("Trajectory output path '{}' is not a directory", trajp);
     }
 
+    _valid_trajectory_prefixes = {"traj", "pressure", "mu"};
+
     // if we print native trajectories and we are not loading from a previous state, then we
     // open the trajectory files in output mode (overwriting any existing file with the same name)
     if(!_print_vtk && !config["load_from"]) {
         for(int i = 0; i < _sim_state.model->N_species(); i++) {
-            std::string filename = (_traj_path / fmt::format("traj_{}.dat", i)).string();
-            std::ofstream output(filename, std::ios_base::out);
-            output.close();
+            for(auto prefix : _valid_trajectory_prefixes) {
+                std::string filename = (_traj_path / fmt::format("{}_{}.dat", prefix, i)).string();
+                std::ofstream output(filename, std::ios_base::out);
+                output.close();
+            }
         }
     }
 }
@@ -77,35 +97,41 @@ Printer<dims>::~Printer() {
 
 template <int dims>
 void Printer<dims>::print_current_state(std::string_view prefix, long long int time_step) {
+    double factor = _sim_state.density_to_user(1.0);
+    std::string obs_name("density");
+
     for(int i = 0; i < _sim_state.model->N_species(); i++) {
         auto filename = (_output_path / fmt::format("{}{}.dat", prefix, i)).string();
-        _write_native(filename, i, time_step);
-
-        if(_print_vtk) {
-            auto vtk_filename = (_output_path / fmt::format("{}{}.vtk", prefix, i)).string();
-            _write_vtk(vtk_filename, i, time_step);
-        }
+        write_native(filename, obs_name, _sim_state.rho, factor, i, time_step);
+        auto vtk_filename = (_output_path / fmt::format("{}{}.vtk", prefix, i)).string();
+        write_vtk(vtk_filename, obs_name, _sim_state.rho, factor, i, time_step);
     }
 
     auto filename = (_output_path / fmt::format("{}density.dat", prefix)).string();
-    _write_native(filename, -1, time_step); // -1 indicates that we want to print the total density
+    write_native(filename, obs_name, _sim_state.rho, factor, -1, time_step); // -1 indicates that we want to print the total density
 
-    if(_print_vtk) {
-        auto vtk_filename = (_output_path / fmt::format("{}density.vtk", prefix)).string();
-        _write_vtk(vtk_filename, -1, time_step);
-    }
+    auto vtk_filename = (_output_path / fmt::format("{}density.vtk", prefix)).string();
+    write_vtk(vtk_filename, obs_name, _sim_state.rho, factor, -1, time_step);
 }
 
 template <int dims>
-void Printer<dims>::add_to_trajectory(int species, long long int time_step) {
+void Printer<dims>::add_to_trajectory(const std::string &prefix,
+        const std::string &obs_name,
+        const MultiField<double> &field,
+        double converting_factor, 
+        int species,
+        long long int time_step) {
+
+    _check_prefix(prefix);
+
     if(_print_vtk) {
-        auto vtk_filename = (_traj_path / fmt::format("traj_{}_{}.vtk", species, time_step)).string();
-        _write_vtk(vtk_filename, species, time_step);
+        auto vtk_filename = (_traj_path / fmt::format("{}_{}_{}.vtk", prefix, species, time_step)).string();
+        write_vtk(vtk_filename, obs_name, _sim_state.rho, converting_factor, species, time_step);
     }
     else {
-        std::string filename = (_traj_path / fmt::format("traj_{}.dat", species)).string();
+        std::string filename = (_traj_path / fmt::format("{}_{}.dat", prefix, species)).string();
         std::ofstream output(filename, std::ios_base::app);
-        _write_native(output, species, time_step);
+        write_native(output, obs_name, _sim_state.rho, converting_factor, species, time_step);
         output.close();
     }
 }
@@ -128,33 +154,73 @@ bool Printer<dims>::should_print_traj(long long int time_step) {
 }
 
 template <int dims>
-void Printer<dims>::_write_native(std::ofstream &output, int species, long long int time_step) {
+bool Printer<dims>::should_print_pressure(long long int time_step) {
+    if(_print_pressure) {
+        if(_print_pressure_strategy == "linear") {
+            return (_print_pressure_every > 0 && time_step % _print_pressure_every == 0);
+        }
+        else if(_print_pressure_strategy == "log") {
+            long long int next_t = (long long int) round((_log_n0 * std::pow(_log_fact, _traj_printed)));
+            return (next_t == time_step);
+        }
+    }
+    return false;
+}
+
+template <int dims>
+void Printer<dims>::write_native(std::ofstream &output,
+        const std::string &obs_name,
+        const MultiField<double> &field, 
+        double converting_factor, 
+        int species, 
+        long long int time_step) {
+
     const int nx = N;
     const int ny = (dims >= 2) ? N : 1;
     const int nz = (dims >= 3) ? N : 1;
     const int grid_size = nx * ny * nz;
 
-    output << fmt::format("# step = {}, t = {:.5}, size = {}x{}x{}", time_step, time_step * dt, nx, ny, nz) << std::endl;
+    output << fmt::format("# step = {}, t = {:.5}, size = {}x{}x{} | {}", time_step, time_step * dt, nx, ny, nz, obs_name) << std::endl;
 	int newline_every = ny;
 	for(int idx = 0; idx < grid_size; idx++) {
 		if(idx > 0 && idx % newline_every == 0) {
 			output << std::endl;
 		}
-        double rho_value = (species == -1) ? _sim_state.rho.field_sum(idx) : _sim_state.rho(idx, species);
-		output << _sim_state.density_to_user(rho_value) << " ";
+        double value = (species == -1) ? field.field_sum(idx) : field(idx, species);
+		output << (value * converting_factor) << " ";
 	}
 	output << std::endl;
 }
 
 template <int dims>
-void Printer<dims>::_write_native(const std::string &filename, int species, long long int time_step) {
+void Printer<dims>::write_native(const std::string &filename, 
+        const std::string &obs_name,
+        const MultiField<double> &field, 
+        double converting_factor, 
+        int species, 
+        long long int time_step) {
+
     std::ofstream output(filename);
-    _write_native(output, species, time_step);
+    write_native(output, obs_name, field, converting_factor, species, time_step);
     output.close();
 }
 
 template <int dims>
-void Printer<dims>::_write_vtk(const std::string &filename, int species, long long int time_step) {
+void Printer<dims>::write_vtk(const std::string &filename, 
+        const std::string &obs_name,
+        const MultiField<double> &field, 
+        double converting_factor, 
+        int species, 
+        long long int time_step) {
+
+    if(!_print_vtk) {
+        return;
+    }
+
+    if(dims == 1) {
+        critical("VTK output is not supported for 1D simulations");
+    }
+
     std::ofstream output(filename);
 
     const int nx = N;
@@ -166,7 +232,7 @@ void Printer<dims>::_write_vtk(const std::string &filename, int species, long lo
     const double sz = _sim_state.length_to_user(dx);
 
     output << "# vtk DataFile Version 3.0\n";
-    output << "CIRCA scalar output\n";
+    output << fmt::format("step = {}, t = {:.5}, size = {}x{}x{} | {}", time_step, time_step * dt, nx, ny, nz, obs_name) << std::endl;
     output << "ASCII\n";
     output << "DATASET STRUCTURED_POINTS\n";
     output << "DIMENSIONS " << nx << " " << ny << " " << nz << "\n";
@@ -186,13 +252,20 @@ void Printer<dims>::_write_vtk(const std::string &filename, int species, long lo
                 if constexpr (dims >= 3) {
                     idx += k * nx * ny;
                 }
-                double rho_value = (species == -1) ? _sim_state.rho.field_sum(idx) : _sim_state.rho(idx, species);
-                output << std::scientific << _sim_state.density_to_user(rho_value) << "\n";
+                double rho = (species == -1) ? field.field_sum(idx) : field(idx, species);
+                output << std::scientific << (rho * converting_factor) << "\n";
             }
         }
     }
 
     output.close();
+}
+
+template <int dims>
+void Printer<dims>::_check_prefix(const std::string &prefix) {
+    if(_valid_trajectory_prefixes.find(prefix) == _valid_trajectory_prefixes.end()) {
+        critical("Invalid trajectory prefix '{}'", prefix);
+    }
 }
 
 template class Printer<1>;

@@ -15,6 +15,6 @@ for i, file in enumerate(sys.argv[1:]):
     plt.figure(i)
     plt.title(file)
     data = np.loadtxt(file)
-    im = plt.imshow(data)
+    im = plt.imshow(data, origin='lower')
     plt.colorbar(im)
 plt.show()

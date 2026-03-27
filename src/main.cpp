@@ -31,11 +31,7 @@ public:
 
 		_print_mass_every = _config_optional_value<long long int>(config, "print_every", 0);
 
-		_print_average_pressure = _config_optional_value<bool>(config, "print_average_pressure", false);
-		_print_pressure_every = _config_optional_value<long long int>(config, "print_pressure_every", 0);
-		if(_print_pressure_every > 0) {
-			_print_average_pressure = true;
-		}
+		_print_pressure = _config_optional_value<bool>(config, "output.print_pressure", false);
 
 		srand48(_config_optional_value<long long int>(config, "seed", std::time(NULL)));
 
@@ -100,29 +96,30 @@ public:
 	void run() {
 		_print_current_state("init_", 0);
 
+		double rho_factor = _sim_state.density_to_user(1.0);
+		double pressure_factor = rho_factor;
+
 		std::ofstream mass_output((_output_path / "energy.dat").string(), _openmode);
-		std::ofstream pressure_output;
-		if(_print_pressure_every > 0) {
-			pressure_output.open((_output_path / "pressure.dat").string(), _openmode);
-		}
 
 		for(_t = _initial_t; _t < _initial_t + _steps; _t++) {
 			if(_printer->should_print_last(_t)) {
 				_print_current_state("last_", _t);
 			}
 			if(_printer->should_print_traj(_t)) {
+				_sim_state.integrator->sync();
 				for(int i = 0; i < _sim_state.model->N_species(); i++) {
-					_sim_state.integrator->sync();
-					_printer->add_to_trajectory(i, _t);
+					_printer->add_to_trajectory("traj", "density", _sim_state.rho, rho_factor, i, _t);
 				}
-				_traj_printed++;
 			}
-			if(_should_print_pressure(_t)) {
-				_system->print_pressure(pressure_output, _t);
+			if(_printer->should_print_pressure(_t)) {
+				auto pressure = _system->pressure();
+				for(int i = 0; i < _sim_state.model->N_species(); i++) {
+					_printer->add_to_trajectory("pressure", "pressure", pressure, pressure_factor, i, _t);
+				}
 			}
 			if(_print_mass_every > 0 && _t % _print_mass_every == 0) {
 				std::string output_line = fmt::format("{:.5} {:.8} {:.5} {:L}", _t * _system->dt, _system->average_free_energy(), _system->average_mass(), _t);
-				if(_print_average_pressure) {
+				if(_print_pressure) {
 					output_line += fmt::format(" {:.5}", _system->average_pressure());
 				}
 				mass_output << output_line << std::endl;
@@ -132,9 +129,6 @@ public:
 		}
 
 		mass_output.close();
-		if(pressure_output.is_open()) {
-			pressure_output.close();
-		}
 
 		_print_current_state("last_", _steps);
 	}
@@ -143,23 +137,37 @@ public:
 
 private:
 	void _print_current_state(std::string_view prefix, long long int t) {
+		_sim_state.integrator->sync();
 		_printer->print_current_state(prefix, t);
-		if(_print_average_pressure) {
-			_system->print_pressure((_output_path / fmt::format("{}pressure.dat", prefix)).string(), t);
-		}
-	}
+		if(_print_pressure) {
+			double pressure_factor = _sim_state.density_to_user(1.0);
+			auto pressure = _system->pressure();
+			// partial pressures
+			if(_sim_state.model->N_species() > 1) {
+				for(int i = 0; i < _sim_state.model->N_species(); i++) {
+					_sim_state.integrator->sync();
+					std::string filename = (_output_path / fmt::format("{}{}_pressure.dat", prefix, i)).string();
+					_printer->write_native(filename, "pressure", pressure, pressure_factor, i, t);
 
-	bool _should_print_pressure(long long int t) {
-		return (_print_pressure_every > 0 && t % _print_pressure_every == 0);
+					filename = (_output_path / fmt::format("{}{}_pressure.vtk", prefix, i)).string();
+    				_printer->write_vtk(filename, "pressure", pressure, pressure_factor, i, t);
+				}
+			}
+			// total pressure
+			std::string filename = (_output_path / fmt::format("{}pressure.dat", prefix)).string();
+			_printer->write_native(filename, "pressure", pressure, pressure_factor, -1, t);
+
+			filename = (_output_path / fmt::format("{}pressure.vtk", prefix)).string();
+			_printer->write_vtk(filename, "pressure", pressure, pressure_factor, -1, t);
+		}
 	}
 
 	SimulationState<DIM> _sim_state;
 
-	bool _print_average_pressure;
+	bool _print_pressure;
 	long long int _initial_t = 0;
 	long long int _t;
-	long long int _steps, _print_mass_every, _print_pressure_every;
-	int _traj_printed = 0;
+	long long int _steps, _print_mass_every;
 	std::ios_base::openmode _openmode = std::ios_base::out;
 
 	std::unique_ptr<ch::CahnHilliard<DIM>> _system;

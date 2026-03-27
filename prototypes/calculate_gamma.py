@@ -2,13 +2,12 @@ import numpy as np
 from scipy.integrate import solve_bvp
 import matplotlib.pyplot as plt
 
-def estimate_surface_tension(rho_1, rho_2, M, B2_coeff, delta, kappa, sigma=1.0):
+def estimate_surface_tension(rho_1, rho_2, M, B2_coeff, delta, kappa):
     """
     rho_1, rho_2: Coexisting vapor and liquid densities
     M: Valence (number of patches)
     epsilon: Bond energy (in units of kT)
     kappa: Influence parameter (gradient energy coeff)
-    sigma: Particle diameter
     """
     
     # 1. Wertheim Association Helper
@@ -17,7 +16,7 @@ def estimate_surface_tension(rho_1, rho_2, M, B2_coeff, delta, kappa, sigma=1.0)
         # Avoids division by rho
         return 2.0 / (1.0 + np.sqrt(1.0 + 4.0 * M * delta * rho))
 
-    def local_free_energy(rho):
+    def beta_f(rho):
         # Ideal + B_2 + Wertheim
         f_id = rho * (np.log(rho) - 1)
         f_B2 = B2_coeff * rho**2;
@@ -35,7 +34,7 @@ def estimate_surface_tension(rho_1, rho_2, M, B2_coeff, delta, kappa, sigma=1.0)
     # (In a real scenario, these are calculated at the binodal)
     def get_mu_P(rho):
         mu = get_mu(rho)
-        P = mu * rho - local_free_energy(rho)
+        P = mu * rho - beta_f(rho)
         return mu, P
 
     mu_1, P_1 = get_mu_P(rho_1)

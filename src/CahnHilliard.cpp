@@ -338,34 +338,21 @@ double CahnHilliard<dims>::average_pressure() {
 }
 
 template<int dims>
-void CahnHilliard<dims>::print_pressure(const std::string &filename, long long int t) {
-	std::ofstream output(filename);
-	print_pressure(output, t);
-	output.close();
-}
-
-template<int dims>
-void CahnHilliard<dims>::print_pressure(std::ofstream &output, long long int t) {
+MultiField<double> CahnHilliard<dims>::pressure() {
 	integrator->sync();
 	
-	output << fmt::format("# pressure @ step = {} t = {:.5} size = {}", t, t * dt, _grid_size_str) << std::endl;
-	int newline_every = (dims == 1) ? 1 : N;
+	MultiField<double> pressure_field(_sim_state.rho.bins(), model->N_species());
 	for(int idx = 0; idx < grid_size; idx++) {
-		if(idx > 0 && idx % newline_every == 0) {
-			output << std::endl;
-		}
-		
-		double pressure = 0.;
 		for(int species = 0; species < model->N_species(); species++) {
-			pressure += model->pressure(species, _sim_state.rho.species_view(idx));
+			pressure_field(idx, species) = model->pressure(species, _sim_state.rho.species_view(idx));
 			auto rho_grad = gradient(_sim_state.rho, species, idx);
 			for(int d = 0; d < dims; d++) {
-				pressure -= 0.5 * k_laplacian[species] * rho_grad[d] * rho_grad[d];
+				pressure_field(idx, species) -= 0.5 * k_laplacian[species] * rho_grad[d] * rho_grad[d];
 			}
 		}
-		output << pressure << " ";
 	}
-	output << std::endl;
+
+	return pressure_field;
 }
 
 template class CahnHilliard<1>;

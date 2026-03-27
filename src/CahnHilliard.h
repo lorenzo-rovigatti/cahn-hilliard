@@ -49,8 +49,7 @@ public:
 	double average_mass();
 	double average_free_energy();
 	double average_pressure();
-	void print_pressure(const std::string &filename, long long int t);
-	void print_pressure(std::ofstream &output, long long int t);
+	MultiField<double> pressure();
 
 	GET_NAME(Simulation manager)
 

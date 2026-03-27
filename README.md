@@ -22,16 +22,6 @@ Look at the `examples` folder for some runnable input files. Most of the options
 Here is a (code-accurate) list of input keys and their behaviour. Non-mandatory options show their default values in brackets. Where a numeric value is accepted both as integer or floating point the code will accept either (integers are converted to the appropriate floating type when needed).
 
 - `steps` (integer, required): number of integration steps to run. Must be >= 0. Parsed as a 64-bit integer.
-- `print_every` (integer, optional, default: `0`): frequency (in steps) at which the main energy/mass/time output line is written to `energy.dat` and to stdout. When `0` no periodic energy output is produced.
-- `print_average_pressure` (bool, optional, default: `false`): if `true`, the average pressure is appended to the energy output and written to `pressure.dat` when `print_pressure_every` > 0.
-- `print_pressure_every` (integer, optional, default: `0`): frequency (in steps) to compute and write the pressure to `pressure.dat`.
-- `print_trajectory_strategy` (string, optional, default: `"linear"`): controls trajectory printing. Supported values:
-  - `"linear"`: print configurations at fixed intervals using `print_trajectory_every`.
-  - `"log"`: print configurations at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
-- `print_trajectory_every` (integer, optional, default: `0`): when using the `linear` strategy, append configurations to the trajectory every this many steps. If `0` no trajectory is appended.
-- `print_last_every` (integer, optional): frequency (in steps) to write the `last_*` snapshot files. Defaults to the value of `print_trajectory_every` for the `linear` strategy. When using the `log` strategy `print_last_every` is required and must be explicitly provided.
-- `log_n0` (integer, required for `log` strategy): base step for the logarithmic spacing.
-- `log_fact` (double, required for `log` strategy): multiplicative factor for the logarithmic spacing.
 - `seed` (integer, optional, default: `time(NULL)`): seed used to initialise the RNG (parsed as 64-bit integer).
 - `free_energy` (string, required): selects the free-energy model. Accepted values include `landau`, `simple_wertheim`, `saleh`, `generic_wertheim`, `ricci` (see the "Free energy models" section).
 - `N` (integer, required): linear size per dimension. Must be a power of two. The total number of cells is `N` (1D), `N*N` (2D) or `N*N*N` (3D) depending on the executable.
@@ -41,6 +31,19 @@ Here is a (code-accurate) list of input keys and their behaviour. Non-mandatory 
 - `distance_scaling_factor` (double, optional, default: `1.0`): rescales user lengths to the internal units. Internally the code multiplies `dx` by `user_to_internal` and rescales `k` and densities accordingly; changing this can improve numerical stability for particular models.
 - `integrator` (string, optional, default: `"euler"`): integration scheme. Supported values include `euler`, `euler_mobility`, `pseudospectral`, `pseudospectral_mobility`, `bailo`. When `use_CUDA = true` some integrators have CUDA implementations (the code chooses the appropriate variant automatically).
 - `use_CUDA` (bool, optional, default: `false`): enable CUDA-enabled integrators (when built with CUDA support).
+- `print_every` (integer, optional, default: `0`): frequency (in steps) at which the main energy/mass/time output line is written to `energy.dat` and to stdout. When `0` no periodic energy output is produced.
+- `output.print_pressure` (bool, optional, default: `false`): if `true`, the average pressure is appended to the energy output and written to `pressure.dat`, and the pressure field is printed to a file using the strategy set with the keys that follow.
+- `output.print_pressure_strategy` (string, optional, default: `"linear"`): controls pressure trajectory printing. Supported values:
+  - `"linear"`: print pressure files at fixed intervals using `print_trajectory_every`.
+  - `"log"`: print pressure files at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
+- `output.print_pressure_every` (integer, optional, default: `0`): frequency (in steps) to compute and write the pressure to file.
+- `print_trajectory_strategy` (string, optional, default: `"linear"`): controls trajectory printing. Supported values:
+  - `"linear"`: print configurations at fixed intervals using `print_trajectory_every`.
+  - `"log"`: print configurations at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
+- `print_trajectory_every` (integer, optional, default: `0`): when using the `linear` strategy, append configurations to the trajectory every this many steps. If `0` no trajectory is appended.
+- `print_last_every` (integer, optional): frequency (in steps) to write the `last_*` snapshot files. Defaults to the value of `print_trajectory_every` for the `linear` strategy. When using the `log` strategy `print_last_every` is required and must be explicitly provided.
+- `output.log_n0` (integer, required for `log` strategy): base step for the logarithmic spacing.
+- `output.log_fact` (double, required for `log` strategy): multiplicative factor for the logarithmic spacing.
 - `output.path` (string, optional, default: `.`): directory where `last_*`, `*_*.dat` and `energy.dat` are written.
 - `output.print_vtk` (bool, optional, default: `false`): when `true` produce VTK files instead of the native text format for snapshots.
 - `output.trajectory_path` (string, optional): directory where trajectory files are written. When `output.print_vtk = true` this key is mandatory; otherwise it defaults to `output.path`.
