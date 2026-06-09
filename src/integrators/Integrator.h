@@ -22,6 +22,11 @@ public:
 
     GET_NAME(Integrator)
 
+    enum class EvolutionType {
+        CH,
+        AC
+    };
+
 protected:
     SimulationState<dims> &_sim_state;
     MultiField<double> &_rho;
@@ -30,10 +35,16 @@ protected:
     int _N_species = 0;
     double _dt = 0.0;
 	std::vector<double> _k_laplacian;
+    std::vector<std::string> _species_evolution_name;
+    std::vector<EvolutionType> _species_evolution;
 	double _dx = 0.0;
     std::string _mobility_type;
 
     FreeEnergyModel *_model;
+
+    virtual bool _supports_AllenCahn() const {
+        return false;
+    }
 
     virtual bool _supports_nonconstant_mobility() const {
         return false;

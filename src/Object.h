@@ -78,6 +78,17 @@ public:
 	}
 
 	template<typename T>
+	std::vector<T> _config_optional_array_values(const toml::table &tbl, const std::string &path, T default_value, size_t output_size) const {
+		auto nv = _config_node_view(tbl, path, false);
+		if (!nv) {
+			// Node not found, return array filled with default value
+			return std::vector<T>(output_size, default_value);
+		}
+		// Node found, use _config_array_values
+		return _config_array_values<T>(tbl, path, output_size);
+	}
+
+	template<typename T>
 	T _config_value(const toml::table &tbl, const std::string &path) const {
 		auto nv = _config_node_view(tbl, path, true);
 		return nv.value<T>().value();

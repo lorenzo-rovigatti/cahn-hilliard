@@ -6,10 +6,12 @@ template<int dims>
 Integrator<dims>::Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *model, toml::table &config) : 
                 _sim_state(sim_state),
                 _rho(sim_state.rho),
+                _N_species(model->N_species()),
                 _model(model) {
 
     _mobility_type = _config_optional_value<std::string>(config, "mobility.type", "constant");
     _k_laplacian = _config_array_values<double>(config, "k", model->N_species());
+    _species_evolution_name = _config_optional_array_values<std::string>(config, "species_evolution", "CH", model->N_species());
     _dt = _config_value<double>(config, "dt");
     _dx = _config_optional_value<double>(config, "dx", 1.0);
 
@@ -23,8 +25,7 @@ Integrator<dims>::Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *
 	for(int i = 1; i < dims; i++) {
 		_N_bins *= _N_per_dim;
 	}
-    _N_species = model->N_species();
-
+    
     std::stringstream k_laplacian_str;
     for(auto k : _k_laplacian) {
         k_laplacian_str << k << " ";
@@ -42,6 +43,16 @@ template<int dims>
 void Integrator<dims>::validate() {
     if(!_supports_nonconstant_mobility() && _mobility_type != "constant") {
         this->critical("The selected integrator only supports constant mobility");
+    }
+
+    for(auto &evolution : _species_evolution_name) {
+        if(evolution != "CH" && evolution != "AC") {
+            this->critical("Unsupported evolution type '{}', only 'CH' and 'AC' are supported", evolution);
+        }
+        if(evolution == "AC" && !_supports_AllenCahn()) {
+            this->critical("The selected integrator does not support Allen-Cahn evolution");
+        }
+        _species_evolution.push_back((evolution == "CH") ? EvolutionType::CH : EvolutionType::AC);
     }
 }
 

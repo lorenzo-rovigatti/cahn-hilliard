@@ -27,6 +27,10 @@ protected:
     double _cell_laplacian(MultiField<double> &field, int species, int idx);
     Gradient<dims> _cell_gradient(MultiField<double> &field, int species, int idx);
     double _divergence(MultiField<Gradient<dims>> &gradients, int species, int idx);
+
+    bool _supports_AllenCahn() const override {
+        return true;
+    }
 };
 
 } /* namespace ch */
