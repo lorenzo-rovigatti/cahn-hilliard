@@ -37,6 +37,8 @@ protected:
 	std::vector<double> _k_laplacian;
     std::vector<std::string> _species_evolution_name;
     std::vector<EvolutionType> _species_evolution;
+    // when evolving a species with Allen-Cahn dynamics, we can also fix its chemical potential to a constant value
+    std::vector<double> _species_AC_chemical_potential;
 	double _dx = 0.0;
     std::string _mobility_type;
 

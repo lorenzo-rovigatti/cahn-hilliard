@@ -12,6 +12,7 @@ Integrator<dims>::Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *
     _mobility_type = _config_optional_value<std::string>(config, "mobility.type", "constant");
     _k_laplacian = _config_array_values<double>(config, "k", model->N_species());
     _species_evolution_name = _config_optional_array_values<std::string>(config, "species_evolution", "CH", model->N_species());
+    _species_AC_chemical_potential = _config_optional_array_values<double>(config, "species_AC_chemical_potential", 0.0, model->N_species());
     _dt = _config_value<double>(config, "dt");
     _dx = _config_optional_value<double>(config, "dx", 1.0);
 
@@ -31,7 +32,8 @@ Integrator<dims>::Integrator(SimulationState<dims> &sim_state, FreeEnergyModel *
         k_laplacian_str << k << " ";
     }
 
-    info("Integrator initialized with dt = {}, dx = {}, k = {}", _dt, _dx, k_laplacian_str.str());
+    info("Integrator initialized with dt = {}, dx = {}, k = {}, mobility type: {}", _dt, _dx, k_laplacian_str.str(), _mobility_type);
+    info("Evolving each species with the following dynamics: {}, Allen-Cahn chemical potential: {}", fmt::join(_species_evolution_name, ", "), fmt::join(_species_AC_chemical_potential, ", "));
 }
 
 template<int dims>

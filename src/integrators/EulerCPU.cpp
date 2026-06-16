@@ -29,9 +29,13 @@ void EulerCPU<dims>::evolve() {
     double M = this->_sim_state.mobility(0, 0); // constant mobility
     for(unsigned int idx = 0; idx < this->_N_bins; idx++) {
         for(int species = 0; species < this->_N_species; species++) {
-			double total_derivative = (this->_species_evolution[species] == Integrator<dims>::EvolutionType::CH) ? 
-                +M * _cell_laplacian(rho_der, species, idx) : 
-                -M * rho_der(idx, species);
+            // for CH we have a conserved dynamics, so the time derivative is the divergence of a flux, while for non-conserved dynamics it's just the derivative itself
+            double total_derivative = 0.0;
+            if(this->_species_evolution[species] == Integrator<dims>::EvolutionType::CH) {
+                total_derivative = M * _cell_laplacian(rho_der, species, idx);
+            } else {
+                total_derivative = -M * (rho_der(idx, species) - this->_species_AC_chemical_potential[species] * this->_rho(idx, species));
+            }
             this->_rho(idx, species) += total_derivative * this->_dt;
         }
     }
