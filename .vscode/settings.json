@@ -94,5 +94,11 @@
         "__tuple": "cpp",
         "ios": "cpp",
         "locale": "cpp"
+    },
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /home/lorenzo/git/cahn-hilliard/build && make 2>&1 \\| head -80$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

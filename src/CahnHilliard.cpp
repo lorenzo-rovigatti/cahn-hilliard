@@ -355,6 +355,21 @@ MultiField<double> CahnHilliard<dims>::pressure() {
 	return pressure_field;
 }
 
+template<int dims>
+MultiField<double> CahnHilliard<dims>::chemical_potential() {
+	integrator->sync();
+	
+	MultiField<double> chemical_potential_field(_sim_state.rho.bins(), model->N_species());
+	model->der_bulk_free_energy(_sim_state.rho, chemical_potential_field);
+	for(int idx = 0; idx < grid_size; idx++) {
+		for(int species = 0; species < model->N_species(); species++) {
+			chemical_potential_field(idx, species) -= 2 * k_laplacian[species] * _sim_state.rho.template cell_laplacian<dims>(species, idx, dx);
+		}
+	}
+
+	return chemical_potential_field;
+}
+
 template class CahnHilliard<1>;
 template class CahnHilliard<2>;
 template class CahnHilliard<3>;

@@ -42,7 +42,7 @@ public:
     };
 
     iterator begin() const { return iterator{_data, _bins, 0}; }
-    iterator end()   const { return iterator{_data, _bins, _species}; }
+    iterator end() const { return iterator{_data, _bins, _species}; }
 };
 
 
@@ -51,20 +51,21 @@ class MultiField {
     std::vector<T> _data;
     int _bins;
     int _species;
+    int _log2_N_per_dim;
 
 public:
     MultiField() : _bins(0), _species(0) {}
-    MultiField(int N_bins, int species) : _data(N_bins * species), _bins(N_bins), _species(species) {}
+    MultiField(int N_bins, int species) : _data(N_bins * species), _bins(N_bins), _species(species), _log2_N_per_dim(log2(N_bins)) {}
 
     T &operator()(int idx, int species) {
         assert(idx >= 0 && idx < _bins);
-        assert(s >= 0 && s < _species);
+        assert(species >= 0 && species < _species);
         return _data[species * _bins + idx];
     }
 
     T operator()(int idx, int species) const {
         assert(idx >= 0 && idx < _bins);
-        assert(s >= 0 && s < _species);
+        assert(species >= 0 && species < _species);
         return _data[species * _bins + idx];
     }
 
@@ -104,6 +105,58 @@ public:
 
     int size() const {
         return _data.size();
+    }
+
+    template<int dims>
+    void fill_coords(int coords[dims], int idx) {
+        for(int d = 0; d < dims; d++) {
+            coords[d] = idx & (_bins - 1);
+            idx >>= _log2_N_per_dim; // divide by N
+        }
+    }
+
+    template<int dims>
+    int cell_idx(int coords[dims]) {
+        int idx = 0;
+        int multiply_by = 1;
+        for(int d = 0; d < dims; d++) {
+            idx += coords[d] * multiply_by;
+            multiply_by <<= _log2_N_per_dim; // multiply by N
+        }
+        return idx;
+    }
+
+    template<int dims>
+    double cell_laplacian(int species, int idx, double dx) {
+        if constexpr (dims == 1) {
+            int idx_m = (idx - 1 + _bins) & (_bins - 1);
+            int idx_p = (idx + 1) & (_bins - 1);
+
+            return (this->operator()(idx_m, species)
+                + this->operator()(idx_p, species)
+                - 2.0 * this->operator()(idx, species)) / SQR(dx);
+        } 
+        else {
+            int coords[dims];
+            int coords_n[dims];
+            fill_coords<dims>(coords, idx);
+            memcpy(coords_n, coords, sizeof(coords));
+
+            double sum = 0.0;
+
+            for(int d = 0; d < dims; d++) {
+                // minus direction
+                coords_n[d] = (coords[d] - 1 + _bins) & (_bins - 1);
+                sum += this->operator()(cell_idx<dims>(coords_n), species);
+
+                // plus direction
+                coords_n[d] = (coords[d] + 1) & (_bins - 1);
+                sum += this->operator()(cell_idx<dims>(coords_n), species);
+                coords_n[d] = coords[d];
+            }
+
+            return (sum - 2.0 * dims * this->operator()(idx, species)) / SQR(dx);
+        }
     }
 };
 
