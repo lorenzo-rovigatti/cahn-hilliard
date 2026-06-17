@@ -48,9 +48,12 @@ public:
 
 	double average_mass();
 	double average_free_energy();
-	double average_pressure();
+	
 	MultiField<double> pressure();
+	double average_pressure();
+
 	MultiField<double> chemical_potential();
+	double average_chemical_potential();
 
 	GET_NAME(Simulation manager)
 

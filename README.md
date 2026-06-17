@@ -37,6 +37,11 @@ Here is a (code-accurate) list of input keys and their behaviour. Non-mandatory 
   - `"linear"`: print pressure files at fixed intervals using `print_trajectory_every`.
   - `"log"`: print pressure files at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
 - `output.print_pressure_every` (integer, optional, default: `0`): frequency (in steps) to compute and write the pressure to file.
+- `output.print_chemical_potential` (bool, optional, default: `false`): if `true`, the average chemical potential  is appended to the energy output and written to `chemical_potential.dat`, and the pressure field is printed to a file using the strategy set with the keys that follow.
+- `output.print_chemical_potential_strategy` (string, optional, default: `"linear"`): controls chemical potential trajectory printing. Supported values:
+  - `"linear"`: print chemical potential files at fixed intervals using `print_trajectory_every`.
+  - `"log"`: print chemical potential files at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
+- `output.print_chemical_potential_every` (integer, optional, default: `0`): frequency (in steps) to compute and write the chemical potential to file.
 - `print_trajectory_strategy` (string, optional, default: `"linear"`): controls trajectory printing. Supported values:
   - `"linear"`: print configurations at fixed intervals using `print_trajectory_every`.
   - `"log"`: print configurations at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.

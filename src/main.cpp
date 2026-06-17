@@ -32,6 +32,7 @@ public:
 		_print_mass_every = _config_optional_value<long long int>(config, "print_every", 0);
 
 		_print_pressure = _config_optional_value<bool>(config, "output.print_pressure", false);
+		_print_chemical_potential = _config_optional_value<bool>(config, "output.print_chemical_potential", false);
 
 		srand48(_config_optional_value<long long int>(config, "seed", std::time(NULL)));
 
@@ -117,10 +118,21 @@ public:
 					_printer->add_to_trajectory("pressure", "pressure", pressure, pressure_factor, i, _t);
 				}
 			}
+			if(_printer->should_print_chemical_potential(_t)) {
+				auto chemical_potential = _system->chemical_potential();
+				for(int i = 0; i < _sim_state.model->N_species(); i++) {
+					_printer->add_to_trajectory("chemical_potential", "chemical_potential", chemical_potential, 1.0, i, _t);
+				}
+			}
 			if(_print_mass_every > 0 && _t % _print_mass_every == 0) {
 				std::string output_line = fmt::format("{:.5} {:.8} {:.5} {:L}", _t * _system->dt, _system->average_free_energy(), _system->average_mass(), _t);
 				if(_print_pressure) {
-					output_line += fmt::format(" {:.5}", _system->average_pressure());
+					double avg_pressure = _system->average_pressure() * _sim_state.density_to_user(1.0);
+					output_line += fmt::format(" {:.5}", avg_pressure);
+				}
+				if(_print_chemical_potential) {
+					double avg_chemical_potential = _system->average_chemical_potential();
+					output_line += fmt::format(" {:.5}", avg_chemical_potential);
 				}
 				mass_output << output_line << std::endl;
 				std::cout << output_line << std::endl;
@@ -160,11 +172,31 @@ private:
 			filename = (_output_path / fmt::format("{}pressure.vtk", prefix)).string();
 			_printer->write_vtk(filename, "pressure", pressure, pressure_factor, -1, t);
 		}
+		if(_print_chemical_potential) {
+			auto chemical_potential = _system->chemical_potential();
+			// partial chemical potentials
+			if(_sim_state.model->N_species() > 1) {
+				for(int i = 0; i < _sim_state.model->N_species(); i++) {
+					_sim_state.integrator->sync();
+					std::string filename = (_output_path / fmt::format("{}{}_chemical_potential.dat", prefix, i)).string();
+					_printer->write_native(filename, "chemical_potential", chemical_potential, 1.0, i, t);
+
+					filename = (_output_path / fmt::format("{}{}_chemical_potential.vtk", prefix, i)).string();
+    				_printer->write_vtk(filename, "chemical_potential", chemical_potential, 1.0, i, t);
+				}
+			}
+			// total chemical potential
+			std::string filename = (_output_path / fmt::format("{}chemical_potential.dat", prefix)).string();
+			_printer->write_native(filename, "chemical_potential", chemical_potential, 1.0, -1, t);
+
+			filename = (_output_path / fmt::format("{}chemical_potential.vtk", prefix)).string();
+			_printer->write_vtk(filename, "chemical_potential", chemical_potential, 1.0, -1, t);
+		}
 	}
 
 	SimulationState<DIM> _sim_state;
 
-	bool _print_pressure;
+	bool _print_pressure, _print_chemical_potential;
 	long long int _initial_t = 0;
 	long long int _t;
 	long long int _steps, _print_mass_every;

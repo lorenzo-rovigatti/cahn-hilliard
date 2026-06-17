@@ -31,18 +31,32 @@ Printer<dims>::Printer(SimulationState<dims> &sim_state, toml::table &config) : 
     }
 
     _print_pressure = _config_optional_value<bool>(config, "output.print_pressure", false);
-
     if(_print_pressure) {
         _print_pressure_strategy = _config_optional_value<std::string>(config, "output.print_pressure_strategy", "linear");
         if(_print_pressure_strategy == "linear") {
             _print_pressure_every = _config_value<long long int>(config, "output.print_pressure_every");
         }
         else if(_print_pressure_strategy == "log") {
-            _log_n0 = _config_value<int>(config, "output.log_n0");
-            _log_fact = _config_value<double>(config, "output.log_fact");
+            _pressure_log_n0 = _config_value<int>(config, "output.pressure_log_n0");
+            _pressure_log_fact = _config_value<double>(config, "output.pressure_log_fact");
         }
         else {
             critical("Unsupported pressure printing strategy '{}'", _print_pressure_strategy);
+        }
+    }
+
+    _print_chemical_potential = _config_optional_value<bool>(config, "output.print_chemical_potential", false);
+    if(_print_chemical_potential) {
+        _print_chemical_potential_strategy = _config_optional_value<std::string>(config, "output.print_chemical_potential_strategy", "linear");
+        if(_print_chemical_potential_strategy == "linear") {
+            _print_chemical_potential_every = _config_value<long long int>(config, "output.print_chemical_potential_every");
+        }
+        else if(_print_chemical_potential_strategy == "log") {
+            _chemical_potential_log_n0 = _config_value<int>(config, "output.chemical_potential_log_n0");
+            _chemical_potential_log_fact = _config_value<double>(config, "output.chemical_potential_log_fact");
+        }
+        else {
+            critical("Unsupported chemical potential printing strategy '{}'", _print_chemical_potential_strategy);
         }
     }
 
@@ -75,7 +89,13 @@ Printer<dims>::Printer(SimulationState<dims> &sim_state, toml::table &config) : 
         critical("Trajectory output path '{}' is not a directory", trajp);
     }
 
-    _valid_trajectory_prefixes = {"traj", "pressure", "mu"};
+    _valid_trajectory_prefixes = {"traj"};
+    if(_print_pressure) {
+        _valid_trajectory_prefixes.insert("pressure");
+    }
+    if(_print_chemical_potential) {
+        _valid_trajectory_prefixes.insert("chemical_potential");
+    }
 
     // if we print native trajectories and we are not loading from a previous state, then we
     // open the trajectory files in output mode (overwriting any existing file with the same name)
@@ -160,7 +180,21 @@ bool Printer<dims>::should_print_pressure(long long int time_step) {
             return (_print_pressure_every > 0 && time_step % _print_pressure_every == 0);
         }
         else if(_print_pressure_strategy == "log") {
-            long long int next_t = (long long int) round((_log_n0 * std::pow(_log_fact, _traj_printed)));
+            long long int next_t = (long long int) round((_pressure_log_n0 * std::pow(_pressure_log_fact, _traj_printed)));
+            return (next_t == time_step);
+        }
+    }
+    return false;
+}
+
+template <int dims>
+bool Printer<dims>::should_print_chemical_potential(long long int time_step) {
+    if(_print_chemical_potential) {
+        if(_print_chemical_potential_strategy == "linear") {
+            return (_print_chemical_potential_every > 0 && time_step % _print_chemical_potential_every == 0);
+        }
+        else if(_print_chemical_potential_strategy == "log") {
+            long long int next_t = (long long int) round((_chemical_potential_log_n0 * std::pow(_chemical_potential_log_fact, _traj_printed)));
             return (next_t == time_step);
         }
     }

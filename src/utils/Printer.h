@@ -26,6 +26,7 @@ public:
     bool should_print_last(long long int t);
     bool should_print_traj(long long int t);
     bool should_print_pressure(long long int t);
+    bool should_print_chemical_potential(long long int t);
 
     void write_native(std::ofstream &output, 
         const std::string &obs_name, 
@@ -71,16 +72,24 @@ private:
     std::string _print_traj_strategy;
     int _traj_printed = 0;
 	long long int _print_trajectory_every;
+    int _log_n0 = 0;
+	double _log_fact = 0;
 
     bool _print_pressure;
     std::string _print_pressure_strategy;
 	long long int _print_pressure_every;
+    int _pressure_log_n0 = 0;
+	double _pressure_log_fact = 0;
+
+    bool _print_chemical_potential;
+    std::string _print_chemical_potential_strategy;
+	long long int _print_chemical_potential_every;
+    int _chemical_potential_log_n0 = 0;
+	double _chemical_potential_log_fact = 0;
 
     long long int _print_last_every;
 
     bool _print_vtk;
-	int _log_n0 = 0;
-	double _log_fact = 0;
 	std::ios_base::openmode _openmode = std::ios_base::out;
     // directory where output files will be placed (defaults to current folder)
 	std::filesystem::path _output_path;

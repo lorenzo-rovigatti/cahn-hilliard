@@ -320,21 +320,7 @@ double CahnHilliard<dims>::average_free_energy() {
 
 template<int dims>
 double CahnHilliard<dims>::average_pressure() {
-	integrator->sync();
-
-	double pressure = 0.;
-	for(unsigned int i = 0; i < _sim_state.rho.bins(); i++) {
-		double interfacial_contrib = 0.;
-		for(int species = 0; species < model->N_species(); species++) {
-			pressure += model->pressure(species, _sim_state.rho.species_view(i));
-			auto rho_grad = gradient(_sim_state.rho, species, i);
-			for(int d = 0; d < dims; d++) {
-				pressure -= 0.5 * k_laplacian[species] * rho_grad[d] * rho_grad[d];
-			}
-		}
-	}
-
-	return pressure / _sim_state.rho.bins();
+	return pressure().average();	
 }
 
 template<int dims>
@@ -344,10 +330,13 @@ MultiField<double> CahnHilliard<dims>::pressure() {
 	MultiField<double> pressure_field(_sim_state.rho.bins(), model->N_species());
 	for(int idx = 0; idx < grid_size; idx++) {
 		for(int species = 0; species < model->N_species(); species++) {
+			// P = P_0 - 2 * k * rho * laplacian(rho) - k * |grad(rho)|^2
+			// i.e. P = rho * mu_gen - f_bulk - k * |grad(rho)|^2, where mu_gen is the generalised chemical potential
 			pressure_field(idx, species) = model->pressure(species, _sim_state.rho.species_view(idx));
+			pressure_field(idx, species) -= 2 * _sim_state.rho(idx, species) * k_laplacian[species] * _sim_state.rho.template cell_laplacian<dims>(species, idx, dx);
 			auto rho_grad = gradient(_sim_state.rho, species, idx);
 			for(int d = 0; d < dims; d++) {
-				pressure_field(idx, species) -= 0.5 * k_laplacian[species] * rho_grad[d] * rho_grad[d];
+				pressure_field(idx, species) -= k_laplacian[species] * rho_grad[d] * rho_grad[d];
 			}
 		}
 	}
@@ -368,6 +357,11 @@ MultiField<double> CahnHilliard<dims>::chemical_potential() {
 	}
 
 	return chemical_potential_field;
+}
+
+template<int dims>
+double CahnHilliard<dims>::average_chemical_potential() {
+	return chemical_potential().average();
 }
 
 template class CahnHilliard<1>;

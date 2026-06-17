@@ -10,6 +10,7 @@
 
 #include <cassert>
 #include <vector>
+#include <numeric>
 
 namespace ch {
 
@@ -87,6 +88,11 @@ public:
         }
 
         return tot;
+    }
+
+    T average() const {
+        T tot = std::accumulate(_data.begin(), _data.end(), T{});
+        return tot / static_cast<T>(_data.size());
     }
 
     // zero-allocation species view
