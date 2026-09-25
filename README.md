@@ -11,45 +11,54 @@ Compilation requires CMake. Follow these steps to compile the code:
 3. `cmake ..`
 4. `make`
 
-At the end of the process three executables, `ch_1D`, `ch_2D`, and `ch_3D` will be placed in the `build` folder.
+At the end of the process the executables `ch_1D`, `ch_2D`, and `ch_3D` will be placed in the `build/bin` folder.
 
 ## Usage
 
-The two executables are used to run simulations in 1D and 2D, respectively, and take a single mandatory option, which is a `TOML` file containing the options specifying the behaviour of the simulation.
+The executables run simulations in the corresponding spatial dimension and take one mandatory argument: a `TOML` file containing the simulation options.
 
 Look at the `examples` folder for some runnable input files. Most of the options should be self-explanatory. The code prints an output consisting of four columns (time, free energy per bin, mass per bin and time step) both to the standard output and to file. It also appends configurations to the trajectory files (one for each species). In addition, the code also prints standalone configuration files every time 
 
-Here is a (code-accurate) list of input keys and their behaviour. Non-mandatory options show their default values in brackets. Where a numeric value is accepted both as integer or floating point the code will accept either (integers are converted to the appropriate floating type when needed).
+The sections below describe the input keys. Non-mandatory options show their default values in brackets. TOML numeric values may generally be written as integers or floating-point values; arrays must be homogeneous.
 
 - `steps` (integer, required): number of integration steps to run. Must be >= 0. Parsed as a 64-bit integer.
 - `seed` (integer, optional, default: `time(NULL)`): seed used to initialise the RNG (parsed as 64-bit integer).
-- `free_energy` (string, required): selects the free-energy model. Accepted values include `landau`, `simple_wertheim`, `saleh`, `generic_wertheim`, `ricci` (see the "Free energy models" section).
+- `free_energy` (string, required): selects one of `landau`, `simple_wertheim`, `saleh`, `generic_wertheim`, or `ricci` (see [Free energy models](#free-energy-models)).
 - `N` (integer, required): linear size per dimension. Must be a power of two. The total number of cells is `N` (1D), `N*N` (2D) or `N*N*N` (3D) depending on the executable.
 - `k` (single value or array, required): interfacial penalty coefficient(s). The code accepts either a single numeric value (applied to all species) or an array with one value per species. Values may only be specified as floating point numbers.
 - `dt` (double, required): time step used by the integrator.
 - `dx` (double, optional, default: `1.0`): physical bin size (units used by the user). The code rescales `dx` internally according to `distance_scaling_factor`.
 - `distance_scaling_factor` (double, optional, default: `1.0`): rescales user lengths to the internal units. Internally the code multiplies `dx` by `user_to_internal` and rescales `k` and densities accordingly; changing this can improve numerical stability for particular models.
-- `integrator` (string, optional, default: `"euler"`): integration scheme. Supported values include `euler`, `euler_mobility`, `pseudospectral`, `pseudospectral_mobility`, `bailo`. When `use_CUDA = true` some integrators have CUDA implementations (the code chooses the appropriate variant automatically).
+- `integrator` (string, optional, default: `"euler"`): integration scheme. Supported values are `euler`, `euler_mobility`, `pseudospectral`, `pseudospectral_mobility`, and `bailo`. CUDA implementations are selected automatically where available.
 - `use_CUDA` (bool, optional, default: `false`): enable CUDA-enabled integrators (when built with CUDA support).
+- `species_evolution` (string or array, optional, default: `"CH"`): evolution equation for each species. Accepted values are `"CH"` (conserved Cahn–Hilliard dynamics) and `"AC"` (non-conserved Allen–Cahn dynamics). A single value is replicated for all species; an array supplies one value per species. Allen–Cahn is currently supported only by the CPU `euler` integrator.
+- `species_AC_chemical_potential` (number or array, optional, default: `0.0`): per-species constant used by Allen–Cahn evolution. For an `AC` species, the update is `∂rho/∂t = -M (mu - species_AC_chemical_potential * rho)`. It is ignored for `CH` species.
+- `mobility.type` (string, optional, default: `"constant"`): mobility implementation. Supported values are `constant`, `free_energy`, `regularised`, and `gel`; see [Mobility](#mobility).
+- `mobility.M` (double, optional, default: `1.0`): base mobility used by `constant`, `free_energy`, and `regularised` mobility.
 - `print_every` (integer, optional, default: `0`): frequency (in steps) at which the main energy/mass/time output line is written to `energy.dat` and to stdout. When `0` no periodic energy output is produced.
-- `output.print_pressure` (bool, optional, default: `false`): if `true`, the average pressure is appended to the energy output and written to `pressure.dat`, and the pressure field is printed to a file using the strategy set with the keys that follow.
+- `output.print_pressure` (bool, optional, default: `false`): if `true`, the average pressure is appended to the energy output and pressure fields are written to trajectory output.
 - `output.print_pressure_strategy` (string, optional, default: `"linear"`): controls pressure trajectory printing. Supported values:
-  - `"linear"`: print pressure files at fixed intervals using `print_trajectory_every`.
-  - `"log"`: print pressure files at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
-- `output.print_pressure_every` (integer, optional, default: `0`): frequency (in steps) to compute and write the pressure to file.
-- `output.print_chemical_potential` (bool, optional, default: `false`): if `true`, the average chemical potential  is appended to the energy output and written to `chemical_potential.dat`, and the pressure field is printed to a file using the strategy set with the keys that follow.
+  - `"linear"`: print pressure files every `output.print_pressure_every` steps.
+  - `"log"`: print pressure files at times round(`pressure_log_n0 * pressure_log_fact^N`) where `N` is the number of pressure frames already printed.
+- `output.print_pressure_every` (integer, required for linear pressure output): frequency (in steps) to compute and write the pressure.
+- `output.print_chemical_potential` (bool, optional, default: `false`): if `true`, the average chemical potential is appended to the energy output and chemical-potential fields are written to trajectory output.
 - `output.print_chemical_potential_strategy` (string, optional, default: `"linear"`): controls chemical potential trajectory printing. Supported values:
-  - `"linear"`: print chemical potential files at fixed intervals using `print_trajectory_every`.
-  - `"log"`: print chemical potential files at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
-- `output.print_chemical_potential_every` (integer, optional, default: `0`): frequency (in steps) to compute and write the chemical potential to file.
+  - `"linear"`: print chemical-potential files every `output.print_chemical_potential_every` steps.
+  - `"log"`: print chemical potential files at times round(`chemical_potential_log_n0 * chemical_potential_log_fact^N`) where `N` is the number of chemical-potential frames already printed.
+- `output.print_chemical_potential_every` (integer, required for linear chemical-potential output): frequency (in steps) to compute and write the chemical potential.
 - `print_trajectory_strategy` (string, optional, default: `"linear"`): controls trajectory printing. Supported values:
   - `"linear"`: print configurations at fixed intervals using `print_trajectory_every`.
   - `"log"`: print configurations at times round(`log_n0 * log_fact^N`) where `N` is the number of trajectory frames already printed.
 - `print_trajectory_every` (integer, optional, default: `0`): when using the `linear` strategy, append configurations to the trajectory every this many steps. If `0` no trajectory is appended.
 - `print_last_every` (integer, optional): frequency (in steps) to write the `last_*` snapshot files. Defaults to the value of `print_trajectory_every` for the `linear` strategy. When using the `log` strategy `print_last_every` is required and must be explicitly provided.
-- `output.log_n0` (integer, required for `log` strategy): base step for the logarithmic spacing.
-- `output.log_fact` (double, required for `log` strategy): multiplicative factor for the logarithmic spacing.
-- `output.path` (string, optional, default: `.`): directory where `last_*`, `*_*.dat` and `energy.dat` are written.
+- `output.log_n0` (integer, required for logarithmic trajectory output): base step for the logarithmic spacing.
+- `output.log_fact` (double, required for logarithmic trajectory output): multiplicative factor for the logarithmic spacing.
+- `output.pressure_log_n0` (integer, required for logarithmic pressure output): base step for pressure output spacing.
+- `output.pressure_log_fact` (double, required for logarithmic pressure output): multiplicative factor for pressure output spacing.
+- `output.chemical_potential_log_n0` (integer, required for logarithmic chemical-potential output): base step for chemical-potential output spacing.
+- `output.chemical_potential_log_fact` (double, required for logarithmic chemical-potential output): multiplicative factor for chemical-potential output spacing.
+- `output_path` (string, optional, default: `.`): directory where `last_*`, `init_*`, `*_*.dat`, and `energy.dat` are written.
+- `output.path` (string, optional, default: `.`): directory used by the `Printer` for snapshots and field output. In normal runs keep this equal to `output_path`.
 - `output.print_vtk` (bool, optional, default: `false`): when `true` produce VTK files instead of the native text format for snapshots.
 - `output.trajectory_path` (string, optional): directory where trajectory files are written. When `output.print_vtk = true` this key is mandatory; otherwise it defaults to `output.path`.
 - `load_from` (string, optional): path to a plain-text file used to initialise the fields. If present the file is parsed and used as the starting configuration (see "Initial configuration" below). When restarting from a `load_from` file the program will append to existing outputs.
@@ -58,8 +67,8 @@ Here is a (code-accurate) list of input keys and their behaviour. Non-mandatory 
 - `initial_N_peaks` (integer, optional, default: `0`): number of peaks for the initial sinusoidal modulation. When `0` the initial condition is purely random (white-noise like) around `initial_density`.
 
 Notes about numeric fields and arrays:
-- Keys parsed with the helper `_config_array_values<T>` may be provided either as a single value or as an array. If a single value is provided and an `output_size` (for example the number of species) is required the single value is replicated to match the expected size.
-- Arrays must be homogeneous (all elements of the same TOML numeric type).
+- Keys parsed as per-species arrays may be provided either as a single value or as an array. A single value is replicated to the number of species when needed.
+- `k`, `initial_density`, `species_evolution`, and `species_AC_chemical_potential` therefore support either one value for all species or one value per species.
 
 
 ## Initial configuration
@@ -114,36 +123,57 @@ Practical tips
 
 ## Integrators
 
-The code implements several time integrators. Choose one with the `integrator` key in the TOML input. When `use_CUDA = true` the program will automatically select CUDA implementations if available.
+The code implements several time integrators. Choose one with the `integrator` key. All schemes use periodic boundary conditions. The following table summarizes the current support:
+
+| Integrator | Non-constant mobility | Allen-Cahn | CUDA |
+| --- | --- | --- | --- |
+| `euler` | no | CPU only | yes |
+| `euler_mobility` | yes | no | yes |
+| `pseudospectral` | no | no | yes |
+| `pseudospectral_mobility` | yes | no | no |
+| `bailo` | no | no | no |
+
+When `use_CUDA = true`, a CUDA implementation is selected where one exists. CUDA support must be enabled at build time.
 
 - `euler` (default) — explicit finite-difference Euler stepping
-  - Description: a straightforward explicit finite-difference discretisation of the continuity equation used for Cahn–Hilliard evolution. It computes local gradients and laplacians on the grid and advances densities explicitly by `dt`.
-  - Use when: you want a simple, robust CPU implementation. Time-step `dt` must be chosen small enough for stability (explicit schemes are conditionally stable).
+  - Description: explicit finite-difference stepping. It supports both `CH` and `AC` species and computes local laplacians on the grid.
+  - Use when: you want the simplest implementation or need Allen-Cahn dynamics. Explicit schemes require a sufficiently small `dt` for stability.
 
-- `euler_mobility` — explicit Euler with (possibly variable) mobility
-  - Description: same spatial discretisation as `euler` but supports non-constant, density-dependent mobility fields. The integrator optionally adds stochastic noise to the mobility-driven flux when configured.
-  - Config/notes: this integrator advertises support for non-constant mobility in the code; it accepts mobility-related parameters through the model/mobility interfaces. Noise can be enabled via integrator-specific TOML keys (see model/integrator docs or inspect `EulerMobilityCPU` for exact keys).
-  - Use when: your free-energy model requires spatially varying mobility or you want to include mobility noise.
+- `euler_mobility` — explicit Euler with variable mobility
+  - Description: explicit finite-volume flux stepping with spatially varying mobility.
+  - `mobility.with_noise` (bool, optional, default: `false`): add stochastic flux noise.
+  - `mobility.noise_rescale_factor` (double, optional, default: `1.0`): multiply the noise amplitude by this factor.
+  - Use when: mobility varies in space or stochastic fluxes are required. This integrator supports `CH` only.
 
-- `pseudospectral` — semi-implicit pseudospectral (FFT) integrator with mobility splitting
-  - Description: FFT-based semi-implicit scheme. The integrator advances the solution in Fourier space using a semi-implicit factor for the highest-order (Laplacian) terms, while lower-order and mobility-correction terms are handled explicitly in real space and added as a correction. This improves stability and allows larger `dt` than explicit Euler for the same spatial resolution.
-  - Important config keys (examples):
-    - `mobility.M0` (double, optional): base mobility used in the splitting (defaults to a value derived from the mobility object).
-    - `semi_implicit.rho_floor` (double, optional, default `0.0`): clamp applied to `rho` before calling free-energy derivatives.
-    - `semi_implicit.dealias` (bool, optional, default `false`): enable dealiasing in spectral operations.
-  - Use when: you need better stability / larger time-steps and can pay the FFT cost. Works well with smooth fields and periodic boundary conditions.
+- `pseudospectral` — semi-implicit pseudospectral (FFT) integrator with constant mobility
+  - Description: FFT-based semi-implicit scheme for conserved dynamics.
+  - Use when: you need better stability or larger time steps and can use FFTW on CPU or cuFFT on CUDA. This integrator supports `CH` only.
 
 - `pseudospectral_mobility` — pseudospectral scheme with explicit treatment of mobility corrections
-  - Description: variant of the `pseudospectral` integrator that explicitly accounts for variable mobility via a splitting strategy (compute correction terms in real space and transform them when needed).
-  - Use when: mobility varies significantly and you still want the stability benefits of a semi-implicit spectral solver.
+  - Description: semi-implicit FFT scheme with variable mobility. The mobility remainder is treated explicitly; the optional GMRES path solves the fully implicit variable-mobility correction.
+  - `pseudospectral.use_gmres` (bool, optional, default: `false`): use the fully implicit variable-mobility correction.
+  - `pseudospectral.gmres_restart` (integer, optional, default: `30`): GMRES restart length.
+  - `pseudospectral.gmres_max_iter` (integer, optional, default: `200`): maximum GMRES iterations.
+  - `pseudospectral.gmres_tol` (double, optional, default: `1e-10`): GMRES convergence tolerance.
+  - Use when: mobility varies and the stability benefits of a semi-implicit spectral solver are useful. This integrator supports `CH` only and is CPU-only.
 
-### Notes and selection guidance
-- Explicit schemes (`euler`, `euler_mobility`) are simple and sometimes faster per-step on small grids, but require smaller `dt` for stability.
-- Pseudospectral integrators require FFT libraries (the code uses FFTW on CPU and cuFFT on CUDA). They permit larger `dt` and can be more efficient on large grids, especially when paired with optimized FFT backends.
-- CUDA implementations exist for most integrators; enable them with `use_CUDA = true` and ensure the code was built with CUDA support.
+- `bailo` — implicit finite-volume integrator
+  - Description: finite-volume scheme using expansive/contractive free-energy splitting and a nonlinear solve.
+  - Use when: the selected free-energy model implements the required expansive and contractive derivatives. This integrator supports constant mobility and `CH` only.
+
+### Allen-Cahn integration
+
+Set `species_evolution = "AC"` for a one-species model, or provide one value per species for mixtures. With the CPU `euler` integrator, an `AC` species evolves according to
+
+$$
+\frac{\partial \rho}{\partial t} = -M\left(\mu - h\rho\right),
+$$
+
+where `h` is the corresponding value in `species_AC_chemical_potential`. Other species can remain conserved in the same run by using, for example, `species_evolution = ["CH", "AC"]`. Allen-Cahn is not currently available in the CUDA or pseudospectral implementations.
 
 ### S splitting parameter for pseudospectral integrators
 - Key: `pseudospectral.S` (double, optional, default `0.0`)
+- Key: `pseudospectral.use_dealias` (bool, optional, default `false`): apply the two-thirds spectral dealiasing filter.
 - Role: `S` is a linear splitting parameter used in the semi-implicit spectral update. The pseudospectral integrator advances the Fourier components using a denominator of the form
 
   denom = 1 + dt * M * (S * k^2 + 2 * k_laplacian * k^4)
@@ -163,11 +193,24 @@ S = 2.0
 use_dealias = true
 ```
 
+## Mobility
+
+Mobility is selected with `mobility.type` and is used by the integrator to construct the mobility field.
+
+- `constant`: spatially uniform mobility `M`, supported by every integrator.
+- `free_energy`: obtains mobility from the free-energy model's mobility implementation, with `M` as the model scale. Use a model that implements mobility coupling.
+- `regularised`: regularises the mobility near zero density. Requires `mobility.rho_min`.
+- `gel`: Landau gel mobility. Requires `mobility.phi_critical`, `mobility.c_0`, `mobility.M_c`, and `landau.epsilon`.
+
+Non-constant mobility requires `euler_mobility` or `pseudospectral_mobility`.
+
 ## Free energy models
 
-The code supports three free energy models, which can be specified by setting the `free_energy` key in the input to `landau`, `simple_wertheim`, `saleh`, or `generic_wertheim`.
+The code supports five free-energy models. Select one with the `free_energy` key: `landau`, `simple_wertheim`, `saleh`, `generic_wertheim`, or `ricci`.
 
 ### Landau free energy
+
+Set `[landau].epsilon` or `[landau].T`; the model computes `epsilon = 1 - T` when `T` is supplied. `distance_scaling_factor` must remain `1.0` for this model.
 
 This is the classic Ginzburg–Landau mean-field expression for the bulk free energy density:
 
@@ -184,6 +227,8 @@ $$
 where $\kappa$ defaults to one.
 
 ### Wertheim free energy
+
+The model selected by `free_energy = "simple_wertheim"` requires `[wertheim].valence`, `[wertheim].B2`, and `[wertheim].delta`. `[wertheim].regularisation_delta` is optional and defaults to `0.0`.
 
 This is the expression derived by Wertheim through his Thermodynamic Perturbation Theory to describe the thermodynamics of valence-limited fluids. The free energy density that is implemented in this code reads:
 
@@ -207,4 +252,20 @@ where $\Delta = v_b e^{-\Delta G / R T}$, $v_b = 1.6606$ nm $^3$ and $\Delta G$ 
 
 ### Saleh free energy
 
+Select this model with `free_energy = "saleh"`. It requires `[saleh].B2`, `[saleh].delta_AA`, and `[saleh].delta_BB`. `[saleh].B3` defaults to `0.0`, and `[saleh].valence` is a scalar or three-element array defaulting to `3`.
+
 This is the Wertheim free energy for a ternary mixture of valence-limited particles. The three species $A$, $B$ and $C$ have the same intra- and inter-species repulsion (provided by a second virial coefficient that takes the same value for every interaction). However, $A$ can bind only to $A$ or to half of the sites on $C$, $B$ only to $B$ or to half of the sites of $C$, so that the $C$ species acts as a linker.
+
+### Ricci Wertheim free energy
+
+Select this model with `free_energy = "ricci"`. It requires `[ricci].B2`, `[ricci].delta_00`, and `[ricci].delta_12`.
+
+### Generic Wertheim free energy
+
+Select this model with `free_energy = "generic_wertheim"`. It requires:
+
+- one `[[generic_wertheim.species]]` table per species, each with a `patches` integer array;
+- `[[generic_wertheim.deltas]]` tables with an `interaction` such as `"0-1"` and parameters accepted by the `Delta` parser (`T`, `deltaH`, `deltaS`, `salt`, `sticky_size`, or a direct `value`);
+- `[[generic_wertheim.B2s]]` tables with an `interaction` and numeric `value`.
+
+The number of `B2s` entries is normally $N(N+1)/2$. Set `generic_wertheim.allow_unspecified_B2s = true` to run with an incomplete set; unspecified coefficients remain zero.
